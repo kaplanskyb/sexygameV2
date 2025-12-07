@@ -11,7 +11,8 @@ import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
-  Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, RotateCcw, XCircle
+  Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, RotateCcw, XCircle,
+  MessageCircle // Icono nuevo agregado
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -38,8 +39,8 @@ interface Player {
   joinedAt: any;
   isActive: boolean;
   isBot?: boolean;
-  matches?: number;    // Nuevo
-  mismatches?: number; // Nuevo
+  matches?: number;
+  mismatches?: number;
 }
 
 interface Challenge {
@@ -67,7 +68,7 @@ interface GameState {
   roundLevel?: string;
   // Auto Mode Fields
   isAutoMode?: boolean;
-  sequence?: string[]; // ['question', 'question', 'dare', 'yn']
+  sequence?: string[]; 
   sequenceIndex?: number;
 }
 
@@ -90,7 +91,7 @@ export default function TruthAndDareApp() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [customError, setCustomError] = useState<string | null>(null); // Custom Alert
+  const [customError, setCustomError] = useState<string | null>(null); 
 
   // MANAGER STATES
   const [isManaging, setIsManaging] = useState(false);
@@ -110,6 +111,21 @@ export default function TruthAndDareApp() {
   const [qtyTruth, setQtyTruth] = useState(1);
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
+
+  // --- NEW STATES FOR ANIMATION ---
+  const [rouletteName, setRouletteName] = useState('');
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  // --- HELPER STYLES ---
+  const getLevelStyle = (level: string | undefined) => {
+    switch (level) {
+      case '4': return 'border-red-600 bg-red-950/40 shadow-[0_0_30px_rgba(220,38,38,0.3)]'; // Extremo
+      case '3': return 'border-orange-500 bg-orange-950/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]'; // Picante
+      case '2': return 'border-yellow-500 bg-yellow-950/40'; // Intermedio
+      case '1': return 'border-green-500 bg-green-950/40'; // Suave
+      default: return 'border-slate-600 bg-slate-800';
+    }
+  };
 
   // 0. GLOBALS
   useEffect(() => {
@@ -178,17 +194,46 @@ export default function TruthAndDareApp() {
     }
   }, [challenges, pairChallenges]);
 
+  // --- ROULETTE EFFECT ---
+  useEffect(() => {
+    if (!gameState || players.length === 0) return;
+    
+    // Si acabamos de cargar o cambió el turno
+    const actualPlayer = players[gameState.currentTurnIndex];
+    if (!actualPlayer) return;
+  
+    // Solo animar si no estamos en modo Match (YN) y si el juego está activo
+    if (gameState.mode !== 'yn' && gameState.mode !== 'lobby' && gameState.mode !== 'admin_setup' && gameState.mode !== 'ended') {
+      setIsSpinning(true);
+      let iterations = 0;
+      const maxIterations = 20; // Cuántos nombres pasarán
+      const interval = setInterval(() => {
+        const randomPlayer = players[Math.floor(Math.random() * players.length)];
+        setRouletteName(randomPlayer.name);
+        iterations++;
+        
+        if (iterations >= maxIterations) {
+          clearInterval(interval);
+          setRouletteName(actualPlayer.name);
+          setIsSpinning(false);
+        }
+      }, 100); 
+      
+      return () => clearInterval(interval);
+    } else {
+      setRouletteName(actualPlayer.name);
+    }
+  }, [gameState?.currentTurnIndex, gameState?.mode, players.length]);
+
   // 4. AUTO-AVANCE LOGIC
   useEffect(() => {
     if (!isAdmin || !gameState || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') return;
     
     let shouldAdvance = false;
-    // En YN avanzamos cuando todos contestan
     if (gameState.mode === 'yn') {
         const totalAnswers = Object.keys(gameState.answers).length;
         if (totalAnswers >= players.length) shouldAdvance = true;
     } else {
-        // En T/D avanzamos cuando todos (menos el turno) votan
         const totalVotes = Object.keys(gameState.votes).length;
         const realPlayers = players.filter(p => !p.isBot);
         const neededVotes = realPlayers.length - 1; 
@@ -196,7 +241,6 @@ export default function TruthAndDareApp() {
     }
 
     if (shouldAdvance) {
-        // 4 Segundos de espera para ver resultados
         const timer = setTimeout(() => { nextTurn(); }, 4000); 
         return () => clearTimeout(timer);
     }
@@ -280,17 +324,13 @@ export default function TruthAndDareApp() {
   };
 
   const startRound = async () => {
-    // Generate Sequence if Auto
     let sequence: string[] = [];
     if (isAutoSetup) {
         for(let i=0; i<qtyTruth; i++) sequence.push('question');
         for(let i=0; i<qtyDare; i++) sequence.push('dare');
         for(let i=0; i<qtyMM; i++) sequence.push('yn');
-        // Shuffle sequence? No, keep order T -> D -> MM usually better flow.
-        // Or strictly as user asked: sequence of games.
     }
 
-    // Determine first mode
     let initialMode = isAutoSetup && sequence.length > 0 ? sequence[0] : (selectedType === 'yn' ? 'yn' : selectedType === 'truth' ? 'question' : 'dare');
     let typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
 
@@ -361,7 +401,7 @@ export default function TruthAndDareApp() {
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
     let updates: any = {};
     const points = { ...(gameState.points || {}) };
-    const batch = writeBatch(db); // Para actualizar stats de jugadores
+    const batch = writeBatch(db); 
     
     // 1. SUMAR PUNTOS Y ESTADISTICAS
     if (gameState.mode === 'question') { 
@@ -387,7 +427,6 @@ export default function TruthAndDareApp() {
               points[uid1] = (points[uid1] || 0) + 1;
               points[uid2] = (points[uid2] || 0) + 1;
             }
-            // Update stats
             batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { 
                 matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) 
             });
@@ -396,7 +435,7 @@ export default function TruthAndDareApp() {
             });
         }
       });
-      await batch.commit(); // Guardar stats de Match/Mismatch
+      await batch.commit(); 
     }
     updates.points = points;
 
@@ -430,13 +469,12 @@ export default function TruthAndDareApp() {
 
     if (roundFinished) {
         if (gameState.isAutoMode && gameState.sequence) {
-            // AUTO MODE: Siguiente juego en la secuencia
+            // AUTO MODE
             const nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
             if (nextSeqIdx < gameState.sequence.length) {
-                // Hay siguiente juego
-                const nextModeKey = gameState.sequence[nextSeqIdx]; // 'question', 'dare', 'yn'
-                let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; // normalize just in case
-                if(mode === 'truth') mode = 'question'; // safe check
+                const nextModeKey = gameState.sequence[nextSeqIdx]; 
+                let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; 
+                if(mode === 'truth') mode = 'question'; 
 
                 let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
                 const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
@@ -450,7 +488,6 @@ export default function TruthAndDareApp() {
                     updates.currentChallengeId = nextChallenge.id;
                     if (mode === 'yn') {
                         updates.pairs = computePairs();
-                        // Bot answers
                         players.filter(p => p.isBot).forEach(b => {
                             updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no';
                         });
@@ -458,11 +495,9 @@ export default function TruthAndDareApp() {
                     const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
                 } else {
-                    updates.mode = 'admin_setup'; // Se acabaron las preguntas
+                    updates.mode = 'admin_setup'; 
                 }
             } else {
-                // Fin de secuencia, volver al principio? o admin? 
-                // Mejor volver a Admin para que no sea infinito sin control
                 updates.mode = 'admin_setup'; 
             }
         } else {
@@ -477,7 +512,6 @@ export default function TruthAndDareApp() {
   };
 
   // --- UPLOADERS & MANAGER ---
-  // (Simplificado para brevedad, usando las mismas funciones v16)
   const handleSort = (key: keyof Challenge) => {
       let direction: 'asc' | 'desc' = 'asc';
       if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -718,7 +752,7 @@ export default function TruthAndDareApp() {
         <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col" onMouseUp={()=>setIsDragging(false)}>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Settings/> Content Manager</h2>
-                <button onClick={exitManager} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
+                <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
             </div>
             <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2">
                 <button onClick={()=>setManagerTab('td')} className={`px-4 py-2 rounded ${managerTab==='td' ? 'bg-blue-600' : 'bg-slate-700'}`}>Truth/Dare</button>
@@ -867,7 +901,7 @@ export default function TruthAndDareApp() {
     );
   }
 
-  // --- VISTA JUGADOR ---
+  // --- VISTA JUGADOR (MODIFICADA) ---
 
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
     return (
@@ -904,7 +938,6 @@ export default function TruthAndDareApp() {
 
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
   const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-  const showCard = true; 
 
   const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
   let ynMatch = null;
@@ -921,91 +954,129 @@ export default function TruthAndDareApp() {
       }
   }
 
-  const gameTitle = gameState.mode === 'yn' ? 'MATCH/MISMATCH' : gameState.mode.toUpperCase();
   const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
 
+  // --- STYLES & PENALTY LOGIC ---
+  const cardStyle = getLevelStyle(card?.level);
+  const showPenalty = 
+    (gameState.mode === 'dare' && gameState.votes?.[user?.uid || ''] === 'no') || 
+    (gameState.mode === 'question' && gameState.votes?.[user?.uid || ''] === 'no like');
+
   return (
-    <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
+    <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900 overflow-hidden relative">
+      {/* Fondo animado sutil si es nivel alto */}
+      {card?.level === '4' && <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none z-0"></div>}
+      
       <CustomAlert/>
-      <div className="text-center py-2 border-b border-slate-700 mb-4"><h1 className="text-3xl font-black text-white">{userName}</h1></div>
+      
+      {/* Header */}
+      <div className="text-center py-2 border-b border-slate-700 mb-4 z-10">
+        <h1 className="text-3xl font-black tracking-widest">{userName.toUpperCase()}</h1>
+      </div>
+      
       <ScoreBoard />
-      <div className="flex justify-between items-center mb-6 mt-4">
-        <div className="font-bold flex gap-2"><Zap className="text-yellow-400"/> {gameTitle}</div>
-        <div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div>
+      
+      <div className="flex justify-between items-center mb-6 mt-4 z-10">
+        <div className="font-bold flex gap-2 items-center bg-slate-800 px-3 py-1 rounded-full text-xs">
+          <Zap size={14} className="text-yellow-400"/> 
+          {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'} 
+          {card?.level && <span className={`ml-2 px-2 rounded text-black font-bold ${card.level === '4' ? 'bg-red-500' : 'bg-slate-400'}`}>Lvl {card.level}</span>}
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center z-10 relative">
         {isRoundFinishedTOrD ? (
-             <div className="bg-slate-800 p-8 rounded-2xl text-center text-white text-xl font-bold animate-pulse border-2 border-slate-700">
-                Turn Finished<br/><span className="text-sm font-normal text-slate-400">Waiting for next turn...</span>
+             <div className="bg-slate-800/90 backdrop-blur p-8 rounded-2xl text-center text-white border-2 border-slate-700 w-full max-w-md shadow-2xl">
+                <div className="text-2xl font-bold mb-2">Round Finished</div>
+                <div className="text-slate-400 animate-pulse">Loading next victim...</div>
             </div>
         ) : (
             <>
-                <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 ${gameState?.mode==='question'?'border-indigo-500 bg-indigo-900/20':'border-pink-500 bg-pink-900/20'}`}>
-                    <h3 className="text-2xl font-bold">{getCardText(card)}</h3>
+                {/* TARJETA PRINCIPAL CON ESTILOS DE NIVEL */}
+                <div className={`w-full max-w-md p-8 rounded-3xl border-4 text-center mb-8 transition-all duration-500 ${cardStyle} flex flex-col items-center justify-center min-h-[200px]`}>
+                    <div className="mb-4 opacity-50">
+                        {gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? <ArrowUpDown size={32}/> : <Flame size={32}/>}
+                    </div>
+                    <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">
+                        {isSpinning ? '...' : getCardText(card)}
+                    </h3>
                 </div>
 
+                {/* INDICADOR DE TURNO CON RULETA */}
                 <div className="w-full max-w-md space-y-4">
                     {!isMyTurn() && gameState.mode !== 'yn' && (
-                        <div className="text-3xl font-black text-yellow-400 mb-6 text-center animate-pulse uppercase">
-                            {currentPlayerName()}'s TURN
+                        <div className="text-center mb-6">
+                            <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Current Player</div>
+                            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all ${isSpinning ? 'scale-110 blur-sm' : 'scale-100'}`}>
+                                {isSpinning ? rouletteName : currentPlayerName()}
+                            </div>
                         </div>
                     )}
 
-                    {/* TRUTH */}
-                    {gameState?.mode==='question' && isMyTurn() && (
-                        <div className="text-xl font-bold text-center mb-4 text-green-400 animate-pulse">YOUR TURN<br/><span className="text-sm text-white">Answer aloud!</span></div>
+                    {/* LÓGICA DE PENALIZACIÓN (NUEVO) */}
+                    {showPenalty && (
+                        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                            <div className="bg-red-600 p-8 rounded-3xl text-center border-4 border-red-400 transform rotate-2 shadow-[0_0_50px_rgba(220,38,38,0.6)]">
+                                <h2 className="text-5xl font-black text-white mb-2 drop-shadow-lg">DRINK!</h2>
+                                <p className="text-white font-bold text-xl uppercase tracking-wider">Penalty Applied</p>
+                                <div className="mt-6 text-sm opacity-75">Waiting for next round...</div>
+                            </div>
+                        </div>
                     )}
+
+                    {/* BOTONES DE ACCIÓN */}
+                    {gameState?.mode==='question' && isMyTurn() && (
+                        <div className="text-xl font-bold text-center mb-4 text-green-400 animate-pulse bg-green-900/20 py-2 rounded-lg border border-green-500/50">YOUR TURN<br/><span className="text-sm text-white font-normal">Read aloud & Answer!</span></div>
+                    )}
+                    
                     {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('like')} className="bg-green-600 p-4 rounded-xl flex justify-center"><ThumbsUp className="mr-2"/>Like</button>
-                            <button onClick={()=>submitVote('no like')} className="bg-red-600 p-4 rounded-xl flex justify-center"><ThumbsDown className="mr-2"/>No Like</button>
+                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-green-500 to-green-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><ThumbsUp className="mb-1" size={24}/><span className="font-bold">Good Answer</span></button>
+                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><ThumbsDown className="mb-1" size={24}/><span className="font-bold">Punish!</span></button>
                         </div>
                     )}
-                    {gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && (
-                        <div className="text-center text-slate-400">Waiting for next turn...</div>
-                    )}
-
-                    {/* DARE */}
-                    {gameState?.mode==='dare' && isMyTurn() && (
-                        <div className="text-center text-xl font-bold text-pink-400 animate-pulse">YOUR TURN: Do the Dare!</div>
-                    )}
+                    
                     {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                          <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('yes')} className="bg-green-600 p-4 rounded-xl">Passed</button>
-                            <button onClick={()=>submitVote('no')} className="bg-red-600 p-4 rounded-xl">Failed</button>
+                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-green-500 to-green-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><CheckSquare className="mb-1" size={24}/><span className="font-bold">Completed</span></button>
+                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><XCircle className="mb-1" size={24}/><span className="font-bold">Failed</span></button>
                         </div>
-                    )}
-                    {gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && (
-                        <div className="text-center text-slate-400">Waiting for next turn...</div>
                     )}
 
-                    {/* Y/N */}
+                    {/* MATCH/MISMATCH */}
                     {gameState?.mode==='yn' && !playerAnswered && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitAnswer('yes')} className="bg-green-600 p-4 rounded-xl">YES</button>
-                            <button onClick={()=>submitAnswer('no')} className="bg-red-600 p-4 rounded-xl">NO</button>
+                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-green-500 to-green-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform font-bold text-xl">YES</button>
+                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform font-bold text-xl">NO</button>
                         </div>
                     )}
-                    {gameState?.mode==='yn' && playerAnswered && !allYNAnswered && (
-                        <div className="text-center text-slate-400">Waiting for results...</div>
-                    )}
+
                     {gameState?.mode==='yn' && allYNAnswered && (
-                        <div className="flex flex-col items-center justify-center p-6 bg-slate-800 rounded-xl border border-slate-600">
-                            <div className="mb-4 text-lg">Partner was: <span className="font-bold text-yellow-400">{myPartnerName}</span></div>
+                        <div className="flex flex-col items-center justify-center p-6 bg-slate-800 rounded-2xl border border-slate-600 shadow-xl">
+                            <div className="mb-4 text-lg">Partner was: <span className="font-bold text-yellow-400 text-xl block">{myPartnerName}</span></div>
                             {ynMatch === true ? (
-                                <>
-                                    <Smile className="w-20 h-20 text-green-500 mb-2"/>
-                                    <h3 className="text-3xl font-bold text-green-500">MATCH!</h3>
-                                </>
+                                <div className="animate-bounce">
+                                    <Smile className="w-24 h-24 text-green-400 mx-auto mb-2 drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]"/>
+                                    <h3 className="text-4xl font-black text-green-400 tracking-tighter">MATCH!</h3>
+                                </div>
                             ) : (
-                                <>
-                                    <Frown className="w-20 h-20 text-red-500 mb-2"/>
-                                    <h3 className="text-3xl font-bold text-red-500">MISMATCH</h3>
-                                </>
+                                <div className="animate-pulse">
+                                    <Frown className="w-24 h-24 text-red-500 mx-auto mb-2 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]"/>
+                                    <h3 className="text-4xl font-black text-red-500 tracking-tighter">DRINK!</h3>
+                                </div>
                             )}
                              <PairsStats/>
-                             <div className="text-slate-400 mt-4 text-sm animate-pulse">Next round in 4s...</div>
+                             <div className="text-slate-500 mt-4 text-xs font-mono">Next round auto-starting...</div>
+                        </div>
+                    )}
+                    
+                    {/* ESPERA GENÉRICA */}
+                    {((gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || '']) || 
+                      (gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || '']) ||
+                      (gameState?.mode==='yn' && playerAnswered && !allYNAnswered)) && (
+                        <div className="text-center p-4 bg-slate-800/50 rounded-xl">
+                            <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent text-blue-500 rounded-full mb-2"></div>
+                            <div className="text-slate-400 text-sm">Waiting for others...</div>
                         </div>
                     )}
                 </div>
@@ -1013,5 +1084,5 @@ export default function TruthAndDareApp() {
         )}
       </div>
     </div>
-  ); 
+  );
 }
