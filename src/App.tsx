@@ -158,21 +158,29 @@ export default function TruthAndDareApp() {
     }
   }, [challenges, pairChallenges]);
 
-  // 4. AUTO-AVANCE RAPIDO (Solo Admin lo ejecuta)
+  // 4. AUTO-AVANCE INTELIGENTE (Cubre también el final de ronda)
   useEffect(() => {
-    if (!isAdmin || !gameState || gameState.mode === 'yn' || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') return;
+    if (!isAdmin || !gameState || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') return;
     
-    const totalVotes = Object.keys(gameState.votes).length;
-    const neededVotes = players.length - 1;
+    let shouldAdvance = false;
 
-    if (totalVotes >= neededVotes) {
-        if (gameState.currentTurnIndex < players.length - 1) {
-            // Esperar solo 2 segundos y pasar automáticamente
-            const timer = setTimeout(() => {
-                nextTurn();
-            }, 2000); 
-            return () => clearTimeout(timer);
-        }
+    if (gameState.mode === 'yn') {
+        // En Y/N avanzamos cuando todos contestaron
+        const totalAnswers = Object.keys(gameState.answers).length;
+        if (totalAnswers >= players.length) shouldAdvance = true;
+    } else {
+        // En T/D avanzamos cuando todos (menos el del turno) votaron
+        const totalVotes = Object.keys(gameState.votes).length;
+        const neededVotes = players.length - 1;
+        if (totalVotes >= neededVotes) shouldAdvance = true;
+    }
+
+    if (shouldAdvance) {
+        // Esperar 3 segundos para ver resultados y ejecutar nextTurn
+        const timer = setTimeout(() => {
+            nextTurn();
+        }, 3000); 
+        return () => clearTimeout(timer);
     }
   }, [gameState, isAdmin, players.length]);
 
@@ -186,16 +194,14 @@ export default function TruthAndDareApp() {
     if (!gender || !code || !coupleNumber) return;
     if (code !== gameState?.code) { alert('Invalid code'); return; }
 
-    // --- VALIDACIÓN DE PAREJA CORREGIDA ---
-    // Busca si hay ALGUIEN MÁS (otro UID) ocupando ese lugar
     const existingPartner = players.find(p => 
         p.coupleNumber === coupleNumber && 
         p.gender === gender && 
-        p.uid !== user.uid // ¡IMPORTANTE! Ignora si soy yo mismo corrigiendo mi dato
+        p.uid !== user.uid
     );
 
     if (existingPartner) {
-        alert(`Error: A ${gender} is already registered for Couple ID ${coupleNumber}. If you made a mistake, ask your partner to change genders or contact admin.`);
+        alert(`Error: A ${gender} is already registered for Couple ID ${coupleNumber}.`);
         return;
     }
 
@@ -298,6 +304,7 @@ export default function TruthAndDareApp() {
     let updates: any = {};
     const points = { ...(gameState.points || {}) };
     
+    // 1. SUMAR PUNTOS
     if (gameState.mode === 'question') { 
       const currentUid = players[gameState.currentTurnIndex]?.uid;
       const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
@@ -307,9 +314,7 @@ export default function TruthAndDareApp() {
       const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length;
       if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
     } else if (gameState.mode === 'yn') {
-      const currentCardData = pairChallenges.find(c => c.id === gameState.currentChallengeId);
-      const isDirect = currentCardData?.type === 'direct'; 
-      
+      // LOGICA Y/N SIMPLIFICADA: COINCIDENCIA = MATCH
       const processed = new Set();
       Object.keys(gameState.pairs || {}).forEach(uid1 => {
         if (processed.has(uid1)) return;
@@ -319,11 +324,10 @@ export default function TruthAndDareApp() {
 
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
+        
         if (ans1 && ans2) {
-            let match = false;
-            if (isDirect) match = ans1 === ans2;
-            else match = ans1 !== ans2;
-            if (match) {
+            // SI COINCIDEN, ES MATCH. NO IMPORTA EL TIPO.
+            if (ans1 === ans2) {
               points[uid1] = (points[uid1] || 0) + 1;
               points[uid2] = (points[uid2] || 0) + 1;
             }
@@ -332,7 +336,9 @@ export default function TruthAndDareApp() {
     }
     updates.points = points;
 
+    // 2. AVANZAR
     if (gameState.mode === 'yn') {
+        // Y/N siempre termina la ronda tras votar todos
         updates.mode = 'admin_setup';
         updates.currentTurnIndex = 0;
         updates.answers = {};
@@ -340,6 +346,7 @@ export default function TruthAndDareApp() {
     } else {
         const nextIdx = gameState.currentTurnIndex + 1;
         if (nextIdx < players.length) {
+            // Siguiente jugador de la ronda
             updates.currentTurnIndex = nextIdx;
             updates.answers = {};
             updates.votes = {};
@@ -351,9 +358,10 @@ export default function TruthAndDareApp() {
                 updates.currentChallengeId = nextChallenge.id;
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
             } else {
-                updates.mode = 'admin_setup';
+                updates.mode = 'admin_setup'; // Si no hay preguntas, volver a setup
             }
         } else {
+            // Fin de la ronda (todos pasaron)
             updates.mode = 'admin_setup';
             updates.currentTurnIndex = 0;
             updates.answers = {};
@@ -392,15 +400,13 @@ export default function TruthAndDareApp() {
                 await addDoc(ref, { level, type: cleanType, text, sexo, answered: false });
             }
         } else if (collectionName === 'pairChallenges') {
-             if (rawCols.length >= 4) {
-                 const level = rawCols[0].trim();
-                 let typeIndex = rawCols.length - 1;
-                 while(typeIndex > 2 && rawCols[typeIndex].trim().length > 2) { typeIndex--; }
+             // Y/N SIMPLIFICADO: Solo Level, Male, Female. Type se ignora.
+             if (rawCols.length >= 3) {
                  await addDoc(ref, {
-                    level: level,
+                    level: rawCols[0].trim(),
                     male: rawCols[1].trim(),
                     female: rawCols[2].trim(),
-                    type: rawCols[3].trim().toUpperCase().startsWith('I') ? 'inverse' : 'direct',
+                    type: 'direct', // Ya no importa
                     answered: false
                 });
              }
@@ -476,7 +482,7 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v8</h1>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v9</h1>
           <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
@@ -532,7 +538,8 @@ export default function TruthAndDareApp() {
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
-          <button onClick={nextTurn} className="w-full max-w-md bg-indigo-600 p-3 rounded-lg font-bold">Next (Force)</button>
+          {/* BOTÓN NEXT ELIMINADO PARA FLUJO AUTOMÁTICO */}
+          <div className="text-center text-sm text-gray-500 mb-4 animate-pulse">Auto-advancing...</div>
           <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">End Game</button>
           <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
         </div>
@@ -558,8 +565,8 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center bg-slate-900">
         <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
         <h2 className="text-2xl font-bold mb-4">Game Ended</h2>
-        <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm mb-6">
-          {players.map(p => <div key={p.uid} className="py-1 flex justify-between">{p.name}: {gameState?.points[p.uid] || 0} pts</div>)}
+        <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm max-h-96 overflow-y-auto mb-6">
+          {players.map(p => <div key={p.uid} className="py-2 border-b border-slate-700 flex justify-between"><span>{p.name}</span><span className="font-bold text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}
         </div>
       </div>
     );
@@ -586,13 +593,10 @@ export default function TruthAndDareApp() {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
       const myAns = gameState.answers[user?.uid || ''];
       const partnerAns = gameState.answers[myPartnerUid || ''];
-      const currentCardData = pairChallenges.find(c => c.id === gameState.currentChallengeId);
-      const isDirect = currentCardData?.type === 'direct';
       const pObj = players.find(p => p.uid === myPartnerUid);
       if(pObj) myPartnerName = pObj.name;
       if(myAns && partnerAns) {
-          if (isDirect) ynMatch = myAns === partnerAns;
-          else ynMatch = myAns !== partnerAns;
+          ynMatch = myAns === partnerAns;
       }
   }
 
@@ -672,13 +676,11 @@ export default function TruthAndDareApp() {
                                     <Smile className="w-20 h-20 text-green-500 mb-2"/>
                                     <h3 className="text-3xl font-bold text-green-500">MATCH!</h3>
                                 </>
-                            ) : ynMatch === false ? (
+                            ) : (
                                 <>
                                     <Frown className="w-20 h-20 text-red-500 mb-2"/>
                                     <h3 className="text-3xl font-bold text-red-500">MISMATCH</h3>
                                 </>
-                            ) : (
-                                <div>Calculating...</div>
                             )}
                              <div className="text-slate-400 mt-4 text-sm">Waiting for next round...</div>
                         </div>
