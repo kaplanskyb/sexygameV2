@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, onSnapshot, 
-  query, serverTimestamp, updateDoc, getDocs, deleteDoc, addDoc, where
+  query, serverTimestamp, updateDoc, getDocs, deleteDoc, addDoc, where, writeBatch
 } from 'firebase/firestore';
 import { 
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { 
-  Flame, Zap, RefreshCw, Trophy, 
-  Upload, ThumbsUp, ThumbsDown, Smile, Frown
+  Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
+  Settings, Save, Filter, ArrowUpDown, CheckSquare, Square
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -43,7 +43,8 @@ interface Challenge {
   level: string;
   type: string;
   text?: string;
-  sexo?: string;
+  sexo?: string; // 'M', 'F', 'B' (Both)
+  // Campos Y/N
   male?: string;
   female?: string;
   answered: boolean;
@@ -81,6 +82,17 @@ export default function TruthAndDareApp() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // --- ESTADOS DE GESTIÓN (ADMIN MANAGER) ---
+  const [isManaging, setIsManaging] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
+  
+  // Bulk Edit States
+  const [bulkLevel, setBulkLevel] = useState('');
+  const [bulkType, setBulkType] = useState('');
+  const [bulkGender, setBulkGender] = useState('');
 
   // 0. FORZAR FONDO OSCURO
   useEffect(() => {
@@ -133,6 +145,7 @@ export default function TruthAndDareApp() {
       setPlayers(pList);
     });
 
+    // Cargar TODAS las challenges (sin filtros) para el manager
     const challengesRef = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
     const unsubChallenges = onSnapshot(query(challengesRef), (snapshot) => {
       const cList = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge));
@@ -150,42 +163,80 @@ export default function TruthAndDareApp() {
 
   // 3. Unificar Niveles
   useEffect(() => {
-    if(challenges.length > 0 || pairChallenges.length > 0){
-        const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered);
-        const levels = availableChallenges.map(c => c.level?.toString());
-        const allLevels = [...new Set(levels)].filter(l => l && l !== 'undefined'); 
-        setUniqueLevels(allLevels.sort((a,b) => a.localeCompare(b, undefined, {numeric: true})));
-    }
+    // Calculamos niveles basados solo en lo que está "listo" para jugar
+    const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered && c.level);
+    const levels = availableChallenges.map(c => c.level?.toString());
+    const allLevels = [...new Set(levels)].filter(l => l && l !== 'undefined'); 
+    setUniqueLevels(allLevels.sort((a,b) => a.localeCompare(b, undefined, {numeric: true})));
   }, [challenges, pairChallenges]);
 
-  // 4. AUTO-AVANCE INTELIGENTE (Cubre también el final de ronda)
+  // --- AUTO-AVANCE (Admin only) ---
   useEffect(() => {
     if (!isAdmin || !gameState || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') return;
     
     let shouldAdvance = false;
-
     if (gameState.mode === 'yn') {
-        // En Y/N avanzamos cuando todos contestaron
         const totalAnswers = Object.keys(gameState.answers).length;
         if (totalAnswers >= players.length) shouldAdvance = true;
     } else {
-        // En T/D avanzamos cuando todos (menos el del turno) votaron
         const totalVotes = Object.keys(gameState.votes).length;
         const neededVotes = players.length - 1;
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
 
     if (shouldAdvance) {
-        // Esperar 3 segundos para ver resultados y ejecutar nextTurn
-        const timer = setTimeout(() => {
-            nextTurn();
-        }, 3000); 
+        const timer = setTimeout(() => { nextTurn(); }, 3000); 
         return () => clearTimeout(timer);
     }
   }, [gameState, isAdmin, players.length]);
 
 
-  // --- LÓGICA DE JUEGO ---
+  // --- MANAGER LOGIC (ADMIN) ---
+  
+  const handleSort = (key: keyof Challenge) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
+
+  const toggleSelect = (id: string) => {
+      const newSet = new Set(selectedIds);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = (filteredData: Challenge[]) => {
+      if (selectedIds.size === filteredData.length) setSelectedIds(new Set());
+      else setSelectedIds(new Set(filteredData.map(c => c.id!)));
+  };
+
+  const applyBulkEdit = async () => {
+      if (selectedIds.size === 0) return;
+      if (!confirm(`Update ${selectedIds.size} questions?`)) return;
+      
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+          const ref = doc(db, 'artifacts', appId, 'public', 'data', 'challenges', id);
+          const updates: any = {};
+          if (bulkLevel) updates.level = bulkLevel;
+          if (bulkType) updates.type = bulkType;
+          if (bulkGender) updates.sexo = bulkGender;
+          batch.update(ref, updates);
+      });
+      
+      await batch.commit();
+      alert('Updated!');
+      setBulkLevel(''); setBulkType(''); setBulkGender(''); setSelectedIds(new Set());
+  };
+
+  const updateSingleField = async (id: string, field: string, value: string) => {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', id), { [field]: value });
+  };
+
+  // --- JUEGO LOGICA ---
 
   const joinGame = async () => {
     if (!userName.trim() || !user) return;
@@ -194,12 +245,7 @@ export default function TruthAndDareApp() {
     if (!gender || !code || !coupleNumber) return;
     if (code !== gameState?.code) { alert('Invalid code'); return; }
 
-    const existingPartner = players.find(p => 
-        p.coupleNumber === coupleNumber && 
-        p.gender === gender && 
-        p.uid !== user.uid
-    );
-
+    const existingPartner = players.find(p => p.coupleNumber === coupleNumber && p.gender === gender && p.uid !== user.uid);
     if (existingPartner) {
         alert(`Error: A ${gender} is already registered for Couple ID ${coupleNumber}.`);
         return;
@@ -224,10 +270,8 @@ export default function TruthAndDareApp() {
     const pairs: Record<string, string> = {}; 
     const males = players.filter(p => p.gender === 'male');
     const females = players.filter(p => p.gender === 'female');
-    
     const shuffledMales = [...males].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
-    
     const assignedFemales = new Set<string>();
 
     shuffledMales.forEach(male => {
@@ -253,17 +297,15 @@ export default function TruthAndDareApp() {
 
     let updates: any = {
       mode: mode,
-      currentTurnIndex: 0, 
-      answers: {}, 
-      votes: {},
-      adminUid: players[0].uid, 
-      currentChallengeId: nextChallenge.id,
-      roundLevel: selectedLevel
+      currentTurnIndex: 0, answers: {}, votes: {}, adminUid: players[0].uid, 
+      currentChallengeId: nextChallenge.id, roundLevel: selectedLevel
     };
-    
     if (selectedType === 'yn') updates.pairs = computePairs();
+    
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', selectedType === 'yn' ? 'pairChallenges' : 'challenges', nextChallenge.id!), { answered: true });
+    // Marcar como contestada en la BD que corresponda
+    const collectionName = selectedType === 'yn' ? 'pairChallenges' : 'challenges';
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, nextChallenge.id!), { answered: true });
   };
 
   const submitAnswer = async (val: string) => {
@@ -286,6 +328,8 @@ export default function TruthAndDareApp() {
           let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
           let q = query(ref, where('level', '==', lvlString), where('answered', '==', false));
           if(type !== 'YN') {
+             // Filtrar por tipo y que no esté respondida. 
+             // NOTA: Para flexibilidad, si falta gender o algo, asumimos que es jugable si está en la lista.
              q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false));
           }
           const snapshot = await getDocs(q);
@@ -304,7 +348,7 @@ export default function TruthAndDareApp() {
     let updates: any = {};
     const points = { ...(gameState.points || {}) };
     
-    // 1. SUMAR PUNTOS
+    // PUNTOS
     if (gameState.mode === 'question') { 
       const currentUid = players[gameState.currentTurnIndex]?.uid;
       const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
@@ -314,31 +358,24 @@ export default function TruthAndDareApp() {
       const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length;
       if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
     } else if (gameState.mode === 'yn') {
-      // LOGICA Y/N SIMPLIFICADA: COINCIDENCIA = MATCH
       const processed = new Set();
       Object.keys(gameState.pairs || {}).forEach(uid1 => {
         if (processed.has(uid1)) return;
         const uid2 = gameState.pairs![uid1];
         processed.add(uid1);
         processed.add(uid2);
-
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
-        
-        if (ans1 && ans2) {
-            // SI COINCIDEN, ES MATCH. NO IMPORTA EL TIPO.
-            if (ans1 === ans2) {
-              points[uid1] = (points[uid1] || 0) + 1;
-              points[uid2] = (points[uid2] || 0) + 1;
-            }
+        // Y/N SIMPLIFICADO: MATCH SI COINCIDEN
+        if (ans1 && ans2 && ans1 === ans2) {
+            points[uid1] = (points[uid1] || 0) + 1;
+            points[uid2] = (points[uid2] || 0) + 1;
         }
       });
     }
     updates.points = points;
 
-    // 2. AVANZAR
     if (gameState.mode === 'yn') {
-        // Y/N siempre termina la ronda tras votar todos
         updates.mode = 'admin_setup';
         updates.currentTurnIndex = 0;
         updates.answers = {};
@@ -346,22 +383,18 @@ export default function TruthAndDareApp() {
     } else {
         const nextIdx = gameState.currentTurnIndex + 1;
         if (nextIdx < players.length) {
-            // Siguiente jugador de la ronda
             updates.currentTurnIndex = nextIdx;
             updates.answers = {};
             updates.votes = {};
-            
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
-            
             if (nextChallenge) {
                 updates.currentChallengeId = nextChallenge.id;
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
             } else {
-                updates.mode = 'admin_setup'; // Si no hay preguntas, volver a setup
+                updates.mode = 'admin_setup';
             }
         } else {
-            // Fin de la ronda (todos pasaron)
             updates.mode = 'admin_setup';
             updates.currentTurnIndex = 0;
             updates.answers = {};
@@ -376,6 +409,9 @@ export default function TruthAndDareApp() {
     if (!file) return;
     setUploading(true);
     const ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+    
+    // Si subimos, NO borramos lo existente si es bulk management, pero aquí para simplificar RESETEAMOS.
+    // El usuario pidió "Subir un archivo", lo cual implica reemplazo usualmente.
     const snapshot = await getDocs(ref);
     for (const d of snapshot.docs) await deleteDoc(d.ref);
 
@@ -386,27 +422,39 @@ export default function TruthAndDareApp() {
       for (const line of lines) {
         if (!line.trim()) continue;
         const rawCols = line.split(',');
+        
         if (collectionName === 'challenges') {
-            if (rawCols.length >= 4) {
-                const level = rawCols[0].trim();
-                const type = rawCols[1].trim();
-                let sexoIndex = rawCols.length - 1;
-                while (sexoIndex > 2 && !['M','F','B','b','BOTH','MALE','FEMALE'].includes(rawCols[sexoIndex]?.trim().toUpperCase())) { sexoIndex--; }
-                if(sexoIndex <= 2) sexoIndex = rawCols.length > 3 ? 3 : 2;
-                const textParts = rawCols.slice(2, sexoIndex);
-                const text = textParts.join(',').replace(/"/g, ''); 
-                const sexo = rawCols[sexoIndex]?.trim().toUpperCase() || 'B';
-                let cleanType = type.toLowerCase().includes('dare') ? 'D' : type.toLowerCase().includes('truth') ? 'T' : type.toUpperCase();
-                await addDoc(ref, { level, type: cleanType, text, sexo, answered: false });
+            // T/D Upload (Puede estar incompleto)
+            // Estructura esperada: Level, Type, Text, Sexo
+            if (rawCols.length >= 1) {
+               // Intento básico de parseo, si falla, se sube como "incompleto"
+               const level = rawCols[0]?.trim() || '';
+               const typeRaw = rawCols[1]?.trim().toUpperCase() || '';
+               let type = typeRaw.includes('TRUTH') ? 'T' : typeRaw.includes('DARE') ? 'D' : typeRaw;
+               
+               // Buscar texto (todo lo del medio)
+               let text = '';
+               let sexo = '';
+               
+               // Si tiene suficientes columnas, tratamos de sacar sexo del final
+               if (rawCols.length >= 4) {
+                   sexo = rawCols[rawCols.length-2]?.trim().toUpperCase() || ''; // Penultima (antes de answered)
+                   if (!['M','F','B'].includes(sexo)) sexo = ''; // Si no es valido, dejar vacio
+                   text = rawCols.slice(2, rawCols.length - 2).join(',').replace(/"/g, '');
+               } else {
+                   // Si son pocas columnas, asumimos que todo el resto es texto
+                   text = rawCols.slice(2).join(',').replace(/"/g, '');
+               }
+
+               await addDoc(ref, { level, type, text, sexo, answered: false });
             }
         } else if (collectionName === 'pairChallenges') {
-             // Y/N SIMPLIFICADO: Solo Level, Male, Female. Type se ignora.
+             // Y/N Simplificado: Level, Male, Female (Sin Type)
              if (rawCols.length >= 3) {
                  await addDoc(ref, {
                     level: rawCols[0].trim(),
                     male: rawCols[1].trim(),
                     female: rawCols[2].trim(),
-                    type: 'direct', // Ya no importa
                     answered: false
                 });
              }
@@ -457,7 +505,6 @@ export default function TruthAndDareApp() {
   const isJoined = players.some(p => p.uid === user?.uid) || isAdmin;
   const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
   
-  // --- SCOREBOARD ---
   const ScoreBoard = () => (
       <div className="w-full bg-slate-800 p-2 mb-4 rounded-lg flex flex-wrap gap-2 max-h-32 overflow-y-auto border border-slate-700">
           <div className="w-full text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider flex justify-between">
@@ -474,6 +521,8 @@ export default function TruthAndDareApp() {
       </div>
   );
 
+  // --- RENDERIZADO ---
+
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading...</div>;
 
   // LOGIN
@@ -482,7 +531,7 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v9</h1>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v10</h1>
           <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
@@ -498,6 +547,87 @@ export default function TruthAndDareApp() {
 
   // --- ADMIN VIEW ---
   if (isAdmin) {
+    // 1. QUESTION MANAGER (NUEVA PANTALLA)
+    if (isManaging) {
+        // Filtrar y Ordenar
+        let displayedChallenges = challenges;
+        if (showPendingOnly) {
+            displayedChallenges = challenges.filter(c => !c.level || !c.type || !c.sexo || !c.text);
+        }
+        if (sortConfig) {
+            displayedChallenges.sort((a, b) => {
+                // @ts-ignore
+                if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+                // @ts-ignore
+                if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return (
+            <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold flex items-center gap-2"><Settings/> Question Manager</h2>
+                    <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-4 py-2 rounded">Back to Game</button>
+                </div>
+
+                {/* Bulk Actions */}
+                <div className="bg-slate-800 p-4 rounded-xl mb-4 flex flex-wrap gap-4 items-end">
+                    <div className="flex flex-col">
+                        <label className="text-xs text-slate-400">Set Level</label>
+                        <select className="bg-slate-900 border border-slate-600 p-2 rounded" value={bulkLevel} onChange={e=>setBulkLevel(e.target.value)}>
+                            <option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-xs text-slate-400">Set Type</label>
+                        <select className="bg-slate-900 border border-slate-600 p-2 rounded" value={bulkType} onChange={e=>setBulkType(e.target.value)}>
+                            <option value="">-</option><option value="T">Truth</option><option value="D">Dare</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-xs text-slate-400">Set Gender</label>
+                        <select className="bg-slate-900 border border-slate-600 p-2 rounded" value={bulkGender} onChange={e=>setBulkGender(e.target.value)}>
+                            <option value="">-</option><option value="M">Male</option><option value="F">Female</option><option value="B">Both</option>
+                        </select>
+                    </div>
+                    <button onClick={applyBulkEdit} disabled={selectedIds.size === 0} className="bg-blue-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+                        Apply to {selectedIds.size} Selected
+                    </button>
+                    <button onClick={()=>setShowPendingOnly(!showPendingOnly)} className={`ml-auto px-4 py-2 rounded flex items-center gap-2 ${showPendingOnly ? 'bg-yellow-600' : 'bg-slate-600'}`}>
+                        <Filter size={16}/> {showPendingOnly ? 'Showing Needs Setup' : 'Needs Setup'}
+                    </button>
+                </div>
+
+                {/* Table */}
+                <div className="flex-1 overflow-auto border border-slate-700 rounded-xl">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-800 text-slate-400 sticky top-0">
+                            <tr>
+                                <th className="p-3"><button onClick={()=>toggleSelectAll(displayedChallenges)}>{selectedIds.size === displayedChallenges.length ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
+                                <th className="p-3 cursor-pointer hover:text-white" onClick={()=>handleSort('level')}>Level <ArrowUpDown size={12} className="inline"/></th>
+                                <th className="p-3 cursor-pointer hover:text-white" onClick={()=>handleSort('type')}>Type <ArrowUpDown size={12} className="inline"/></th>
+                                <th className="p-3 cursor-pointer hover:text-white" onClick={()=>handleSort('sexo')}>Gen <ArrowUpDown size={12} className="inline"/></th>
+                                <th className="p-3 w-1/2">Text</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700">
+                            {displayedChallenges.map(c => (
+                                <tr key={c.id} className={selectedIds.has(c.id!) ? 'bg-blue-900/20' : ''}>
+                                    <td className="p-3"><button onClick={()=>toggleSelect(c.id!)}>{selectedIds.has(c.id!) ? <CheckSquare size={16} className="text-blue-400"/> : <Square size={16} className="text-slate-600"/>}</button></td>
+                                    <td className="p-3"><input className="bg-transparent w-8 border-b border-transparent focus:border-blue-500 outline-none" value={c.level || ''} onChange={(e)=>updateSingleField(c.id!, 'level', e.target.value)}/></td>
+                                    <td className="p-3"><input className="bg-transparent w-8 border-b border-transparent focus:border-blue-500 outline-none" value={c.type || ''} onChange={(e)=>updateSingleField(c.id!, 'type', e.target.value)}/></td>
+                                    <td className="p-3"><input className="bg-transparent w-8 border-b border-transparent focus:border-blue-500 outline-none" value={c.sexo || ''} onChange={(e)=>updateSingleField(c.id!, 'sexo', e.target.value)}/></td>
+                                    <td className="p-3"><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.text || ''} onChange={(e)=>updateSingleField(c.id!, 'text', e.target.value)}/></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
     if (!gameState || gameState?.mode === 'lobby') {
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900">
@@ -508,8 +638,14 @@ export default function TruthAndDareApp() {
               </div>
               <input type="text" placeholder="Set Code" className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={code} onChange={e=>setCode(e.target.value)} />
               <button onClick={setGameCode} className="w-full max-w-sm bg-blue-600 p-3 rounded-lg font-bold mb-4">Set Code</button>
-              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-2 flex justify-center cursor-pointer"><Upload className="mr-2"/> Upload T/D CSV <input type="file" className="hidden" onChange={(e)=>handleUploadCsv(e,'challenges')}/></label>
-              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-4 flex justify-center cursor-pointer"><Upload className="mr-2"/> Upload Y/N CSV <input type="file" className="hidden" onChange={handleUploadPairCsv}/></label>
+              
+              <div className="flex gap-2 w-full max-w-sm mb-2">
+                  <label className="flex-1 bg-gray-700 p-2 rounded text-center text-xs cursor-pointer"><Upload size={14} className="inline mr-1"/> T/D CSV <input type="file" className="hidden" onChange={(e)=>handleUploadCsv(e,'challenges')}/></label>
+                  <label className="flex-1 bg-gray-700 p-2 rounded text-center text-xs cursor-pointer"><Upload size={14} className="inline mr-1"/> Y/N CSV <input type="file" className="hidden" onChange={handleUploadPairCsv}/></label>
+              </div>
+              
+              <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-slate-700 p-3 rounded-lg font-bold mb-4 flex items-center justify-center gap-2"><Settings size={18}/> Manage Questions</button>
+              
               {uploading && <div className="text-yellow-400 mb-2">Uploading...</div>}
               <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold">Start Game</button>
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
@@ -538,7 +674,6 @@ export default function TruthAndDareApp() {
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
-          {/* BOTÓN NEXT ELIMINADO PARA FLUJO AUTOMÁTICO */}
           <div className="text-center text-sm text-gray-500 mb-4 animate-pulse">Auto-advancing...</div>
           <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">End Game</button>
           <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
