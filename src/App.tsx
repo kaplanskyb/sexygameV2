@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, onSnapshot, 
@@ -10,7 +10,7 @@ import {
 import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
-  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, Trash2
+  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, Trash2, UserPlus
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -89,13 +89,16 @@ export default function TruthAndDareApp() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
-  const [isDragging, setIsDragging] = useState(false); // Para pintar selección
+  
+  // SELECCION "PINTAR" (Drag Select)
+  const [isDragging, setIsDragging] = useState(false);
+  const selectionMode = useRef<'add' | 'remove'>('add'); // Referencia para saber si estamos marcando o desmarcando
   
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
   const [bulkGender, setBulkGender] = useState('');
 
-  // 0. FORZAR FONDO OSCURO
+  // 0. FORZAR FONDO OSCURO & GLOBAL MOUSE UP
   useEffect(() => {
     document.documentElement.style.backgroundColor = '#0f172a';
     document.body.style.backgroundColor = '#0f172a';
@@ -103,7 +106,7 @@ export default function TruthAndDareApp() {
     document.body.style.margin = '0';
     document.body.style.minHeight = '100vh';
     
-    // Stop dragging globally
+    // Detener arrastre al soltar click en cualquier parte
     const handleGlobalMouseUp = () => setIsDragging(false);
     window.addEventListener('mouseup', handleGlobalMouseUp);
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
@@ -206,20 +209,19 @@ export default function TruthAndDareApp() {
       setSortConfig({ key, direction });
   };
 
-  // Lógica de "Pintar" selección
+  // LOGICA DE PINTAR MEJORADA (TOGGLE + DRAG)
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => {
       setIsDragging(true);
       const newSet = new Set(selectedIds);
       
-      if (e.ctrlKey) {
-          // CTRL: Toggle specific row
-          if (newSet.has(id)) newSet.delete(id);
-          else newSet.add(id);
+      // Si ya está seleccionado -> Modo Desmarcar (remove)
+      // Si NO está seleccionado -> Modo Marcar (add)
+      if (newSet.has(id)) {
+          newSet.delete(id);
+          selectionMode.current = 'remove';
       } else {
-          // Normal Click: Add to selection (painting mode start)
-          // Si no es CTRL, asumimos que quiere seleccionar esta.
-          // Para "pintar", usualmente añadimos.
           newSet.add(id);
+          selectionMode.current = 'add';
       }
       setSelectedIds(newSet);
   };
@@ -227,7 +229,11 @@ export default function TruthAndDareApp() {
   const handleRowMouseEnter = (id: string) => {
       if (isDragging) {
           const newSet = new Set(selectedIds);
-          newSet.add(id); // Pintar = Agregar
+          if (selectionMode.current === 'add') {
+              newSet.add(id);
+          } else {
+              newSet.delete(id);
+          }
           setSelectedIds(newSet);
       }
   };
@@ -499,6 +505,7 @@ export default function TruthAndDareApp() {
         processed.add(uid2);
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
+        // Y/N MATCH LOGIC
         if (ans1 && ans2 && ans1 === ans2) {
             points[uid1] = (points[uid1] || 0) + 1;
             points[uid2] = (points[uid2] || 0) + 1;
@@ -602,7 +609,7 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v13</h1>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v14</h1>
           <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
@@ -626,7 +633,7 @@ export default function TruthAndDareApp() {
       const displayedData = showPendingOnly ? pendingData : data;
 
       return (
-        <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col">
+        <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col" onMouseUp={()=>setIsDragging(false)}>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Settings/> Content Manager</h2>
                 <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
