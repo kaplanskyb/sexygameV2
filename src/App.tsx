@@ -10,7 +10,7 @@ import {
 import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
-  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle
+  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, Trash2
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -44,7 +44,7 @@ interface Challenge {
   level: string;
   type: string;
   text?: string;
-  sexo?: string; // 'F', 'B' (Both) - Male removed for T/D
+  sexo?: string;
   male?: string;
   female?: string;
   answered: boolean;
@@ -89,6 +89,7 @@ export default function TruthAndDareApp() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
+  const [isDragging, setIsDragging] = useState(false); // Para pintar selección
   
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
@@ -101,6 +102,11 @@ export default function TruthAndDareApp() {
     document.body.style.color = 'white';
     document.body.style.margin = '0';
     document.body.style.minHeight = '100vh';
+    
+    // Stop dragging globally
+    const handleGlobalMouseUp = () => setIsDragging(false);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
   // 1. Autenticación
@@ -192,17 +198,38 @@ export default function TruthAndDareApp() {
   }, [gameState, isAdmin, players.length]);
 
 
-  // --- MANAGER LOGIC ---
+  // --- MANAGER LOGIC (SELECCION & EDICION) ---
+  
   const handleSort = (key: keyof Challenge) => {
       let direction: 'asc' | 'desc' = 'asc';
       if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
       setSortConfig({ key, direction });
   };
 
-  const toggleSelect = (id: string) => {
+  // Lógica de "Pintar" selección
+  const handleRowMouseDown = (id: string, e: React.MouseEvent) => {
+      setIsDragging(true);
       const newSet = new Set(selectedIds);
-      if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      
+      if (e.ctrlKey) {
+          // CTRL: Toggle specific row
+          if (newSet.has(id)) newSet.delete(id);
+          else newSet.add(id);
+      } else {
+          // Normal Click: Add to selection (painting mode start)
+          // Si no es CTRL, asumimos que quiere seleccionar esta.
+          // Para "pintar", usualmente añadimos.
+          newSet.add(id);
+      }
       setSelectedIds(newSet);
+  };
+
+  const handleRowMouseEnter = (id: string) => {
+      if (isDragging) {
+          const newSet = new Set(selectedIds);
+          newSet.add(id); // Pintar = Agregar
+          setSelectedIds(newSet);
+      }
   };
 
   const toggleSelectAll = (filteredData: Challenge[]) => {
@@ -232,53 +259,53 @@ export default function TruthAndDareApp() {
       setBulkLevel(''); setBulkGender(''); setSelectedIds(new Set());
   };
 
+  const deleteSelected = async () => {
+      if (selectedIds.size === 0) return;
+      const collectionName = managerTab === 'td' ? 'challenges' : 'pairChallenges';
+      if (!confirm(`ARE YOU SURE? This will PERMANENTLY DELETE ${selectedIds.size} questions from ${collectionName}.`)) return;
+
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+          const ref = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id);
+          batch.delete(ref);
+      });
+      await batch.commit();
+      alert('Deleted successfully.');
+      setSelectedIds(new Set());
+  };
+
   const checkPendingSettings = () => {
       const pendingTD = challenges.filter(c => !c.level || !c.type || !c.sexo).length;
       const pendingMM = pairChallenges.filter(c => !c.level).length;
       return { pendingTD, pendingMM, total: pendingTD + pendingMM };
   };
 
-  // --- UPLOADERS V12 ---
+  // --- UPLOADERS ---
 
-  // UPLOAD TRUTH OR DARE (1 Column Check)
   const handleUploadSingleCol = async (e: React.ChangeEvent<HTMLInputElement>, fixedType: 'T' | 'D') => {
       const file = e.target.files?.[0]; if(!file) return;
       const text = await file.text();
-      const lines = text.split('\n').slice(1); // Skip header if present
+      const lines = text.split('\n').slice(1); // Skip header
       
-      // Validation Check: Read first few lines to see if it has commas
       const sample = lines.slice(0, 5).join('');
       if (sample.includes(',') && !sample.includes('"')) {
-          // Rudimentary check: If lots of commas and no quotes, might be 2 columns
           const commaCount = (sample.match(/,/g) || []).length;
           const lineCount = Math.min(lines.length, 5);
           if (commaCount >= lineCount) {
-             if (!confirm("Warning: This file seems to have multiple columns (commas detected). Are you sure it's a 1-column list of questions?")) return;
+             if (!confirm("Warning: File seems to have commas. Ensure it is 1-column only! Continue?")) return;
           }
       }
 
       setUploading(true);
       const ref = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
-      
-      // Append mode: we don't delete unless user manages content
-      // But user requested "Upload", usually implies set. Let's append to existing if same type? 
-      // To keep it clean as requested before, let's keep append logic but we are in manager now.
-      // The user said "upload file", implying adding content.
-      
       const batch = writeBatch(db);
       let count = 0;
 
       lines.forEach(line => {
           if(!line.trim()) return;
-          const cleanText = line.trim().replace(/^"|"$/g, ''); // Remove quotes if CSV wrapping
+          const cleanText = line.trim().replace(/^"|"$/g, ''); 
           const docRef = doc(ref);
-          batch.set(docRef, { 
-              text: cleanText, 
-              level: '', 
-              type: fixedType, // Auto-assign T or D
-              sexo: '', 
-              answered: false 
-          });
+          batch.set(docRef, { text: cleanText, level: '', type: fixedType, sexo: '', answered: false });
           count++;
       });
       
@@ -287,7 +314,6 @@ export default function TruthAndDareApp() {
       alert(`Uploaded ${count} ${fixedType === 'T' ? 'Truth' : 'Dare'} questions.`);
   };
 
-  // UPLOAD MATCH/MISMATCH (2 Column Check)
   const handleUploadDoubleCol = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]; if(!file) return;
       const text = await file.text();
@@ -301,34 +327,19 @@ export default function TruthAndDareApp() {
 
       lines.forEach(line => {
           if(!line.trim()) return;
-          // Simple CSV split logic. 
-          // If complex CSV with commas inside quotes is needed, a library is better, 
-          // but for this we assume simple structure or standard "col1,col2".
           const parts = line.split(',');
-          
-          if (parts.length < 2) {
-              errors++;
-              return;
-          }
+          if (parts.length < 2) { errors++; return; }
 
-          // Reconstruct if needed (basic)
           const male = parts[0].trim();
           const female = parts.slice(1).join(',').trim();
-
           const docRef = doc(ref);
-          batch.set(docRef, { 
-              male, 
-              female, 
-              level: '', 
-              answered: false 
-          });
+          batch.set(docRef, { male, female, level: '', answered: false });
           count++;
       });
 
       await batch.commit();
       setUploading(false);
-      if (errors > 0) alert(`Uploaded ${count} pairs. Skipped ${errors} lines that didn't have 2 columns.`);
-      else alert(`Uploaded ${count} pairs successfully.`);
+      alert(`Uploaded ${count} pairs. (${errors} errors).`);
   };
 
 
@@ -405,7 +416,7 @@ export default function TruthAndDareApp() {
   const startRound = async () => {
     let typeCode = selectedType === 'yn' ? 'YN' : selectedType === 'truth' ? 'T' : 'D';
     const nextChallenge = await findNextAvailableChallenge(typeCode, selectedLevel);
-    if (!nextChallenge) { alert('No challenges found.'); return; }
+    if (!nextChallenge) { alert('No challenges found for this selection.'); return; }
 
     let mode = 'dare';
     if (selectedType === 'yn') mode = 'yn';
@@ -591,7 +602,7 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v12</h1>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v13</h1>
           <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
@@ -644,6 +655,9 @@ export default function TruthAndDareApp() {
                 <button onClick={applyBulkEdit} disabled={selectedIds.size === 0} className="bg-green-600 px-3 py-1 rounded font-bold disabled:opacity-50">
                     Apply ({selectedIds.size})
                 </button>
+                <button onClick={deleteSelected} disabled={selectedIds.size === 0} className="bg-red-600 px-3 py-1 rounded font-bold flex items-center gap-2 disabled:opacity-50">
+                    <Trash2 size={16}/> Delete
+                </button>
                 <button onClick={()=>toggleSelectAll(displayedData)} className="bg-slate-600 px-3 py-1 rounded flex items-center gap-1">
                     {selectedIds.size === displayedData.length ? <CheckSquare size={14}/> : <Square size={14}/>} Select All
                 </button>
@@ -652,8 +666,8 @@ export default function TruthAndDareApp() {
                 </button>
             </div>
 
-            <div className="flex-1 overflow-auto border border-slate-700 rounded-xl">
-                <table className="w-full text-left text-xs">
+            <div className="flex-1 overflow-auto border border-slate-700 rounded-xl" onMouseLeave={()=>setIsDragging(false)}>
+                <table className="w-full text-left text-xs select-none">
                     <thead className="bg-slate-800 text-slate-400 sticky top-0">
                         <tr>
                             <th className="p-2 w-8"></th>
@@ -665,8 +679,15 @@ export default function TruthAndDareApp() {
                     </thead>
                     <tbody className="divide-y divide-slate-700">
                         {displayedData.map(c => (
-                            <tr key={c.id} className={selectedIds.has(c.id!) ? 'bg-blue-900/20' : ''}>
-                                <td className="p-2"><button onClick={()=>toggleSelect(c.id!)}>{selectedIds.has(c.id!) ? <CheckSquare size={14} className="text-blue-400"/> : <Square size={14}/>}</button></td>
+                            <tr 
+                                key={c.id} 
+                                className={`cursor-pointer transition-colors ${selectedIds.has(c.id!) ? 'bg-blue-900/50' : 'hover:bg-slate-800'}`}
+                                onMouseDown={(e)=>handleRowMouseDown(c.id!, e)}
+                                onMouseEnter={()=>handleRowMouseEnter(c.id!)}
+                            >
+                                <td className="p-2 text-center">
+                                    {selectedIds.has(c.id!) ? <CheckSquare size={14} className="text-blue-400"/> : <Square size={14} className="text-slate-600"/>}
+                                </td>
                                 <td className="p-2">{c.level || <span className="text-red-500">?</span>}</td>
                                 {managerTab === 'td' && <td className="p-2">{c.type || <span className="text-red-500">?</span>}</td>}
                                 {managerTab === 'td' && <td className="p-2">{c.sexo || <span className="text-red-500">?</span>}</td>}
