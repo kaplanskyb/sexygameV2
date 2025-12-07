@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, RotateCcw, XCircle,
-  MessageCircle // Icono nuevo agregado
+  MessageCircle
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -78,16 +78,16 @@ export default function TruthAndDareApp() {
   const [gender, setGender] = useState('male');
   const [coupleNumber, setCoupleNumber] = useState('');
   const [code, setCode] = useState('');
-  
+   
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [pairChallenges, setPairChallenges] = useState<Challenge[]>([]);
   const [uniqueLevels, setUniqueLevels] = useState<string[]>([]);
-  
+   
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  
+   
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -101,7 +101,7 @@ export default function TruthAndDareApp() {
   const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const selectionMode = useRef<'add' | 'remove'>('add');
-  
+   
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
   const [bulkGender, setBulkGender] = useState('');
@@ -111,10 +111,6 @@ export default function TruthAndDareApp() {
   const [qtyTruth, setQtyTruth] = useState(1);
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
-
-  // --- NEW STATES FOR ANIMATION ---
-  const [rouletteName, setRouletteName] = useState('');
-  const [isSpinning, setIsSpinning] = useState(false);
 
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
@@ -194,36 +190,6 @@ export default function TruthAndDareApp() {
     }
   }, [challenges, pairChallenges]);
 
-  // --- ROULETTE EFFECT ---
-  useEffect(() => {
-    if (!gameState || players.length === 0) return;
-    
-    // Si acabamos de cargar o cambió el turno
-    const actualPlayer = players[gameState.currentTurnIndex];
-    if (!actualPlayer) return;
-  
-    // Solo animar si no estamos en modo Match (YN) y si el juego está activo
-    if (gameState.mode !== 'yn' && gameState.mode !== 'lobby' && gameState.mode !== 'admin_setup' && gameState.mode !== 'ended') {
-      setIsSpinning(true);
-      let iterations = 0;
-      const maxIterations = 20; // Cuántos nombres pasarán
-      const interval = setInterval(() => {
-        const randomPlayer = players[Math.floor(Math.random() * players.length)];
-        setRouletteName(randomPlayer.name);
-        iterations++;
-        
-        if (iterations >= maxIterations) {
-          clearInterval(interval);
-          setRouletteName(actualPlayer.name);
-          setIsSpinning(false);
-        }
-      }, 100); 
-      
-      return () => clearInterval(interval);
-    } else {
-      setRouletteName(actualPlayer.name);
-    }
-  }, [gameState?.currentTurnIndex, gameState?.mode, players.length]);
 
   // 4. AUTO-AVANCE LOGIC
   useEffect(() => {
@@ -710,6 +676,9 @@ export default function TruthAndDareApp() {
       </div>
   );
 
+  // LOGICA PARA MOSTRAR TABLA DE PARES
+  const showPairsTable = players.some(p => (p.matches || 0) > 0 || (p.mismatches || 0) > 0);
+
   // --- RENDER ---
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading...</div>;
 
@@ -851,9 +820,10 @@ export default function TruthAndDareApp() {
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900">
                 <h2 className="text-2xl font-bold mb-4">Setup Round</h2>
                 <ScoreBoard />
+                {showPairsTable && <PairsStats />}
                 
                 {/* AUTO MODE TOGGLE */}
-                <div className="flex items-center gap-4 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 w-full max-w-md">
+                <div className="flex items-center gap-4 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 w-full max-w-md mt-4">
                     <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`flex-1 py-2 rounded font-bold ${isAutoSetup ? 'bg-green-600' : 'bg-slate-600'}`}>
                         {isAutoSetup ? 'Auto Mode ON' : 'Manual Mode'}
                     </button>
@@ -885,7 +855,8 @@ export default function TruthAndDareApp() {
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
         <ScoreBoard />
-        <div className="flex justify-between items-center mb-6"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
+        {showPairsTable && <PairsStats />}
+        <div className="flex justify-between items-center mb-6 mt-4"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name} {p.isBot && '(Bot)'}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
@@ -909,6 +880,7 @@ export default function TruthAndDareApp() {
             <CustomAlert/>
             <div className="text-center py-2 border-b border-slate-700 mb-4 w-full"><h1 className="text-3xl font-black text-white">{userName}</h1></div>
             <ScoreBoard />
+            {showPairsTable && <PairsStats />}
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-10">Waiting for next round...</div>
             <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
         </div>
@@ -956,11 +928,8 @@ export default function TruthAndDareApp() {
 
   const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
 
-  // --- STYLES & PENALTY LOGIC ---
+  // --- STYLES ---
   const cardStyle = getLevelStyle(card?.level);
-  const showPenalty = 
-    (gameState.mode === 'dare' && gameState.votes?.[user?.uid || ''] === 'no') || 
-    (gameState.mode === 'question' && gameState.votes?.[user?.uid || ''] === 'no like');
 
   return (
     <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900 overflow-hidden relative">
@@ -976,11 +945,15 @@ export default function TruthAndDareApp() {
       
       <ScoreBoard />
       
+      {/* Aquí colocamos la tabla de Matches permanentemente si hay datos */}
+      {showPairsTable && <PairsStats />}
+      
       <div className="flex justify-between items-center mb-6 mt-4 z-10">
         <div className="font-bold flex gap-2 items-center bg-slate-800 px-3 py-1 rounded-full text-xs">
           <Zap size={14} className="text-yellow-400"/> 
           {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'} 
-          {card?.level && <span className={`ml-2 px-2 rounded text-black font-bold ${card.level === '4' ? 'bg-red-500' : 'bg-slate-400'}`}>Lvl {card.level}</span>}
+          {/* No mostramos LVL si es modo YN */}
+          {gameState.mode !== 'yn' && card?.level && <span className={`ml-2 px-2 rounded text-black font-bold ${card.level === '4' ? 'bg-red-500' : 'bg-slate-400'}`}>Lvl {card.level}</span>}
         </div>
       </div>
 
@@ -995,31 +968,21 @@ export default function TruthAndDareApp() {
                 {/* TARJETA PRINCIPAL CON ESTILOS DE NIVEL */}
                 <div className={`w-full max-w-md p-8 rounded-3xl border-4 text-center mb-8 transition-all duration-500 ${cardStyle} flex flex-col items-center justify-center min-h-[200px]`}>
                     <div className="mb-4 opacity-50">
-                        {gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? <ArrowUpDown size={32}/> : <Flame size={32}/>}
+                        {/* Se quitaron las flechitas (ArrowUpDown) para el modo 'yn' */}
+                        {gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? null : <Flame size={32}/>}
                     </div>
                     <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">
-                        {isSpinning ? '...' : getCardText(card)}
+                        {getCardText(card)}
                     </h3>
                 </div>
 
-                {/* INDICADOR DE TURNO CON RULETA */}
+                {/* INDICADOR DE TURNO */}
                 <div className="w-full max-w-md space-y-4">
                     {!isMyTurn() && gameState.mode !== 'yn' && (
                         <div className="text-center mb-6">
                             <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Current Player</div>
-                            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all ${isSpinning ? 'scale-110 blur-sm' : 'scale-100'}`}>
-                                {isSpinning ? rouletteName : currentPlayerName()}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* LÓGICA DE PENALIZACIÓN (NUEVO) */}
-                    {showPenalty && (
-                        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-                            <div className="bg-red-600 p-8 rounded-3xl text-center border-4 border-red-400 transform rotate-2 shadow-[0_0_50px_rgba(220,38,38,0.6)]">
-                                <h2 className="text-5xl font-black text-white mb-2 drop-shadow-lg">DRINK!</h2>
-                                <p className="text-white font-bold text-xl uppercase tracking-wider">Penalty Applied</p>
-                                <div className="mt-6 text-sm opacity-75">Waiting for next round...</div>
+                            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all`}>
+                                {currentPlayerName()}
                             </div>
                         </div>
                     )}
@@ -1062,10 +1025,10 @@ export default function TruthAndDareApp() {
                             ) : (
                                 <div className="animate-pulse">
                                     <Frown className="w-24 h-24 text-red-500 mx-auto mb-2 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]"/>
-                                    <h3 className="text-4xl font-black text-red-500 tracking-tighter">DRINK!</h3>
+                                    <h3 className="text-4xl font-black text-red-500 tracking-tighter">MISMATCH!</h3>
                                 </div>
                             )}
-                             <PairsStats/>
+                             {/* La tabla PairsStats se removió de aquí y se puso bajo ScoreBoard permanentemente */}
                              <div className="text-slate-500 mt-4 text-xs font-mono">Next round auto-starting...</div>
                         </div>
                     )}
