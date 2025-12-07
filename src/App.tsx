@@ -10,7 +10,7 @@ import {
 import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
-  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, UserPlus
+  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -44,7 +44,7 @@ interface Challenge {
   level: string;
   type: string;
   text?: string;
-  sexo?: string;
+  sexo?: string; // 'F', 'B' (Both) - Male removed for T/D
   male?: string;
   female?: string;
   answered: boolean;
@@ -88,10 +88,10 @@ export default function TruthAndDareApp() {
   const [managerTab, setManagerTab] = useState<'td' | 'mm'>('td');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPendingOnly, setShowPendingOnly] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
   
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
-  const [bulkType, setBulkType] = useState('');
   const [bulkGender, setBulkGender] = useState('');
 
   // 0. FORZAR FONDO OSCURO
@@ -160,7 +160,7 @@ export default function TruthAndDareApp() {
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
 
-  // 3. Unificar Niveles (Solo de preguntas listas)
+  // 3. Unificar Niveles
   useEffect(() => {
     if(challenges.length > 0 || pairChallenges.length > 0){
         const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered && c.level);
@@ -180,11 +180,8 @@ export default function TruthAndDareApp() {
         if (totalAnswers >= players.length) shouldAdvance = true;
     } else {
         const totalVotes = Object.keys(gameState.votes).length;
-        // Restar bots del conteo de votos necesarios si fuera necesario, pero bots no votan en T/D.
-        // Asumimos que los bots no juegan T/D, solo Y/N.
-        // Si el bot juega T/D, habría que hacer skip. Por ahora, bot es solo para Y/N.
         const realPlayers = players.filter(p => !p.isBot);
-        const neededVotes = realPlayers.length - 1; // El que juega no vota
+        const neededVotes = realPlayers.length - 1; 
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
 
@@ -196,6 +193,23 @@ export default function TruthAndDareApp() {
 
 
   // --- MANAGER LOGIC ---
+  const handleSort = (key: keyof Challenge) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+      setSortConfig({ key, direction });
+  };
+
+  const toggleSelect = (id: string) => {
+      const newSet = new Set(selectedIds);
+      if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = (filteredData: Challenge[]) => {
+      if (selectedIds.size === filteredData.length) setSelectedIds(new Set());
+      else setSelectedIds(new Set(filteredData.map(c => c.id!)));
+  };
+
   const updateSingleField = async (collectionName: string, id: string, field: string, value: string) => {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, id), { [field]: value });
   };
@@ -210,21 +224,12 @@ export default function TruthAndDareApp() {
           const ref = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id);
           const updates: any = {};
           if (bulkLevel) updates.level = bulkLevel;
-          if (managerTab === 'td') {
-              if (bulkType) updates.type = bulkType;
-              if (bulkGender) updates.sexo = bulkGender;
-          }
+          if (managerTab === 'td' && bulkGender) updates.sexo = bulkGender;
           batch.update(ref, updates);
       });
       await batch.commit();
       alert('Updated!');
-      setBulkLevel(''); setBulkType(''); setBulkGender(''); setSelectedIds(new Set());
-  };
-
-  const toggleSelect = (id: string) => {
-      const newSet = new Set(selectedIds);
-      if(newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedIds(newSet);
+      setBulkLevel(''); setBulkGender(''); setSelectedIds(new Set());
   };
 
   const checkPendingSettings = () => {
@@ -232,6 +237,100 @@ export default function TruthAndDareApp() {
       const pendingMM = pairChallenges.filter(c => !c.level).length;
       return { pendingTD, pendingMM, total: pendingTD + pendingMM };
   };
+
+  // --- UPLOADERS V12 ---
+
+  // UPLOAD TRUTH OR DARE (1 Column Check)
+  const handleUploadSingleCol = async (e: React.ChangeEvent<HTMLInputElement>, fixedType: 'T' | 'D') => {
+      const file = e.target.files?.[0]; if(!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').slice(1); // Skip header if present
+      
+      // Validation Check: Read first few lines to see if it has commas
+      const sample = lines.slice(0, 5).join('');
+      if (sample.includes(',') && !sample.includes('"')) {
+          // Rudimentary check: If lots of commas and no quotes, might be 2 columns
+          const commaCount = (sample.match(/,/g) || []).length;
+          const lineCount = Math.min(lines.length, 5);
+          if (commaCount >= lineCount) {
+             if (!confirm("Warning: This file seems to have multiple columns (commas detected). Are you sure it's a 1-column list of questions?")) return;
+          }
+      }
+
+      setUploading(true);
+      const ref = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
+      
+      // Append mode: we don't delete unless user manages content
+      // But user requested "Upload", usually implies set. Let's append to existing if same type? 
+      // To keep it clean as requested before, let's keep append logic but we are in manager now.
+      // The user said "upload file", implying adding content.
+      
+      const batch = writeBatch(db);
+      let count = 0;
+
+      lines.forEach(line => {
+          if(!line.trim()) return;
+          const cleanText = line.trim().replace(/^"|"$/g, ''); // Remove quotes if CSV wrapping
+          const docRef = doc(ref);
+          batch.set(docRef, { 
+              text: cleanText, 
+              level: '', 
+              type: fixedType, // Auto-assign T or D
+              sexo: '', 
+              answered: false 
+          });
+          count++;
+      });
+      
+      await batch.commit();
+      setUploading(false);
+      alert(`Uploaded ${count} ${fixedType === 'T' ? 'Truth' : 'Dare'} questions.`);
+  };
+
+  // UPLOAD MATCH/MISMATCH (2 Column Check)
+  const handleUploadDoubleCol = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]; if(!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').slice(1);
+
+      setUploading(true);
+      const ref = collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges');
+      const batch = writeBatch(db);
+      let count = 0;
+      let errors = 0;
+
+      lines.forEach(line => {
+          if(!line.trim()) return;
+          // Simple CSV split logic. 
+          // If complex CSV with commas inside quotes is needed, a library is better, 
+          // but for this we assume simple structure or standard "col1,col2".
+          const parts = line.split(',');
+          
+          if (parts.length < 2) {
+              errors++;
+              return;
+          }
+
+          // Reconstruct if needed (basic)
+          const male = parts[0].trim();
+          const female = parts.slice(1).join(',').trim();
+
+          const docRef = doc(ref);
+          batch.set(docRef, { 
+              male, 
+              female, 
+              level: '', 
+              answered: false 
+          });
+          count++;
+      });
+
+      await batch.commit();
+      setUploading(false);
+      if (errors > 0) alert(`Uploaded ${count} pairs. Skipped ${errors} lines that didn't have 2 columns.`);
+      else alert(`Uploaded ${count} pairs successfully.`);
+  };
+
 
   // --- GAME LOGIC ---
 
@@ -259,39 +358,25 @@ export default function TruthAndDareApp() {
   };
 
   const startGame = async () => {
-    // 1. CHEQUEO DE PREGUNTAS
     const { total } = checkPendingSettings();
     if (total > 0) {
-        alert(`Cannot start! There are ${total} questions without Level/Type/Gender set. Please use "Manage Questions".`);
+        alert(`Cannot start! There are ${total} questions without Level/Type/Gender set.`);
         return;
     }
 
-    // 2. CHEQUEO DE JUGADORES IMPARES (BOT CREATION)
     const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length % 2 !== 0) {
         const males = realPlayers.filter(p => p.gender === 'male').length;
         const females = realPlayers.filter(p => p.gender === 'female').length;
-        
         let botName = "Brad Pitt";
         let botGender = "male";
+        if (males > females) { botName = "Scarlett Johansson"; botGender = "female"; }
         
-        if (males > females) {
-            botName = "Scarlett Johansson";
-            botGender = "female";
-        }
-        
-        // Crear Bot
         const botUid = 'bot_' + Date.now();
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), {
-            uid: botUid,
-            name: botName,
-            gender: botGender,
-            coupleNumber: '999', // Pareja comodín
-            joinedAt: serverTimestamp(),
-            isActive: true,
-            isBot: true
+            uid: botUid, name: botName, gender: botGender, coupleNumber: '999', joinedAt: serverTimestamp(), isActive: true, isBot: true
         });
-        alert(`Odd number of players detected. Added bot: ${botName} to balance the game!`);
+        alert(`Odd number of players. Added bot: ${botName}!`);
     }
 
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup' });
@@ -301,10 +386,8 @@ export default function TruthAndDareApp() {
     const pairs: Record<string, string> = {}; 
     const males = players.filter(p => p.gender === 'male');
     const females = players.filter(p => p.gender === 'female');
-    
     const shuffledMales = [...males].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
-    
     const assignedFemales = new Set<string>();
 
     shuffledMales.forEach(male => {
@@ -322,17 +405,15 @@ export default function TruthAndDareApp() {
   const startRound = async () => {
     let typeCode = selectedType === 'yn' ? 'YN' : selectedType === 'truth' ? 'T' : 'D';
     const nextChallenge = await findNextAvailableChallenge(typeCode, selectedLevel);
-    if (!nextChallenge) { alert('No challenges found for this selection.'); return; }
+    if (!nextChallenge) { alert('No challenges found.'); return; }
 
     let mode = 'dare';
     if (selectedType === 'yn') mode = 'yn';
     else if (selectedType === 'truth' || selectedType === 'question') mode = 'question';
 
-    // AUTO ANSWER FOR BOTS if Y/N
     let initialAnswers: Record<string, string> = {};
     if (mode === 'yn') {
-        const bots = players.filter(p => p.isBot);
-        bots.forEach(b => {
+        players.filter(p => p.isBot).forEach(b => {
             initialAnswers[b.uid] = Math.random() > 0.5 ? 'yes' : 'no';
         });
     }
@@ -421,12 +502,8 @@ export default function TruthAndDareApp() {
         updates.answers = {};
         updates.votes = {};
     } else {
-        // En T/D, saltar bots si los hay (aunque la logica de turno actual es index based)
         let nextIdx = gameState.currentTurnIndex + 1;
-        // Si el siguiente es bot, saltarlo (loop simple)
-        while(nextIdx < players.length && players[nextIdx].isBot) {
-            nextIdx++;
-        }
+        while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; }
 
         if (nextIdx < players.length) {
             updates.currentTurnIndex = nextIdx;
@@ -450,59 +527,6 @@ export default function TruthAndDareApp() {
     await updateDoc(gameRef, updates);
   };
 
-  // --- UPLOADERS ---
-  const handleUploadTD = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]; if(!file) return;
-      const text = await file.text();
-      const lines = text.split('\n').slice(1);
-      const ref = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
-      const batch = writeBatch(db); // Use batch for speed
-      let count = 0;
-      
-      // Limpiar previo (opcional, pero pedido)
-      const snap = await getDocs(ref); snap.forEach(d => deleteDoc(d.ref));
-
-      lines.forEach(line => {
-          if(!line.trim()) return;
-          // Asumimos 1 columna de texto.
-          // Si tiene comas, las unimos.
-          const cleanText = line.trim().replace(/^"|"$/g, ''); 
-          const docRef = doc(ref);
-          batch.set(docRef, { text: cleanText, level: '', type: '', sexo: '', answered: false });
-          count++;
-      });
-      await batch.commit();
-      alert(`Uploaded ${count} Truth/Dare questions. Go to Manager to set Level/Type/Gender.`);
-  };
-
-  const handleUploadMM = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]; if(!file) return;
-      const text = await file.text();
-      const lines = text.split('\n').slice(1);
-      const ref = collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges');
-      const batch = writeBatch(db);
-      let count = 0;
-
-      // Limpiar previo
-      const snap = await getDocs(ref); snap.forEach(d => deleteDoc(d.ref));
-
-      lines.forEach(line => {
-          if(!line.trim()) return;
-          // Esperamos 2 columnas: Male, Female
-          // Split simple por coma. Si texto tiene comas, usará la primera.
-          const parts = line.split(',');
-          if (parts.length >= 2) {
-              const male = parts[0].trim();
-              const female = parts.slice(1).join(',').trim(); // El resto es female
-              const docRef = doc(ref);
-              batch.set(docRef, { male, female, level: '', answered: false });
-              count++;
-          }
-      });
-      await batch.commit();
-      alert(`Uploaded ${count} Match/Mismatch pairs. Go to Manager to set Levels.`);
-  };
-  
   const handleEndGame = async () => {
     if(confirm('End game?')) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'ended' });
   };
@@ -567,8 +591,8 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v11</h1>
-          <p className="text-slate-400 mb-4 text-sm">Hollywood Edition</p>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v12</h1>
+          <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
             <option value="male">Male</option><option value="female">Female</option>
@@ -606,27 +630,22 @@ export default function TruthAndDareApp() {
                 <div className="flex flex-col">
                     <label className="text-xs text-slate-400">Set Level</label>
                     <select className="bg-slate-900 border border-slate-600 p-1 rounded" value={bulkLevel} onChange={e=>setBulkLevel(e.target.value)}>
-                        <option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
                     </select>
                 </div>
                 {managerTab === 'td' && (
-                    <>
-                    <div className="flex flex-col">
-                        <label className="text-xs text-slate-400">Set Type</label>
-                        <select className="bg-slate-900 border border-slate-600 p-1 rounded" value={bulkType} onChange={e=>setBulkType(e.target.value)}>
-                            <option value="">-</option><option value="T">Truth</option><option value="D">Dare</option>
-                        </select>
-                    </div>
                     <div className="flex flex-col">
                         <label className="text-xs text-slate-400">Set Gender</label>
                         <select className="bg-slate-900 border border-slate-600 p-1 rounded" value={bulkGender} onChange={e=>setBulkGender(e.target.value)}>
-                            <option value="">-</option><option value="M">Male</option><option value="F">Female</option><option value="B">Both</option>
+                            <option value="">-</option><option value="F">Female</option><option value="B">Both</option>
                         </select>
                     </div>
-                    </>
                 )}
                 <button onClick={applyBulkEdit} disabled={selectedIds.size === 0} className="bg-green-600 px-3 py-1 rounded font-bold disabled:opacity-50">
                     Apply ({selectedIds.size})
+                </button>
+                <button onClick={()=>toggleSelectAll(displayedData)} className="bg-slate-600 px-3 py-1 rounded flex items-center gap-1">
+                    {selectedIds.size === displayedData.length ? <CheckSquare size={14}/> : <Square size={14}/>} Select All
                 </button>
                 <button onClick={()=>setShowPendingOnly(!showPendingOnly)} className={`ml-auto px-3 py-1 rounded flex items-center gap-1 ${showPendingOnly ? 'bg-yellow-600' : 'bg-slate-600'}`}>
                     <Filter size={14}/> Needs Setup ({managerTab==='td' ? checkPendingSettings().pendingTD : checkPendingSettings().pendingMM})
@@ -637,10 +656,10 @@ export default function TruthAndDareApp() {
                 <table className="w-full text-left text-xs">
                     <thead className="bg-slate-800 text-slate-400 sticky top-0">
                         <tr>
-                            <th className="p-2 w-8"><Square size={14}/></th>
-                            <th className="p-2">Level</th>
-                            {managerTab === 'td' && <th className="p-2">Type</th>}
-                            {managerTab === 'td' && <th className="p-2">Gen</th>}
+                            <th className="p-2 w-8"></th>
+                            <th className="p-2 cursor-pointer" onClick={()=>handleSort('level')}>Level <ArrowUpDown size={12} className="inline"/></th>
+                            {managerTab === 'td' && <th className="p-2 cursor-pointer" onClick={()=>handleSort('type')}>Type</th>}
+                            {managerTab === 'td' && <th className="p-2 cursor-pointer" onClick={()=>handleSort('sexo')}>Gen</th>}
                             {managerTab === 'td' ? <th className="p-2">Text</th> : <><th className="p-2">Male Question</th><th className="p-2">Female Question</th></>}
                         </tr>
                     </thead>
@@ -675,9 +694,12 @@ export default function TruthAndDareApp() {
               <input type="text" placeholder="Set Code" className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={code} onChange={e=>setCode(e.target.value)} />
               <button onClick={setGameCode} className="w-full max-w-sm bg-blue-600 p-3 rounded-lg font-bold mb-4">Set Code</button>
               
-              <div className="flex gap-2 w-full max-w-sm mb-2">
-                  <label className="flex-1 bg-gray-700 p-3 rounded text-center text-xs cursor-pointer hover:bg-gray-600 transition"><Upload size={14} className="inline mr-1"/> Upload Truth/Dare (1 Col) <input type="file" className="hidden" onChange={handleUploadTD}/></label>
-                  <label className="flex-1 bg-gray-700 p-3 rounded text-center text-xs cursor-pointer hover:bg-gray-600 transition"><Upload size={14} className="inline mr-1"/> Upload Match/Mismatch (2 Col) <input type="file" className="hidden" onChange={handleUploadMM}/></label>
+              <div className="flex flex-col gap-2 w-full max-w-sm mb-2">
+                  <div className="flex gap-2">
+                      <label className="flex-1 bg-blue-900/50 border border-blue-500 p-3 rounded text-center text-xs cursor-pointer hover:bg-blue-800 transition"><Upload size={14} className="inline mr-1"/> Upload Truth (1 Col) <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'T')}/></label>
+                      <label className="flex-1 bg-pink-900/50 border border-pink-500 p-3 rounded text-center text-xs cursor-pointer hover:bg-pink-800 transition"><Upload size={14} className="inline mr-1"/> Upload Dare (1 Col) <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'D')}/></label>
+                  </div>
+                  <label className="w-full bg-green-900/50 border border-green-500 p-3 rounded text-center text-xs cursor-pointer hover:bg-green-800 transition"><Upload size={14} className="inline mr-1"/> Upload Match/Mismatch (2 Col) <input type="file" className="hidden" onChange={handleUploadDoubleCol}/></label>
               </div>
               
               <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-slate-700 p-3 rounded-lg font-bold mb-4 flex items-center justify-center gap-2 border border-slate-600 hover:bg-slate-600 relative">
@@ -731,7 +753,7 @@ export default function TruthAndDareApp() {
     );
   }
 
-  // --- VISTA DE JUGADOR ---
+  // --- VISTA JUGADOR ---
 
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
     return (
