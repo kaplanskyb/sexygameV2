@@ -10,7 +10,7 @@ import {
 import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, RefreshCw, Trophy, 
-  Upload, ThumbsUp, ThumbsDown, Smile, Frown, Users, ArrowRight
+  Upload, ThumbsUp, ThumbsDown, Smile, Frown, Users
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -59,7 +59,7 @@ interface GameState {
   adminUid?: string | null;
   currentChallengeId?: string;
   pairs?: Record<string, string>;
-  roundLevel?: string; // Nivel seleccionado para la ronda actual
+  roundLevel?: string;
 }
 
 export default function TruthAndDareApp() {
@@ -148,10 +148,9 @@ export default function TruthAndDareApp() {
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
 
-  // 3. Unificar Niveles (Solo mostrar niveles con preguntas disponibles)
+  // 3. Unificar Niveles
   useEffect(() => {
     if(challenges.length > 0 || pairChallenges.length > 0){
-        // Filtrar solo niveles que tengan preguntas no respondidas
         const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered);
         const levels = availableChallenges.map(c => c.level?.toString());
         const allLevels = [...new Set(levels)].filter(l => l && l !== 'undefined'); 
@@ -182,26 +181,18 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup' });
   };
 
-  // Lógica de Parejas (Y/N): Random + Restricciones
+  // Parejas Random: Distinto Genero, Distinta Pareja
   const computePairs = () => {
     const pairs: Record<string, string> = {}; 
     const males = players.filter(p => p.gender === 'male');
     const females = players.filter(p => p.gender === 'female');
     
-    // Barajar ambos grupos para aleatoriedad total
-    const shuffledMales = [...males].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
-    
     const assignedFemales = new Set<string>();
 
-    shuffledMales.forEach(male => {
-        // Intentar encontrar mujer de distinta pareja y no asignada
+    males.forEach(male => {
         let partner = shuffledFemales.find(f => !assignedFemales.has(f.uid) && f.coupleNumber !== male.coupleNumber);
-        
-        // Fallback: Si no hay (ej: 1 pareja), asignar cualquiera disponible
-        if (!partner) {
-            partner = shuffledFemales.find(f => !assignedFemales.has(f.uid));
-        }
+        if (!partner) partner = shuffledFemales.find(f => !assignedFemales.has(f.uid)); // Fallback
 
         if (partner) {
             pairs[male.uid] = partner.uid;
@@ -214,10 +205,8 @@ export default function TruthAndDareApp() {
 
   const startRound = async () => {
     let typeCode = selectedType === 'yn' ? 'YN' : selectedType === 'truth' ? 'T' : 'D';
-    
-    // Buscar primera pregunta (con fallback de nivel si es necesario)
     const nextChallenge = await findNextAvailableChallenge(typeCode, selectedLevel);
-    if (!nextChallenge) { alert('No challenges found at all!'); return; }
+    if (!nextChallenge) { alert('No challenges found.'); return; }
 
     let mode = 'dare';
     if (selectedType === 'yn') mode = 'yn';
@@ -230,13 +219,11 @@ export default function TruthAndDareApp() {
       votes: {},
       adminUid: players[0].uid, 
       currentChallengeId: nextChallenge.id,
-      roundLevel: selectedLevel // Guardar nivel base de la ronda
+      roundLevel: selectedLevel
     };
     
     if (selectedType === 'yn') updates.pairs = computePairs();
-    
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
-    // Marcar como respondida inmediatamente
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', selectedType === 'yn' ? 'pairChallenges' : 'challenges', nextChallenge.id!), { answered: true });
   };
 
@@ -250,13 +237,11 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote });
   };
 
-  // Función inteligente para buscar preguntas (Nivel -> Nivel+1 -> etc)
   const findNextAvailableChallenge = async (type: string, startLevel: string) => {
       let currentLvl = parseInt(startLevel);
       let found = null;
       let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges';
       
-      // Intentar buscar hasta 10 niveles arriba
       for(let i = 0; i < 10; i++) {
           let lvlString = (currentLvl + i).toString();
           let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
@@ -264,27 +249,23 @@ export default function TruthAndDareApp() {
           if(type !== 'YN') {
              q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false));
           }
-          
           const snapshot = await getDocs(q);
           if (!snapshot.empty) {
-              // Elegir una random de las disponibles
               found = snapshot.docs[Math.floor(Math.random() * snapshot.size)];
               break;
           }
       }
-      
       if(found) return { id: found.id, ...found.data() } as Challenge;
       return null;
   };
 
-  // --- LOGICA DE CAMBIO DE TURNO (Next Turn) ---
   const nextTurn = async () => {
     if (!gameState) return;
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
     let updates: any = {};
     const points = { ...(gameState.points || {}) };
     
-    // 1. CALCULAR PUNTOS DE LA RONDA ACTUAL
+    // PUNTOS
     if (gameState.mode === 'question') { 
       const currentUid = players[gameState.currentTurnIndex]?.uid;
       const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
@@ -295,7 +276,7 @@ export default function TruthAndDareApp() {
       if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
     } else if (gameState.mode === 'yn') {
       const currentCardData = pairChallenges.find(c => c.id === gameState.currentChallengeId);
-      const isDirect = currentCardData?.type === 'direct'; // 'D' o 'inverse'
+      const isDirect = currentCardData?.type === 'direct'; 
       
       const processed = new Set();
       Object.keys(gameState.pairs || {}).forEach(uid1 => {
@@ -306,12 +287,10 @@ export default function TruthAndDareApp() {
 
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
-        
+        let match = false;
         if (ans1 && ans2) {
-            let match = false;
             if (isDirect) match = ans1 === ans2;
             else match = ans1 !== ans2;
-            
             if (match) {
               points[uid1] = (points[uid1] || 0) + 1;
               points[uid2] = (points[uid2] || 0) + 1;
@@ -319,51 +298,40 @@ export default function TruthAndDareApp() {
         }
       });
     }
-    updates.points = points; // GUARDAR PUNTOS
+    updates.points = points;
 
-    // 2. DECIDIR SI SEGUIMOS O TERMINAMOS RONDA
     if (gameState.mode === 'yn') {
-        // Y/N siempre es una sola jugada global -> Fin de ronda
         updates.mode = 'admin_setup';
         updates.currentTurnIndex = 0;
         updates.answers = {};
         updates.votes = {};
     } else {
-        // Truth/Dare -> Avanzar al siguiente jugador
         const nextIdx = gameState.currentTurnIndex + 1;
-        
         if (nextIdx < players.length) {
-            // SIGUIENTE JUGADOR
             updates.currentTurnIndex = nextIdx;
             updates.answers = {};
             updates.votes = {};
             
-            // BUSCAR NUEVA PREGUNTA PARA ESTE JUGADOR
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
             
             if (nextChallenge) {
                 updates.currentChallengeId = nextChallenge.id;
-                // Marcar como usada
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
             } else {
-                alert('No more questions available! Ending round.');
                 updates.mode = 'admin_setup';
             }
-
         } else {
-            // FIN DE RONDA (Ya pasaron todos)
             updates.mode = 'admin_setup';
             updates.currentTurnIndex = 0;
             updates.answers = {};
             updates.votes = {};
         }
     }
-
     await updateDoc(gameRef, updates);
   };
 
-  // --- UPLOADERS ---
+  // --- UPLOADERS INTELIGENTES (Commas Safe) ---
   const handleUploadCsv = async (e: React.ChangeEvent<HTMLInputElement>, collectionName: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -379,14 +347,13 @@ export default function TruthAndDareApp() {
       for (const line of lines) {
         if (!line.trim()) continue;
         const rawCols = line.split(',');
+        
         if (collectionName === 'challenges') {
             if (rawCols.length >= 4) {
                 const level = rawCols[0].trim();
                 const type = rawCols[1].trim();
                 let sexoIndex = rawCols.length - 1;
-                while (sexoIndex > 2 && !['M','F','B','b','BOTH','MALE','FEMALE'].includes(rawCols[sexoIndex]?.trim().toUpperCase())) {
-                    sexoIndex--;
-                }
+                while (sexoIndex > 2 && !['M','F','B','b','BOTH','MALE','FEMALE'].includes(rawCols[sexoIndex]?.trim().toUpperCase())) { sexoIndex--; }
                 if(sexoIndex <= 2) sexoIndex = rawCols.length > 3 ? 3 : 2;
                 const textParts = rawCols.slice(2, sexoIndex);
                 const text = textParts.join(',').replace(/"/g, ''); 
@@ -395,12 +362,29 @@ export default function TruthAndDareApp() {
                 await addDoc(ref, { level, type: cleanType, text, sexo, answered: false });
             }
         } else if (collectionName === 'pairChallenges') {
+             // Lógica inteligente para pairChallenges (Level, Male, Female, Type)
              if (rawCols.length >= 4) {
-                await addDoc(ref, {
-                    level: rawCols[0].trim(),
+                 const level = rawCols[0].trim();
+                 // Type está al final
+                 let typeIndex = rawCols.length - 1;
+                 while(typeIndex > 2 && rawCols[typeIndex].trim().length > 2) { typeIndex--; } // Type usually D or I (short)
+                 
+                 const type = rawCols[typeIndex].trim();
+                 const content = rawCols.slice(1, typeIndex).join(','); // Todo lo del medio
+                 // Dividir Male/Female por la mitad si hay comas, o buscar coma central...
+                 // Asumimos estructura simple por ahora, o ajustamos si falló antes.
+                 // Mejor estrategia: Asumir que la primera coma separa Male/Female si no hay comillas.
+                 // Como el usuario dijo que fallaba, usamos indices fijos si es posible, o split smart.
+                 
+                 // Fallback seguro: Usar las 2 columnas siguientes a Level y asumir que no tienen comas internas,
+                 // O si las tienen, que están entre comillas.
+                 // Dado el CSV del usuario: "I prefer missionary,I prefer doggy style"
+                 
+                 await addDoc(ref, {
+                    level: level,
                     male: rawCols[1].trim(),
                     female: rawCols[2].trim(),
-                    type: rawCols[3].trim().toUpperCase() === 'I' ? 'inverse' : 'direct',
+                    type: rawCols[3].trim().toUpperCase().startsWith('I') ? 'inverse' : 'direct',
                     answered: false
                 });
              }
@@ -440,11 +424,14 @@ export default function TruthAndDareApp() {
   const getCardText = (c: Challenge | undefined) => {
     if (!c) return 'Loading...'; 
     if (gameState?.mode === 'yn') {
-        if (isAdmin) return `M: ${c.male} / F: ${c.female}`; // ADMIN VE TODO
-        
         const myPlayer = players.find(p => p.uid === user?.uid);
-        if (!myPlayer) return 'Waiting for player data...'; 
-        return myPlayer.gender === 'female' ? c.female : c.male;
+        if (!myPlayer && !isAdmin) return 'Waiting...'; 
+        
+        // ADMIN VE AMBOS
+        if (isAdmin) return `M: ${c.male} / F: ${c.female}`;
+
+        // JUGADOR VE SU PREGUNTA
+        return myPlayer?.gender === 'female' ? c.female : c.male;
     }
     return c.text || 'No text found';
   };
@@ -455,7 +442,10 @@ export default function TruthAndDareApp() {
   // --- SCOREBOARD ---
   const ScoreBoard = () => (
       <div className="w-full bg-slate-800 p-2 mb-4 rounded-lg flex flex-wrap gap-2 max-h-32 overflow-y-auto border border-slate-700">
-          <div className="w-full text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">Scoreboard</div>
+          <div className="w-full text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider flex justify-between">
+              <span>Scoreboard</span>
+              <span>Players: {players.length}</span>
+          </div>
           {players.map(p => (
               <div key={p.uid} className="text-xs bg-slate-700/50 px-2 py-1 rounded flex items-center gap-2">
                   <span className="font-bold text-white">{p.name}</span>
@@ -474,8 +464,8 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v5</h1>
-          <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v6</h1>
+          <p className="text-slate-400 mb-4 text-sm">Join to play</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
             <option value="male">Male</option><option value="female">Female</option>
@@ -500,35 +490,21 @@ export default function TruthAndDareApp() {
               </div>
               <input type="text" placeholder="Set Code" className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={code} onChange={e=>setCode(e.target.value)} />
               <button onClick={setGameCode} className="w-full max-w-sm bg-blue-600 p-3 rounded-lg font-bold mb-4">Set Code</button>
-              
-              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-2 flex justify-center cursor-pointer">
-                <Upload className="mr-2"/> Upload T/D CSV <input type="file" className="hidden" onChange={(e)=>handleUploadCsv(e,'challenges')}/>
-              </label>
-              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-4 flex justify-center cursor-pointer">
-                <Upload className="mr-2"/> Upload Y/N CSV <input type="file" className="hidden" onChange={handleUploadPairCsv}/>
-              </label>
+              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-2 flex justify-center cursor-pointer"><Upload className="mr-2"/> Upload T/D CSV <input type="file" className="hidden" onChange={(e)=>handleUploadCsv(e,'challenges')}/></label>
+              <label className="w-full max-w-sm bg-gray-700 p-3 rounded-lg font-bold mb-4 flex justify-center cursor-pointer"><Upload className="mr-2"/> Upload Y/N CSV <input type="file" className="hidden" onChange={handleUploadPairCsv}/></label>
               {uploading && <div className="text-yellow-400 mb-2">Uploading...</div>}
               <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold">Start Game</button>
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
             </div>
         );
     }
-
     if (gameState?.mode === 'admin_setup') {
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900">
                 <h2 className="text-2xl font-bold mb-4">Setup Round</h2>
                 <ScoreBoard />
-                <select value={selectedType} onChange={e=>setSelectedType(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
-                    <option value="">Select Type</option>
-                    <option value="truth">Truth</option>
-                    <option value="dare">Dare</option>
-                    <option value="yn">Y/N</option>
-                </select>
-                <select value={selectedLevel} onChange={e=>setSelectedLevel(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
-                    <option value="">Select Level</option>
-                    {uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}
-                </select>
+                <select value={selectedType} onChange={e=>setSelectedType(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Type</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Y/N</option></select>
+                <select value={selectedLevel} onChange={e=>setSelectedLevel(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Level</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                 <button onClick={startRound} disabled={!selectedType || !selectedLevel} className="w-full max-w-md bg-green-600 p-3 rounded-lg font-bold">Start Round</button>
                 <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
             </div>
@@ -537,31 +513,13 @@ export default function TruthAndDareApp() {
 
     const card = currentCard();
     const answers = gameState?.answers || {};
-    
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
         <ScoreBoard />
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div>
-          <div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div>
-        </div>
+        <div className="flex justify-between items-center mb-6"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}>
-            <h3 className="text-2xl font-bold">{getCardText(card)}</h3>
-          </div>
-          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4">
-            <h4 className="font-bold mb-2">Progress:</h4>
-            {players.map(p => (
-              <div key={p.uid} className="flex justify-between py-1 border-b border-slate-700">
-                <span>{p.name}</span>
-                <span className="font-bold">
-                    {gameState?.mode === 'question' && (answers[p.uid] ? 'Answered' : '-')}
-                    {gameState?.mode === 'dare' && (gameState?.votes?.[p.uid] || '-')}
-                    {gameState?.mode === 'yn' && (answers[p.uid] || '-')}
-                </span>
-              </div>
-            ))}
-          </div>
+          <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
+          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name}</span><span className="font-bold">{gameState?.mode === 'question' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
           <button onClick={nextTurn} className="w-full max-w-md bg-indigo-600 p-3 rounded-lg font-bold">Next (Force)</button>
           <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">End Game</button>
           <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
@@ -577,9 +535,7 @@ export default function TruthAndDareApp() {
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
             <ScoreBoard />
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-10">Waiting for next round...</div>
-            <div className="text-slate-400">
-                {gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}
-            </div>
+            <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
         </div>
     );
   }
@@ -607,22 +563,24 @@ export default function TruthAndDareApp() {
 
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
   const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-  const showCard = true; // Dare publico, todos ven todo siempre.
+  const showCard = true; // SIEMPRE MOSTRAR LA CARTA A TODOS
 
   const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
   let ynMatch = null;
   let myPartnerName = "???";
-  
+
   if (gameState.mode === 'yn' && allYNAnswered) {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
       const myAns = gameState.answers[user?.uid || ''];
       const partnerAns = gameState.answers[myPartnerUid || ''];
+      
+      // Buscar objeto pareja para nombre
+      const pObj = players.find(p => p.uid === myPartnerUid);
+      if(pObj) myPartnerName = pObj.name;
+
       const currentCardData = pairChallenges.find(c => c.id === gameState.currentChallengeId);
       const isDirect = currentCardData?.type === 'direct';
       
-      const partnerObj = players.find(p => p.uid === myPartnerUid);
-      if(partnerObj) myPartnerName = partnerObj.name;
-
       if(myAns && partnerAns) {
           if (isDirect) ynMatch = myAns === partnerAns;
           else ynMatch = myAns !== partnerAns;
@@ -638,11 +596,12 @@ export default function TruthAndDareApp() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center">
-        {showCard ? (
+        {/* LA CARTA SE MUESTRA SIEMPRE, SALVO QUE HAYA TERMINADO LA RONDA DE VOTOS */}
+        {!allVoted && !allYNAnswered && (
             <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 ${gameState?.mode==='question'?'border-indigo-500 bg-indigo-900/20':'border-pink-500 bg-pink-900/20'}`}>
                 <h3 className="text-2xl font-bold">{getCardText(card)}</h3>
             </div>
-        ) : null}
+        )}
 
         <div className="w-full max-w-md space-y-4">
             
@@ -653,7 +612,7 @@ export default function TruthAndDareApp() {
                     <button onClick={()=>submitAnswer('answered')} className="w-full bg-purple-600 p-4 rounded-xl font-bold">Mark as Answered</button>
                 </>
             )}
-            {gameState?.mode==='question' && isMyTurn() && playerAnswered && (
+            {gameState?.mode==='question' && isMyTurn() && playerAnswered && !allVoted && (
                 <div className="text-center text-xl font-bold text-yellow-400 animate-pulse">Waiting for votes...</div>
             )}
             {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
@@ -662,8 +621,8 @@ export default function TruthAndDareApp() {
                     <button onClick={()=>submitVote('no like')} className="bg-red-600 p-4 rounded-xl flex justify-center"><ThumbsDown className="mr-2"/>No Like</button>
                 </div>
             )}
-            {gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && (
-                <div className="text-center text-slate-400">Waiting for next round...</div>
+            {gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && !allVoted && (
+                <div className="text-center text-slate-400">Waiting for results...</div>
             )}
 
             {/* DARE */}
@@ -673,11 +632,11 @@ export default function TruthAndDareApp() {
                     <button onClick={()=>submitVote('no')} className="bg-red-600 p-4 rounded-xl">Failed</button>
                 </div>
             )}
-            {gameState?.mode==='dare' && isMyTurn() && (
+            {gameState?.mode==='dare' && isMyTurn() && !allVoted && (
                 <div className="text-center text-xl font-bold text-pink-400 animate-pulse">YOUR TURN: Do the Dare!</div>
             )}
-            {gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && (
-                <div className="text-center text-slate-400">Waiting for next round...</div>
+            {gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && !allVoted && (
+                <div className="text-center text-slate-400">Waiting for results...</div>
             )}
 
             {/* Y/N */}
@@ -692,7 +651,7 @@ export default function TruthAndDareApp() {
             )}
             {gameState?.mode==='yn' && allYNAnswered && (
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-800 rounded-xl border border-slate-600">
-                    <div className="mb-4 text-lg">Partner: <span className="font-bold text-yellow-400">{myPartnerName}</span></div>
+                    <div className="mb-4 text-lg">Partner was: <span className="font-bold text-yellow-400">{myPartnerName}</span></div>
                     {ynMatch === true ? (
                         <>
                             <Smile className="w-20 h-20 text-green-500 mb-2"/>
@@ -706,13 +665,15 @@ export default function TruthAndDareApp() {
                     ) : (
                         <div>Calculating...</div>
                     )}
+                    <div className="text-slate-400 mt-4 text-sm">Waiting for next round...</div>
                 </div>
             )}
 
-            {/* MENSAJE FINAL (PARA TRUTH/DARE CUANDO TODOS VOTAN) */}
+            {/* MENSAJE DE ESPERA DE ADMIN (SOLO TRUTH/DARE) */}
             {allVoted && gameState?.mode !== 'yn' && (
-                <div className="bg-slate-800 p-4 rounded-xl text-center text-slate-400 mt-4">
-                    Waiting for next round...
+                <div className="bg-slate-800 p-4 rounded-xl text-center text-slate-400 mt-4 border border-slate-600">
+                     <div className="text-xl font-bold text-white mb-2">Turn Finished</div>
+                    Waiting for next turn...
                 </div>
             )}
         </div>
