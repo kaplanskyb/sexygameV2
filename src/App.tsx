@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, doc, setDoc, onSnapshot, 
-  query, serverTimestamp, updateDoc, getDocs, deleteDoc, addDoc, where, writeBatch, increment
+  query, serverTimestamp, updateDoc, getDocs, deleteDoc, where, writeBatch, increment
 } from 'firebase/firestore';
 import { 
   getAuth, signInAnonymously, onAuthStateChanged 
@@ -11,8 +11,8 @@ import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
-  Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, RotateCcw, XCircle,
-  MessageCircle
+  Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
+  MessageCircle, RefreshCw
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -55,6 +55,15 @@ interface Challenge {
   paused?: boolean;
 }
 
+interface HistoryEntry {
+    u1: string;
+    u2: string;
+    name1: string;
+    name2: string;
+    result: 'match' | 'mismatch';
+    timestamp: number;
+}
+
 interface GameState {
   mode: string;
   currentTurnIndex: number;
@@ -70,6 +79,7 @@ interface GameState {
   isAutoMode?: boolean;
   sequence?: string[]; 
   sequenceIndex?: number;
+  matchHistory?: HistoryEntry[]; // Nuevo campo para guardar historial detallado
 }
 
 export default function TruthAndDareApp() {
@@ -154,8 +164,16 @@ export default function TruthAndDareApp() {
     if (!user) return;
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
     const unsubGame = onSnapshot(gameRef, (docSnap) => {
-      if (docSnap.exists()) setGameState(docSnap.data() as GameState);
-      else setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp() });
+      if (docSnap.exists()) {
+        const data = docSnap.data() as GameState;
+        setGameState(data);
+        // Sincronizar el nivel seleccionado local con el del juego si estamos en modo auto
+        if (data.isAutoMode && data.roundLevel && data.roundLevel !== selectedLevel) {
+           setSelectedLevel(data.roundLevel);
+        }
+      } else {
+        setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
+      }
       setLoading(false);
     });
 
@@ -244,6 +262,14 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code });
   };
 
+  const updateAutoLevel = async (newLvl: string) => {
+    setSelectedLevel(newLvl);
+    // Si estamos en juego y modo auto, actualizamos el estado global para que la siguiente carta tome este nivel
+    if (gameState?.isAutoMode) {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl });
+    }
+  };
+
   const startGame = async () => {
     const { total } = checkPendingSettings();
     if (total > 0) {
@@ -266,7 +292,7 @@ export default function TruthAndDareApp() {
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
 
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup' });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [] });
   };
 
   const computePairs = () => {
@@ -380,6 +406,8 @@ export default function TruthAndDareApp() {
       if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
     } else if (gameState.mode === 'yn') {
       const processed = new Set();
+      const currentHistory = [...(gameState.matchHistory || [])]; // Copiar historial actual
+      
       Object.keys(gameState.pairs || {}).forEach(uid1 => {
         if (processed.has(uid1)) return;
         const uid2 = gameState.pairs![uid1];
@@ -387,12 +415,25 @@ export default function TruthAndDareApp() {
         processed.add(uid2);
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
+        const p1 = players.find(p=>p.uid===uid1);
+        const p2 = players.find(p=>p.uid===uid2);
+
         if (ans1 && ans2) {
             const isMatch = ans1 === ans2;
             if (isMatch) {
               points[uid1] = (points[uid1] || 0) + 1;
               points[uid2] = (points[uid2] || 0) + 1;
             }
+            // Add to history
+            if (p1 && p2) {
+                currentHistory.push({
+                    u1: uid1, u2: uid2, 
+                    name1: p1.name, name2: p2.name,
+                    result: isMatch ? 'match' : 'mismatch',
+                    timestamp: Date.now()
+                });
+            }
+
             batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { 
                 matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) 
             });
@@ -401,6 +442,7 @@ export default function TruthAndDareApp() {
             });
         }
       });
+      updates.matchHistory = currentHistory;
       await batch.commit(); 
     }
     updates.points = points;
@@ -421,6 +463,7 @@ export default function TruthAndDareApp() {
             updates.answers = {};
             updates.votes = {};
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
+            // Usamos el nivel definido en gameState (que puede haber cambiado si es auto)
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
             if (nextChallenge) {
                 updates.currentChallengeId = nextChallenge.id;
@@ -436,34 +479,38 @@ export default function TruthAndDareApp() {
     if (roundFinished) {
         if (gameState.isAutoMode && gameState.sequence) {
             // AUTO MODE
-            const nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
-            if (nextSeqIdx < gameState.sequence.length) {
-                const nextModeKey = gameState.sequence[nextSeqIdx]; 
-                let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; 
-                if(mode === 'truth') mode = 'question'; 
+            let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
+            
+            // Loop infinito: Si llega al final, vuelve a 0
+            if (nextSeqIdx >= gameState.sequence.length) {
+                nextSeqIdx = 0; 
+            }
 
-                let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
-                const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
-                
-                if (nextChallenge) {
-                    updates.mode = mode;
-                    updates.currentTurnIndex = 0;
-                    updates.sequenceIndex = nextSeqIdx;
-                    updates.answers = {};
-                    updates.votes = {};
-                    updates.currentChallengeId = nextChallenge.id;
-                    if (mode === 'yn') {
-                        updates.pairs = computePairs();
-                        players.filter(p => p.isBot).forEach(b => {
-                            updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no';
-                        });
-                    }
-                    const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
-                } else {
-                    updates.mode = 'admin_setup'; 
+            const nextModeKey = gameState.sequence[nextSeqIdx]; 
+            let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; 
+            if(mode === 'truth') mode = 'question'; 
+
+            let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
+            // Aquí la CLAVE: Usamos gameState.roundLevel que se puede actualizar en vivo
+            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
+            
+            if (nextChallenge) {
+                updates.mode = mode;
+                updates.currentTurnIndex = 0;
+                updates.sequenceIndex = nextSeqIdx;
+                updates.answers = {};
+                updates.votes = {};
+                updates.currentChallengeId = nextChallenge.id;
+                if (mode === 'yn') {
+                    updates.pairs = computePairs();
+                    players.filter(p => p.isBot).forEach(b => {
+                        updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no';
+                    });
                 }
+                const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
             } else {
+                // Si no hay preguntas, detenemos
                 updates.mode = 'admin_setup'; 
             }
         } else {
@@ -604,7 +651,7 @@ export default function TruthAndDareApp() {
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'))).forEach(d=>batch.delete(d.ref));
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'challenges'))).forEach(d=>batch.update(d.ref, {answered:false}));
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges'))).forEach(d=>batch.update(d.ref, {answered:false}));
-        batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null });
+        batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null, matchHistory: [] });
         await batch.commit();
   }};
 
@@ -638,26 +685,42 @@ export default function TruthAndDareApp() {
       </div>
   ) : null;
 
-  const PairsStats = () => {
-      const pairMap: Record<string, {names: string[], m: number, mm: number}> = {};
-      players.forEach(p => {
-          if (!pairMap[p.coupleNumber]) pairMap[p.coupleNumber] = {names: [], m: 0, mm: 0};
-          pairMap[p.coupleNumber].names.push(p.name);
-          pairMap[p.coupleNumber].m += (p.matches || 0);
-          pairMap[p.coupleNumber].mm += (p.mismatches || 0);
-      });
+  // NUEVO COMPONENTE: HISTORIAL SOLO DEL USUARIO
+  const MyMatchHistory = () => {
+      // Filtrar historial donde participe el usuario (u1 o u2)
+      const history = (gameState?.matchHistory || [])
+         .filter(h => h.u1 === user?.uid || h.u2 === user?.uid)
+         .reverse(); // Mostrar lo más reciente primero
+
+      if (history.length === 0) return null;
+
       return (
           <div className="w-full bg-slate-800 p-2 mt-4 rounded-lg max-h-32 overflow-y-auto border border-slate-700">
-              <div className="text-xs text-slate-400 mb-1 uppercase font-bold text-center">Pairs Stats</div>
-              {Object.entries(pairMap).map(([id, data]) => (
-                  <div key={id} className="text-xs border-b border-slate-700 py-1 flex justify-between">
-                      <span>#{id} {data.names.join(' & ')}</span>
-                      <span className="flex gap-2">
-                          <span className="text-green-400 font-bold">{Math.floor(data.m/2)} Match</span>
-                          <span className="text-red-400 font-bold">{Math.floor(data.mm/2)} Fail</span>
-                      </span>
-                  </div>
-              ))}
+              <div className="text-xs text-slate-400 mb-1 uppercase font-bold text-center">My History</div>
+              <table className="w-full text-xs">
+                <thead>
+                    <tr className="border-b border-slate-600 text-slate-400">
+                        <th className="text-left py-1">With</th>
+                        <th className="text-right py-1">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                  {history.map((h, idx) => {
+                      // Determinar quién fue el partner
+                      const isMeU1 = h.u1 === user?.uid;
+                      const partnerName = isMeU1 ? h.name2 : h.name1;
+                      const isMatch = h.result === 'match';
+                      return (
+                          <tr key={idx} className="border-b border-slate-700/50">
+                              <td className="py-1">{partnerName}</td>
+                              <td className={`py-1 text-right font-bold ${isMatch ? 'text-green-400' : 'text-red-400'}`}>
+                                  {isMatch ? 'MATCH' : 'UNMATCH'}
+                              </td>
+                          </tr>
+                      );
+                  })}
+                </tbody>
+              </table>
           </div>
       );
   };
@@ -675,9 +738,6 @@ export default function TruthAndDareApp() {
           ))}
       </div>
   );
-
-  // LOGICA PARA MOSTRAR TABLA DE PARES
-  const showPairsTable = players.some(p => (p.matches || 0) > 0 || (p.mismatches || 0) > 0);
 
   // --- RENDER ---
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading...</div>;
@@ -820,7 +880,6 @@ export default function TruthAndDareApp() {
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900">
                 <h2 className="text-2xl font-bold mb-4">Setup Round</h2>
                 <ScoreBoard />
-                {showPairsTable && <PairsStats />}
                 
                 {/* AUTO MODE TOGGLE */}
                 <div className="flex items-center gap-4 mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 w-full max-w-md mt-4">
@@ -836,7 +895,7 @@ export default function TruthAndDareApp() {
                     )}
                 </div>
 
-                <select value={selectedLevel} onChange={e=>setSelectedLevel(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Level</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                <select value={selectedLevel} onChange={e=>updateAutoLevel(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Level</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                 
                 {!isAutoSetup && (
                     <select value={selectedType} onChange={e=>setSelectedType(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Type</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
@@ -855,13 +914,27 @@ export default function TruthAndDareApp() {
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
         <ScoreBoard />
-        {showPairsTable && <PairsStats />}
         <div className="flex justify-between items-center mb-6 mt-4"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
+        
+        {/* SELECTOR DE NIVEL EN VIVO PARA MODO AUTO */}
+        {gameState?.isAutoMode && (
+             <div className="w-full max-w-md bg-slate-800 p-2 rounded mb-4 border border-slate-600 flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-bold uppercase ml-2">Change Auto Level:</span>
+                <select 
+                    value={selectedLevel} 
+                    onChange={e=>updateAutoLevel(e.target.value)} 
+                    className="bg-slate-900 border border-slate-700 rounded p-1 text-white text-sm"
+                >
+                    {uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}
+                </select>
+            </div>
+        )}
+
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name} {p.isBot && '(Bot)'}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
           {gameState?.isAutoMode ? (
-              <div className="text-center text-green-400 font-bold animate-pulse mb-4">Auto-Advancing Sequence...</div>
+              <div className="text-center text-green-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center"><RefreshCw className="animate-spin" size={16}/> Auto-Advancing Sequence...</div>
           ) : (
               <button onClick={nextTurn} className="w-full max-w-md bg-indigo-600 p-3 rounded-lg font-bold">Next (Force)</button>
           )}
@@ -880,7 +953,7 @@ export default function TruthAndDareApp() {
             <CustomAlert/>
             <div className="text-center py-2 border-b border-slate-700 mb-4 w-full"><h1 className="text-3xl font-black text-white">{userName}</h1></div>
             <ScoreBoard />
-            {showPairsTable && <PairsStats />}
+            <MyMatchHistory />
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-10">Waiting for next round...</div>
             <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
         </div>
@@ -945,8 +1018,8 @@ export default function TruthAndDareApp() {
       
       <ScoreBoard />
       
-      {/* Aquí colocamos la tabla de Matches permanentemente si hay datos */}
-      {showPairsTable && <PairsStats />}
+      {/* TABLA DE HISTORIAL PERSONAL */}
+      <MyMatchHistory />
       
       <div className="flex justify-between items-center mb-6 mt-4 z-10">
         <div className="font-bold flex gap-2 items-center bg-slate-800 px-3 py-1 rounded-full text-xs">
@@ -1028,7 +1101,6 @@ export default function TruthAndDareApp() {
                                     <h3 className="text-4xl font-black text-red-500 tracking-tighter">MISMATCH!</h3>
                                 </div>
                             )}
-                             {/* La tabla PairsStats se removió de aquí y se puso bajo ScoreBoard permanentemente */}
                              <div className="text-slate-500 mt-4 text-xs font-mono">Next round auto-starting...</div>
                         </div>
                     )}
