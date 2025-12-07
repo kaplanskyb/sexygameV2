@@ -10,7 +10,7 @@ import {
 import type { User } from 'firebase/auth';
 import { 
   Flame, Zap, RefreshCw, Trophy, 
-  Upload, ThumbsUp, ThumbsDown, Smile, Frown, Users
+  Upload, ThumbsUp, ThumbsDown, Smile, Frown
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -148,7 +148,7 @@ export default function TruthAndDareApp() {
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
 
-  // 3. Unificar Niveles
+  // 3. Niveles
   useEffect(() => {
     if(challenges.length > 0 || pairChallenges.length > 0){
         const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered);
@@ -181,18 +181,19 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup' });
   };
 
-  // Parejas Random: Distinto Genero, Distinta Pareja
   const computePairs = () => {
     const pairs: Record<string, string> = {}; 
     const males = players.filter(p => p.gender === 'male');
     const females = players.filter(p => p.gender === 'female');
     
+    const shuffledMales = [...males].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
+    
     const assignedFemales = new Set<string>();
 
-    males.forEach(male => {
+    shuffledMales.forEach(male => {
         let partner = shuffledFemales.find(f => !assignedFemales.has(f.uid) && f.coupleNumber !== male.coupleNumber);
-        if (!partner) partner = shuffledFemales.find(f => !assignedFemales.has(f.uid)); // Fallback
+        if (!partner) partner = shuffledFemales.find(f => !assignedFemales.has(f.uid));
 
         if (partner) {
             pairs[male.uid] = partner.uid;
@@ -287,8 +288,8 @@ export default function TruthAndDareApp() {
 
         const ans1 = gameState.answers[uid1];
         const ans2 = gameState.answers[uid2];
-        let match = false;
         if (ans1 && ans2) {
+            let match = false;
             if (isDirect) match = ans1 === ans2;
             else match = ans1 !== ans2;
             if (match) {
@@ -331,7 +332,7 @@ export default function TruthAndDareApp() {
     await updateDoc(gameRef, updates);
   };
 
-  // --- UPLOADERS INTELIGENTES (Commas Safe) ---
+  // --- UPLOADERS ---
   const handleUploadCsv = async (e: React.ChangeEvent<HTMLInputElement>, collectionName: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -347,7 +348,6 @@ export default function TruthAndDareApp() {
       for (const line of lines) {
         if (!line.trim()) continue;
         const rawCols = line.split(',');
-        
         if (collectionName === 'challenges') {
             if (rawCols.length >= 4) {
                 const level = rawCols[0].trim();
@@ -362,24 +362,10 @@ export default function TruthAndDareApp() {
                 await addDoc(ref, { level, type: cleanType, text, sexo, answered: false });
             }
         } else if (collectionName === 'pairChallenges') {
-             // Lógica inteligente para pairChallenges (Level, Male, Female, Type)
              if (rawCols.length >= 4) {
                  const level = rawCols[0].trim();
-                 // Type está al final
                  let typeIndex = rawCols.length - 1;
-                 while(typeIndex > 2 && rawCols[typeIndex].trim().length > 2) { typeIndex--; } // Type usually D or I (short)
-                 
-                 const type = rawCols[typeIndex].trim();
-                 const content = rawCols.slice(1, typeIndex).join(','); // Todo lo del medio
-                 // Dividir Male/Female por la mitad si hay comas, o buscar coma central...
-                 // Asumimos estructura simple por ahora, o ajustamos si falló antes.
-                 // Mejor estrategia: Asumir que la primera coma separa Male/Female si no hay comillas.
-                 // Como el usuario dijo que fallaba, usamos indices fijos si es posible, o split smart.
-                 
-                 // Fallback seguro: Usar las 2 columnas siguientes a Level y asumir que no tienen comas internas,
-                 // O si las tienen, que están entre comillas.
-                 // Dado el CSV del usuario: "I prefer missionary,I prefer doggy style"
-                 
+                 while(typeIndex > 2 && rawCols[typeIndex].trim().length > 2) { typeIndex--; }
                  await addDoc(ref, {
                     level: level,
                     male: rawCols[1].trim(),
@@ -427,10 +413,7 @@ export default function TruthAndDareApp() {
         const myPlayer = players.find(p => p.uid === user?.uid);
         if (!myPlayer && !isAdmin) return 'Waiting...'; 
         
-        // ADMIN VE AMBOS
         if (isAdmin) return `M: ${c.male} / F: ${c.female}`;
-
-        // JUGADOR VE SU PREGUNTA
         return myPlayer?.gender === 'female' ? c.female : c.male;
     }
     return c.text || 'No text found';
@@ -503,7 +486,7 @@ export default function TruthAndDareApp() {
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900">
                 <h2 className="text-2xl font-bold mb-4">Setup Round</h2>
                 <ScoreBoard />
-                <select value={selectedType} onChange={e=>setSelectedType(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Type</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Y/N</option></select>
+                <select value={selectedType} onChange={e=>setSelectedType(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Type</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
                 <select value={selectedLevel} onChange={e=>setSelectedLevel(e.target.value)} className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="">Select Level</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                 <button onClick={startRound} disabled={!selectedType || !selectedLevel} className="w-full max-w-md bg-green-600 p-3 rounded-lg font-bold">Start Round</button>
                 <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
@@ -516,10 +499,10 @@ export default function TruthAndDareApp() {
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
         <ScoreBoard />
-        <div className="flex justify-between items-center mb-6"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
+        <div className="flex justify-between items-center mb-6"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode === 'yn' ? 'MATCH/MISMATCH' : gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
-          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name}</span><span className="font-bold">{gameState?.mode === 'question' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
+          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
           <button onClick={nextTurn} className="w-full max-w-md bg-indigo-600 p-3 rounded-lg font-bold">Next (Force)</button>
           <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">End Game</button>
           <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset</button>
@@ -530,9 +513,17 @@ export default function TruthAndDareApp() {
 
   // --- VISTA DE JUGADOR ---
 
+  // 1. HEADER (NOMBRE GRANDE)
+  const PlayerHeader = () => (
+      <div className="text-center py-2 border-b border-slate-700 mb-4">
+          <h1 className="text-3xl font-black text-white">{userName}</h1>
+      </div>
+  );
+
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
+            <PlayerHeader />
             <ScoreBoard />
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-10">Waiting for next round...</div>
             <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
@@ -563,7 +554,7 @@ export default function TruthAndDareApp() {
 
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
   const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-  const showCard = true; // SIEMPRE MOSTRAR LA CARTA A TODOS
+  const showCard = true; 
 
   const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
   let ynMatch = null;
@@ -573,110 +564,104 @@ export default function TruthAndDareApp() {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
       const myAns = gameState.answers[user?.uid || ''];
       const partnerAns = gameState.answers[myPartnerUid || ''];
-      
-      // Buscar objeto pareja para nombre
-      const pObj = players.find(p => p.uid === myPartnerUid);
-      if(pObj) myPartnerName = pObj.name;
-
       const currentCardData = pairChallenges.find(c => c.id === gameState.currentChallengeId);
       const isDirect = currentCardData?.type === 'direct';
-      
+      const pObj = players.find(p => p.uid === myPartnerUid);
+      if(pObj) myPartnerName = pObj.name;
       if(myAns && partnerAns) {
           if (isDirect) ynMatch = myAns === partnerAns;
           else ynMatch = myAns !== partnerAns;
       }
   }
 
+  // TITULO DE JUEGO (Y/N FIXED)
+  const gameTitle = gameState.mode === 'yn' ? 'MATCH/MISMATCH' : gameState.mode.toUpperCase();
+  const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
+
   return (
     <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900">
+      <PlayerHeader />
       <ScoreBoard />
       <div className="flex justify-between items-center mb-6 mt-4">
-        <div className="font-bold flex gap-2"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()}</div>
+        <div className="font-bold flex gap-2"><Zap className="text-yellow-400"/> {gameTitle}</div>
         <div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center">
-        {/* LA CARTA SE MUESTRA SIEMPRE, SALVO QUE HAYA TERMINADO LA RONDA DE VOTOS */}
-        {!allVoted && !allYNAnswered && (
-            <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 ${gameState?.mode==='question'?'border-indigo-500 bg-indigo-900/20':'border-pink-500 bg-pink-900/20'}`}>
-                <h3 className="text-2xl font-bold">{getCardText(card)}</h3>
+        {isRoundFinishedTOrD ? (
+             <div className="bg-slate-800 p-8 rounded-2xl text-center text-white text-xl font-bold animate-pulse border-2 border-slate-700">
+                Turn Finished<br/><span className="text-sm font-normal text-slate-400">Waiting for next turn...</span>
             </div>
-        )}
-
-        <div className="w-full max-w-md space-y-4">
-            
-            {/* TRUTH */}
-            {gameState?.mode==='question' && isMyTurn() && !playerAnswered && (
-                <>
-                    <div className="text-xl font-bold text-center mb-4 text-green-400 animate-pulse">YOUR TURN</div>
-                    <button onClick={()=>submitAnswer('answered')} className="w-full bg-purple-600 p-4 rounded-xl font-bold">Mark as Answered</button>
-                </>
-            )}
-            {gameState?.mode==='question' && isMyTurn() && playerAnswered && !allVoted && (
-                <div className="text-center text-xl font-bold text-yellow-400 animate-pulse">Waiting for votes...</div>
-            )}
-            {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
-                <div className="grid grid-cols-2 gap-4">
-                    <button onClick={()=>submitVote('like')} className="bg-green-600 p-4 rounded-xl flex justify-center"><ThumbsUp className="mr-2"/>Like</button>
-                    <button onClick={()=>submitVote('no like')} className="bg-red-600 p-4 rounded-xl flex justify-center"><ThumbsDown className="mr-2"/>No Like</button>
+        ) : (
+            <>
+                <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 ${gameState?.mode==='question'?'border-indigo-500 bg-indigo-900/20':'border-pink-500 bg-pink-900/20'}`}>
+                    <h3 className="text-2xl font-bold">{getCardText(card)}</h3>
                 </div>
-            )}
-            {gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && !allVoted && (
-                <div className="text-center text-slate-400">Waiting for results...</div>
-            )}
 
-            {/* DARE */}
-            {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
-                 <div className="grid grid-cols-2 gap-4">
-                    <button onClick={()=>submitVote('yes')} className="bg-green-600 p-4 rounded-xl">Passed</button>
-                    <button onClick={()=>submitVote('no')} className="bg-red-600 p-4 rounded-xl">Failed</button>
-                </div>
-            )}
-            {gameState?.mode==='dare' && isMyTurn() && !allVoted && (
-                <div className="text-center text-xl font-bold text-pink-400 animate-pulse">YOUR TURN: Do the Dare!</div>
-            )}
-            {gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || ''] && !allVoted && (
-                <div className="text-center text-slate-400">Waiting for results...</div>
-            )}
-
-            {/* Y/N */}
-            {gameState?.mode==='yn' && !playerAnswered && (
-                <div className="grid grid-cols-2 gap-4">
-                    <button onClick={()=>submitAnswer('yes')} className="bg-green-600 p-4 rounded-xl">YES</button>
-                    <button onClick={()=>submitAnswer('no')} className="bg-red-600 p-4 rounded-xl">NO</button>
-                </div>
-            )}
-            {gameState?.mode==='yn' && playerAnswered && !allYNAnswered && (
-                <div className="text-center text-slate-400">Waiting for results...</div>
-            )}
-            {gameState?.mode==='yn' && allYNAnswered && (
-                <div className="flex flex-col items-center justify-center p-6 bg-slate-800 rounded-xl border border-slate-600">
-                    <div className="mb-4 text-lg">Partner was: <span className="font-bold text-yellow-400">{myPartnerName}</span></div>
-                    {ynMatch === true ? (
-                        <>
-                            <Smile className="w-20 h-20 text-green-500 mb-2"/>
-                            <h3 className="text-3xl font-bold text-green-500">MATCH!</h3>
-                        </>
-                    ) : ynMatch === false ? (
-                        <>
-                            <Frown className="w-20 h-20 text-red-500 mb-2"/>
-                            <h3 className="text-3xl font-bold text-red-500">MISMATCH</h3>
-                        </>
-                    ) : (
-                        <div>Calculating...</div>
+                <div className="w-full max-w-md space-y-4">
+                    {/* INDICADOR DE TURNO GRANDE (Para los que esperan) */}
+                    {!isMyTurn() && gameState.mode !== 'yn' && (
+                        <div className="text-3xl font-black text-yellow-400 mb-6 text-center animate-pulse uppercase">
+                            {currentPlayerName()}'s TURN
+                        </div>
                     )}
-                    <div className="text-slate-400 mt-4 text-sm">Waiting for next round...</div>
-                </div>
-            )}
 
-            {/* MENSAJE DE ESPERA DE ADMIN (SOLO TRUTH/DARE) */}
-            {allVoted && gameState?.mode !== 'yn' && (
-                <div className="bg-slate-800 p-4 rounded-xl text-center text-slate-400 mt-4 border border-slate-600">
-                     <div className="text-xl font-bold text-white mb-2">Turn Finished</div>
-                    Waiting for next turn...
+                    {/* TRUTH */}
+                    {gameState?.mode==='question' && isMyTurn() && !playerAnswered && (
+                        <div className="text-xl font-bold text-center mb-4 text-green-400 animate-pulse">YOUR TURN<br/><span className="text-sm text-white">Answer aloud!</span></div>
+                    )}
+                    
+                    {/* VOTACIÓN TRUTH */}
+                    {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={()=>submitVote('like')} className="bg-green-600 p-4 rounded-xl flex justify-center"><ThumbsUp className="mr-2"/>Like</button>
+                            <button onClick={()=>submitVote('no like')} className="bg-red-600 p-4 rounded-xl flex justify-center"><ThumbsDown className="mr-2"/>No Like</button>
+                        </div>
+                    )}
+
+                    {/* DARE */}
+                    {gameState?.mode==='dare' && isMyTurn() && (
+                        <div className="text-center text-xl font-bold text-pink-400 animate-pulse">YOUR TURN: Do the Dare!</div>
+                    )}
+                    {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
+                         <div className="grid grid-cols-2 gap-4">
+                            <button onClick={()=>submitVote('yes')} className="bg-green-600 p-4 rounded-xl">Passed</button>
+                            <button onClick={()=>submitVote('no')} className="bg-red-600 p-4 rounded-xl">Failed</button>
+                        </div>
+                    )}
+
+                    {/* Y/N */}
+                    {gameState?.mode==='yn' && !playerAnswered && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={()=>submitAnswer('yes')} className="bg-green-600 p-4 rounded-xl">YES</button>
+                            <button onClick={()=>submitAnswer('no')} className="bg-red-600 p-4 rounded-xl">NO</button>
+                        </div>
+                    )}
+                    {gameState?.mode==='yn' && playerAnswered && !allYNAnswered && (
+                        <div className="text-center text-slate-400">Waiting for results...</div>
+                    )}
+                    {gameState?.mode==='yn' && allYNAnswered && (
+                        <div className="flex flex-col items-center justify-center p-6 bg-slate-800 rounded-xl border border-slate-600">
+                            <div className="mb-4 text-lg">Partner was: <span className="font-bold text-yellow-400">{myPartnerName}</span></div>
+                            {ynMatch === true ? (
+                                <>
+                                    <Smile className="w-20 h-20 text-green-500 mb-2"/>
+                                    <h3 className="text-3xl font-bold text-green-500">MATCH!</h3>
+                                </>
+                            ) : ynMatch === false ? (
+                                <>
+                                    <Frown className="w-20 h-20 text-red-500 mb-2"/>
+                                    <h3 className="text-3xl font-bold text-red-500">MISMATCH</h3>
+                                </>
+                            ) : (
+                                <div>Calculating...</div>
+                            )}
+                             <div className="text-slate-400 mt-4 text-sm">Waiting for next round...</div>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
+            </>
+        )}
       </div>
     </div>
   );
