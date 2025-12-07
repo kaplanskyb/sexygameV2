@@ -158,20 +158,19 @@ export default function TruthAndDareApp() {
     }
   }, [challenges, pairChallenges]);
 
-  // 4. AUTO-AVANCE (Solo Admin lo ejecuta)
+  // 4. AUTO-AVANCE RAPIDO (Solo Admin lo ejecuta)
   useEffect(() => {
     if (!isAdmin || !gameState || gameState.mode === 'yn' || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') return;
     
     const totalVotes = Object.keys(gameState.votes).length;
-    // Todos votan menos el turno actual
     const neededVotes = players.length - 1;
 
     if (totalVotes >= neededVotes) {
-        // Si no es el último turno, avanzar automáticamente
         if (gameState.currentTurnIndex < players.length - 1) {
+            // Esperar solo 2 segundos y pasar automáticamente
             const timer = setTimeout(() => {
                 nextTurn();
-            }, 4000); // Esperar 4 segundos para ver resultados y cambiar
+            }, 2000); 
             return () => clearTimeout(timer);
         }
     }
@@ -187,10 +186,16 @@ export default function TruthAndDareApp() {
     if (!gender || !code || !coupleNumber) return;
     if (code !== gameState?.code) { alert('Invalid code'); return; }
 
-    // VALIDACIÓN DE PAREJA
-    const existingPartner = players.find(p => p.coupleNumber === coupleNumber && p.gender === gender);
+    // --- VALIDACIÓN DE PAREJA CORREGIDA ---
+    // Busca si hay ALGUIEN MÁS (otro UID) ocupando ese lugar
+    const existingPartner = players.find(p => 
+        p.coupleNumber === coupleNumber && 
+        p.gender === gender && 
+        p.uid !== user.uid // ¡IMPORTANTE! Ignora si soy yo mismo corrigiendo mi dato
+    );
+
     if (existingPartner) {
-        alert(`Error: A ${gender} is already registered for Couple ID ${coupleNumber}.`);
+        alert(`Error: A ${gender} is already registered for Couple ID ${coupleNumber}. If you made a mistake, ask your partner to change genders or contact admin.`);
         return;
     }
 
@@ -407,6 +412,7 @@ export default function TruthAndDareApp() {
     reader.readAsText(file);
   };
   const handleUploadPairCsv = (e: React.ChangeEvent<HTMLInputElement>) => handleUploadCsv(e, 'pairChallenges');
+  
   const handleEndGame = async () => {
     if(confirm('End game?')) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'ended' });
   };
@@ -445,6 +451,7 @@ export default function TruthAndDareApp() {
   const isJoined = players.some(p => p.uid === user?.uid) || isAdmin;
   const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
   
+  // --- SCOREBOARD ---
   const ScoreBoard = () => (
       <div className="w-full bg-slate-800 p-2 mb-4 rounded-lg flex flex-wrap gap-2 max-h-32 overflow-y-auto border border-slate-700">
           <div className="w-full text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider flex justify-between">
@@ -469,7 +476,7 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-2">SEXY GAME v7</h1>
+          <h1 className="text-3xl font-bold mb-2">SEXY GAME v8</h1>
           <p className="text-slate-400 mb-4 text-sm">Official Fixed Version</p>
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white">
@@ -483,7 +490,7 @@ export default function TruthAndDareApp() {
     );
   }
 
-  // ADMIN
+  // --- ADMIN VIEW ---
   if (isAdmin) {
     if (!gameState || gameState?.mode === 'lobby') {
         return (
