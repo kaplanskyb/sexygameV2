@@ -110,7 +110,7 @@ const HelpModal = ({ onClose }: { onClose: () => void }) => (
             <h3 className="text-lg font-bold text-white mb-2">⚙️ Admin Setup</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Upload Excel:</strong> Upload your question database via CSV.
-                <br/><code className="text-xs bg-slate-900 p-1">Truth/Dare: text, level, type (T/D), sexo</code>
+                <br/><code className="text-xs bg-slate-900 p-1">Truth/Dare: text, level, type (T/D), sexo (F/B)</code>
                 <br/><code className="text-xs bg-slate-900 p-1">Match/Mismatch: male, female, level</code>
               </li>
               <li><strong>Game Code:</strong> A unique code (e.g., "A1B2") for players to sync their devices.</li>
@@ -130,9 +130,9 @@ const HelpModal = ({ onClose }: { onClose: () => void }) => (
           </section>
 
           <section>
-            <h3 className="text-lg font-bold text-white mb-2">⚠️ Reset vs Kick</h3>
-            <p><strong>Kick Player:</strong> Use the Trash icon in the Scoreboard to remove a single player.</p>
-            <p className="text-red-400"><strong>Full Reset:</strong> The RESET button wipes ALL players and scores. Use only when starting a new party.</p>
+            <h3 className="text-lg font-bold text-white mb-2">⚠️ Reset Player vs Reset All</h3>
+            <p><strong>Reset Player:</strong> Use the Trash icon in the Scoreboard to remove/reset a single player.</p>
+            <p className="text-red-400"><strong>Reset All:</strong> The RESET button wipes ALL players and scores. Use only when starting a new party.</p>
           </section>
         </div>
         
@@ -318,7 +318,8 @@ export default function TruthAndDareApp() {
   };
 
   const handleKickPlayer = async (uid: string, name: string) => {
-      if(confirm(`Are you sure you want to kick ${name}?`)) {
+      // MODIFICACIÓN: Texto cambiado a "Reset player"
+      if(confirm(`Reset player ${name}?`)) {
           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid));
       }
   };
@@ -420,6 +421,7 @@ export default function TruthAndDareApp() {
     return pairs;
   };
 
+  // MODIFICACIÓN: `startRound` ahora pasa el género del primer jugador
   const startRound = async () => {
     let sequence: string[] = [];
     if (isAutoSetup) {
@@ -431,7 +433,10 @@ export default function TruthAndDareApp() {
     let initialMode = isAutoSetup && sequence.length > 0 ? sequence[0] : (selectedType === 'yn' ? 'yn' : selectedType === 'truth' ? 'question' : 'dare');
     let typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
 
-    const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel);
+    // Obtener género del primer jugador para filtrar preguntas
+    const firstPlayerGender = players.length > 0 ? players[0].gender : 'male';
+    const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel, firstPlayerGender);
+    
     if (!nextChallenge) { showError('No challenges found for this selection.'); return; }
 
     let initialAnswers: Record<string, string> = {};
@@ -470,7 +475,8 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote });
   };
 
-  const findNextAvailableChallenge = async (type: string, startLevel: string) => {
+  // MODIFICACIÓN: Agregado `playerGender` para filtrar F vs M
+  const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => {
       let currentLvl = parseInt(startLevel);
       let found = null;
       let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges';
@@ -483,7 +489,29 @@ export default function TruthAndDareApp() {
              q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false));
           }
           const snapshot = await getDocs(q);
-          const validDocs = snapshot.docs.filter(d => !d.data().paused);
+          let validDocs = snapshot.docs.filter(d => !d.data().paused);
+
+          // LOGICA DE FILTRO DE GÉNERO
+          if (type !== 'YN') {
+             validDocs = validDocs.filter(d => {
+                 const data = d.data();
+                 const qSex = (data.sexo || 'B').toUpperCase();
+                 // B = Both (Everyone)
+                 // F = Female only
+                 // M = Male only (si existe)
+                 
+                 if (qSex === 'B') return true; 
+
+                 if (playerGender === 'male') {
+                     // Si soy Hombre, NO quiero preguntas marcadas como Female ('F')
+                     return qSex !== 'F';
+                 } else {
+                     // Si soy Mujer, NO quiero preguntas marcadas como Male ('M')
+                     return qSex !== 'M';
+                 }
+             });
+          }
+
           if (validDocs.length > 0) {
               found = validDocs[Math.floor(Math.random() * validDocs.length)];
               break;
@@ -500,7 +528,7 @@ export default function TruthAndDareApp() {
     const points = { ...(gameState.points || {}) };
     const batch = writeBatch(db); 
      
-    // 1. SUMAR PUNTOS Y ESTADISTICAS
+    // 1. SUMAR PUNTOS
     if (gameState.mode === 'question') { 
       const currentUid = players[gameState.currentTurnIndex]?.uid;
       const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
@@ -565,7 +593,11 @@ export default function TruthAndDareApp() {
             updates.answers = {};
             updates.votes = {};
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
-            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
+            
+            // MODIFICACIÓN: Pasamos el género del SIGUIENTE jugador
+            const nextPlayerGender = players[nextIdx].gender;
+            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
+            
             if (nextChallenge) {
                 updates.currentChallengeId = nextChallenge.id;
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
@@ -589,7 +621,10 @@ export default function TruthAndDareApp() {
             if(mode === 'truth') mode = 'question'; 
 
             let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
-            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
+            
+            // Si empieza nueva ronda, usualmente es el primer jugador (Index 0).
+            const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
+            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
             
             if (nextChallenge) {
                 updates.mode = mode;
@@ -847,7 +882,7 @@ export default function TruthAndDareApp() {
                     <button 
                         onClick={(e) => { e.stopPropagation(); handleKickPlayer(p.uid, p.name); }}
                         className="ml-2 text-red-500 hover:text-red-300"
-                        title="Kick Player"
+                        title="Reset Player"
                     >
                         <Trash2 size={12}/>
                     </button>
@@ -976,7 +1011,7 @@ export default function TruthAndDareApp() {
                 {players.map(p=>(
                     <div key={p.uid} className={`flex justify-between items-center py-1 ${p.isBot?'text-purple-400':''}`}>
                         <span>{p.name} {p.isBot && '(Bot)'}</span>
-                        <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500 hover:text-red-300"><UserX size={16}/></button>
+                        <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500 hover:text-red-300" title="Reset Player"><UserX size={16}/></button>
                     </div>
                 ))}
               </div>
