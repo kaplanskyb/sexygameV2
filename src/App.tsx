@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw
+  MessageCircle, RefreshCw, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -79,7 +79,7 @@ interface GameState {
   isAutoMode?: boolean;
   sequence?: string[]; 
   sequenceIndex?: number;
-  matchHistory?: HistoryEntry[]; // Nuevo campo para guardar historial detallado
+  matchHistory?: HistoryEntry[];
 }
 
 export default function TruthAndDareApp() {
@@ -167,10 +167,11 @@ export default function TruthAndDareApp() {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
-        // Sincronizar el nivel seleccionado local con el del juego si estamos en modo auto
         if (data.isAutoMode && data.roundLevel && data.roundLevel !== selectedLevel) {
            setSelectedLevel(data.roundLevel);
         }
+        // Sincronizar el setup local con el estado del juego si cambia externamente
+        if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
       } else {
         setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
       }
@@ -264,10 +265,27 @@ export default function TruthAndDareApp() {
 
   const updateAutoLevel = async (newLvl: string) => {
     setSelectedLevel(newLvl);
-    // Si estamos en juego y modo auto, actualizamos el estado global para que la siguiente carta tome este nivel
     if (gameState?.isAutoMode) {
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl });
     }
+  };
+
+  // Función para cambiar modo Manual/Auto en cualquier momento
+  const toggleAutoMode = async () => {
+     const newMode = !gameState?.isAutoMode;
+     let updates: any = { isAutoMode: newMode };
+     
+     // Si activamos Auto y no hay secuencia, creamos una por defecto
+     if (newMode && (!gameState?.sequence || gameState.sequence.length === 0)) {
+         let sequence: string[] = [];
+         for(let i=0; i<qtyTruth; i++) sequence.push('question');
+         for(let i=0; i<qtyDare; i++) sequence.push('dare');
+         for(let i=0; i<qtyMM; i++) sequence.push('yn');
+         updates.sequence = sequence;
+         updates.sequenceIndex = 0;
+     }
+
+     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
   };
 
   const startGame = async () => {
@@ -406,7 +424,7 @@ export default function TruthAndDareApp() {
       if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
     } else if (gameState.mode === 'yn') {
       const processed = new Set();
-      const currentHistory = [...(gameState.matchHistory || [])]; // Copiar historial actual
+      const currentHistory = [...(gameState.matchHistory || [])]; 
       
       Object.keys(gameState.pairs || {}).forEach(uid1 => {
         if (processed.has(uid1)) return;
@@ -424,7 +442,6 @@ export default function TruthAndDareApp() {
               points[uid1] = (points[uid1] || 0) + 1;
               points[uid2] = (points[uid2] || 0) + 1;
             }
-            // Add to history
             if (p1 && p2) {
                 currentHistory.push({
                     u1: uid1, u2: uid2, 
@@ -453,23 +470,20 @@ export default function TruthAndDareApp() {
     if (gameState.mode === 'yn') {
         roundFinished = true;
     } else {
-        // Truth/Dare
         let nextIdx = gameState.currentTurnIndex + 1;
         while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; }
 
         if (nextIdx < players.length) {
-            // Siguiente jugador de la misma ronda
             updates.currentTurnIndex = nextIdx;
             updates.answers = {};
             updates.votes = {};
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
-            // Usamos el nivel definido en gameState (que puede haber cambiado si es auto)
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
             if (nextChallenge) {
                 updates.currentChallengeId = nextChallenge.id;
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
             } else {
-                roundFinished = true; // No hay más preguntas
+                roundFinished = true;
             }
         } else {
             roundFinished = true;
@@ -478,10 +492,7 @@ export default function TruthAndDareApp() {
 
     if (roundFinished) {
         if (gameState.isAutoMode && gameState.sequence) {
-            // AUTO MODE
             let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
-            
-            // Loop infinito: Si llega al final, vuelve a 0
             if (nextSeqIdx >= gameState.sequence.length) {
                 nextSeqIdx = 0; 
             }
@@ -491,7 +502,6 @@ export default function TruthAndDareApp() {
             if(mode === 'truth') mode = 'question'; 
 
             let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
-            // Aquí la CLAVE: Usamos gameState.roundLevel que se puede actualizar en vivo
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1');
             
             if (nextChallenge) {
@@ -510,7 +520,6 @@ export default function TruthAndDareApp() {
                 const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
             } else {
-                // Si no hay preguntas, detenemos
                 updates.mode = 'admin_setup'; 
             }
         } else {
@@ -685,40 +694,58 @@ export default function TruthAndDareApp() {
       </div>
   ) : null;
 
-  // NUEVO COMPONENTE: HISTORIAL SOLO DEL USUARIO
+  // NUEVO COMPONENTE: HISTORIAL AGRUPADO
   const MyMatchHistory = () => {
-      // Filtrar historial donde participe el usuario (u1 o u2)
-      const history = (gameState?.matchHistory || [])
-         .filter(h => h.u1 === user?.uid || h.u2 === user?.uid)
-         .reverse(); // Mostrar lo más reciente primero
+      const myUid = user?.uid;
+      const history = gameState?.matchHistory || [];
+      
+      // Objeto para acumular estadísticas por pareja
+      const stats: Record<string, {name: string, m: number, um: number}> = {};
 
-      if (history.length === 0) return null;
+      history.forEach(h => {
+          // Filtrar si no soy yo ni u1 ni u2
+          if (h.u1 !== myUid && h.u2 !== myUid) return;
+
+          // Determinar quién es la otra persona
+          const isU1 = h.u1 === myUid;
+          const partnerName = isU1 ? h.name2 : h.name1;
+          const partnerUid = isU1 ? h.u2 : h.u1;
+
+          // Inicializar si no existe
+          if (!stats[partnerUid]) {
+              stats[partnerUid] = { name: partnerName, m: 0, um: 0 };
+          }
+
+          // Sumar resultado
+          if (h.result === 'match') {
+              stats[partnerUid].m += 1;
+          } else {
+              stats[partnerUid].um += 1;
+          }
+      });
+
+      // Si no hay datos, no mostrar nada
+      if (Object.keys(stats).length === 0) return null;
 
       return (
-          <div className="w-full bg-slate-800 p-2 mt-4 rounded-lg max-h-32 overflow-y-auto border border-slate-700">
-              <div className="text-xs text-slate-400 mb-1 uppercase font-bold text-center">My History</div>
+          <div className="w-full bg-slate-800 p-2 mt-4 rounded-lg max-h-40 overflow-y-auto border border-slate-700">
+              <div className="text-xs text-slate-400 mb-1 uppercase font-bold text-center">My Interactions</div>
               <table className="w-full text-xs">
                 <thead>
                     <tr className="border-b border-slate-600 text-slate-400">
-                        <th className="text-left py-1">With</th>
-                        <th className="text-right py-1">Result</th>
+                        <th className="text-left py-1">Name</th>
+                        <th className="text-center py-1 text-green-400">Match</th>
+                        <th className="text-center py-1 text-red-400">Unmatch</th>
                     </tr>
                 </thead>
                 <tbody>
-                  {history.map((h, idx) => {
-                      // Determinar quién fue el partner
-                      const isMeU1 = h.u1 === user?.uid;
-                      const partnerName = isMeU1 ? h.name2 : h.name1;
-                      const isMatch = h.result === 'match';
-                      return (
-                          <tr key={idx} className="border-b border-slate-700/50">
-                              <td className="py-1">{partnerName}</td>
-                              <td className={`py-1 text-right font-bold ${isMatch ? 'text-green-400' : 'text-red-400'}`}>
-                                  {isMatch ? 'MATCH' : 'UNMATCH'}
-                              </td>
-                          </tr>
-                      );
-                  })}
+                  {Object.values(stats).map((s, idx) => (
+                      <tr key={idx} className="border-b border-slate-700/50">
+                          <td className="py-1 font-bold">{s.name}</td>
+                          <td className="py-1 text-center font-bold text-green-400">{s.m}</td>
+                          <td className="py-1 text-center font-bold text-red-400">{s.um}</td>
+                      </tr>
+                  ))}
                 </tbody>
               </table>
           </div>
@@ -916,19 +943,28 @@ export default function TruthAndDareApp() {
         <ScoreBoard />
         <div className="flex justify-between items-center mb-6 mt-4"><div className="flex gap-2 font-bold text-lg"><Zap className="text-yellow-400"/> {gameState?.mode?.toUpperCase()} (Admin)</div><div className="text-sm text-slate-400">Turn: {currentPlayerName()}</div></div>
         
-        {/* SELECTOR DE NIVEL EN VIVO PARA MODO AUTO */}
-        {gameState?.isAutoMode && (
-             <div className="w-full max-w-md bg-slate-800 p-2 rounded mb-4 border border-slate-600 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-bold uppercase ml-2">Change Auto Level:</span>
-                <select 
-                    value={selectedLevel} 
-                    onChange={e=>updateAutoLevel(e.target.value)} 
-                    className="bg-slate-900 border border-slate-700 rounded p-1 text-white text-sm"
-                >
-                    {uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}
-                </select>
+        {/* CONTROLES EN VIVO: AUTO/MANUAL Y NIVEL */}
+        <div className="w-full max-w-md bg-slate-800 p-2 rounded mb-4 border border-slate-600 flex flex-col gap-2">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                 <span className="text-xs text-slate-400 font-bold uppercase ml-2 flex items-center gap-2">
+                    {gameState?.isAutoMode ? <ToggleRight className="text-green-400"/> : <ToggleLeft className="text-slate-400"/>}
+                    {gameState?.isAutoMode ? 'Auto Mode' : 'Manual Mode'}
+                 </span>
+                 <button onClick={toggleAutoMode} className="bg-slate-700 px-3 py-1 rounded text-xs hover:bg-slate-600 transition">Switch</button>
             </div>
-        )}
+            {gameState?.isAutoMode && (
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-bold uppercase ml-2">Auto Level:</span>
+                    <select 
+                        value={selectedLevel} 
+                        onChange={e=>updateAutoLevel(e.target.value)} 
+                        className="bg-slate-900 border border-slate-700 rounded p-1 text-white text-sm"
+                    >
+                        {uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}
+                    </select>
+                </div>
+            )}
+        </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
