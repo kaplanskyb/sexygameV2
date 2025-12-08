@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User, LogOut, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -36,6 +36,7 @@ interface Player {
   name: string;
   gender: string;
   coupleNumber: string;
+  relationshipStatus: 'single' | 'couple'; // NUEVO CAMPO
   joinedAt: any;
   isActive: boolean;
   isBot?: boolean;
@@ -48,7 +49,7 @@ interface Challenge {
   level: string;
   type: string;
   text?: string;
-  gender?: string; // Cambiado de 'sexo' a 'gender'
+  gender?: string;
   male?: string;
   female?: string;
   answered: boolean;
@@ -75,7 +76,6 @@ interface GameState {
   currentChallengeId?: string;
   pairs?: Record<string, string>;
   roundLevel?: string;
-  // Auto Mode Fields
   isAutoMode?: boolean;
   sequence?: string[]; 
   sequenceIndex?: number;
@@ -83,133 +83,188 @@ interface GameState {
   nextType?: string; 
 }
 
-// --- COMPONENTES DE AYUDA (ADMIN VS PLAYER) ---
+// --- COMPONENTES DE AYUDA ---
 
-const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => (
-  <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-    <div className="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in slide-in-from-bottom-4" onClick={e => e.stopPropagation()}>
-      <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-        <X size={24} />
-      </button>
-      
-      <div className="p-8">
-        <h2 className="text-3xl font-bold mb-8 text-yellow-500 flex items-center gap-3 border-b border-slate-700 pb-4">
-          {type === 'admin' ? <BookOpen size={32}/> : <HelpCircle size={32}/>}
-          {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
-        </h2>
+const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
-        <div className="space-y-8 text-slate-300">
-          
-          {/* --- MANUAL DE ADMIN --- */}
-          {type === 'admin' && (
-            <>
-              <section>
-                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Concept</h3>
-                <p className="mb-2 leading-relaxed">
-                  **Sexy Game** is a high-energy social game designed to test boundaries, honesty, and compatibility. As the Admin, you control the flow. The game revolves around earning points by completing challenges or matching answers with a partner.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <strong className="text-blue-400 block mb-2 text-lg">1. Truth</strong>
-                      <p className="text-sm">The player must answer a question honestly. Other players vote "Good Answer" or "Punish".</p>
-                      <em className="text-xs text-slate-500 block mt-2">Example: "What is your biggest sexual regret?"</em>
-                   </div>
-                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <strong className="text-pink-400 block mb-2 text-lg">2. Dare</strong>
-                      <p className="text-sm">Physical or social actions. The player must perform it to get points.</p>
-                      <em className="text-xs text-slate-500 block mt-2">Example: "Let the person to your right check your browser history."</em>
-                   </div>
-                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <strong className="text-green-400 block mb-2 text-lg">3. Match/Mismatch</strong>
-                      <p className="text-sm">The system pairs two people (secretly). A question appears (e.g., "Would you kiss?"). Both answer YES/NO secretly. If they match, they score!</p>
-                   </div>
-                </div>
-              </section>
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
 
-              <section>
-                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Technical Setup</h3>
-                <ul className="list-disc pl-5 space-y-2 text-sm">
-                  <li><strong>Uploading Questions:</strong> You must upload CSV files.
-                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Truth/Dare Header: text, level, type, gender</code> (Note: 'type' must be T or D. 'gender' must be F, M or B).
-                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Match Header: male, female, level</code> (Male question column and Female question column).
-                  </li>
-                  <li><strong>Game Code:</strong> Set a simple code (e.g., "PARTY") and tell players to enter it. This links everyone to your screen.</li>
-                  <li><strong>Bot System:</strong> If you have an odd number of players (e.g., 7), the system automatically adds a Bot (like "Brad Pitt") to ensure everyone has a partner during Match/Mismatch rounds.</li>
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Managing the Game</h3>
-                <p className="mb-2"><strong>Risk Levels (1-4):</strong> Use this to control the "heat". Start with Level 1 (Icebreakers) and move to Level 4 (Extreme) as the night progresses.</p>
-                <p className="mb-2"><strong>Auto vs. Manual:</strong>
-                    <br/>- <em>Manual:</em> You pick "Next is Truth, Level 3". Best for control.
-                    <br/>- <em>Auto:</em> You define a loop (e.g., 2 Truths, 1 Match). The game runs itself.
-                </p>
-                <div className="bg-red-900/20 p-4 rounded border border-red-500/50 mt-4">
-                    <strong className="text-red-400">⚠️ Reset vs Kick Player</strong>
-                    <ul className="list-disc pl-5 mt-1 text-sm">
-                        <li><strong>Kick (Trash Icon in Scoreboard):</strong> Removes ONE player. Use this if someone leaves early.</li>
-                        <li><strong>RESET ALL (Bottom Button):</strong> Wipes EVERYTHING (Score, Players, History). Only use this when starting a completely new game with new people.</li>
-                    </ul>
-                </div>
-              </section>
-            </>
-          )}
-
-          {/* --- MANUAL DE JUGADOR --- */}
-          {type === 'player' && (
-            <>
-               <section>
-                <h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3>
-                <ol className="list-decimal pl-5 space-y-3">
-                    <li><strong>Name:</strong> Enter your nickname.</li>
-                    <li><strong>Gender:</strong> Select Male or Female (this affects which questions you get).</li>
-                    <li><strong>Couple Number:</strong> If you are playing with a partner, use this number to link your devices so the system knows you are a couple (e.g. use the same 4 digits). If you are single, just put any random number.</li>
-                    <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
-                </ol>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
-                <div className="space-y-4">
-                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-blue-500">
-                        <strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong>
-                        <p className="text-sm">If it's your turn, a question will appear. Read it aloud! Answer it honestly. The group will vote if your answer was good enough.</p>
-                    </div>
-                    
-                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-pink-500">
-                        <strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong>
-                        <p className="text-sm">A challenge will appear. You must perform the action to earn points.</p>
-                    </div>
-
-                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-green-500">
-                        <strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong>
-                        <p className="text-sm mb-2">The system will pair you with someone random. A question will appear on your screen.</p>
-                        <p className="text-sm italic text-slate-400 mb-2">Example: "I prefer lights off."</p>
-                        <p className="text-sm">Answer <strong>YES</strong> or <strong>NO</strong> honestly. You only get points if your answer <strong>MATCHES</strong> your partner's answer!</p>
-                    </div>
-                </div>
-              </section>
-            </>
-          )}
-
-        </div>
+  return (
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in slide-in-from-bottom-4" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <X size={24} />
+        </button>
         
-        <div className="mt-8 text-center border-t border-slate-700 pt-6">
-          <button onClick={onClose} className="bg-blue-600 px-8 py-3 rounded-xl font-bold text-white hover:bg-blue-500 shadow-lg transition-transform active:scale-95">
-            Close Manual
-          </button>
+        <div className="p-8">
+          <h2 className="text-3xl font-bold mb-8 text-yellow-500 flex items-center gap-3 border-b border-slate-700 pb-4">
+            {type === 'admin' ? <BookOpen size={32}/> : <HelpCircle size={32}/>}
+            {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
+          </h2>
+
+          <div className="space-y-8 text-slate-300">
+            
+            {/* --- MANUAL DE ADMIN --- */}
+            {type === 'admin' && (
+              <>
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Modes (Click to expand)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     {/* TRUTH BOX */}
+                     <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400 ring-2 ring-blue-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('truth')}
+                     >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-blue-400 text-lg">1. Truth</strong>
+                            {expandedSection === 'truth' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
+                        {expandedSection === 'truth' && (
+                            <div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. They must read it to the group and answer honestly.</p>
+                                <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Punish" on their phones.</p>
+                                <em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em>
+                            </div>
+                        )}
+                     </div>
+
+                     {/* DARE BOX */}
+                     <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400 ring-2 ring-pink-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('dare')}
+                     >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-pink-400 text-lg">2. Dare</strong>
+                            {expandedSection === 'dare' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Physical actions. Do it or drink.</p>
+                        {expandedSection === 'dare' && (
+                            <div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p>
+                                <p className="mb-2"><strong>Voting:</strong> The group acts as the judge. They vote "Completed" or "Failed".</p>
+                                <em className="text-pink-300">Example: "Let the person to your right read your last DM."</em>
+                            </div>
+                        )}
+                     </div>
+
+                     {/* MATCH BOX */}
+                     <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400 ring-2 ring-green-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('match')}
+                     >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-green-400 text-lg">3. Match/Mismatch</strong>
+                            {expandedSection === 'match' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Compatibility test. 2 players answer blindly.</p>
+                        {expandedSection === 'match' && (
+                            <div className="mt-4 text-sm text-white border-t border-green-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> The system secretly pairs two people (e.g., John & Sarah). A statement appears (e.g., "I prefer lights off").</p>
+                                <p className="mb-2"><strong>The Goal:</strong> Both answer YES or NO secretly on their phones. If they <strong>MATCH</strong> (both Yes or both No), they get points. If they mismatch, they drink.</p>
+                            </div>
+                        )}
+                     </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control (Read Carefully)</h3>
+                  <div className="space-y-4">
+                      <div className="bg-slate-900 p-5 rounded-xl border-l-4 border-purple-500">
+                          <h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4>
+                          <p className="text-sm mb-2">In this mode, <strong>YOU control everything</strong>. Before every single turn, you must select:</p>
+                          <ul className="list-disc pl-5 text-sm space-y-1">
+                              <li><strong>Risk Level:</strong> How intense should the next question be?</li>
+                              <li><strong>Game Type:</strong> Do you want a Truth, a Dare, or a Match round next?</li>
+                          </ul>
+                          <p className="text-sm mt-2 italic text-slate-400">Use this when you want to read the room's vibe and adjust specifically.</p>
+                      </div>
+
+                      <div className="bg-slate-900 p-5 rounded-xl border-l-4 border-green-500">
+                          <h4 className="text-green-400 font-bold text-lg mb-2">MODE B: AUTOMATIC (Autopilot)</h4>
+                          <p className="text-sm mb-2">You set a "Loop Configuration" (e.g., 2 Truths, 2 Dares, 1 Match) and the game runs itself in that order endlessly.</p>
+                          <p className="text-sm">You simply click "Next" (or let the timer do it) and the system automatically picks the type based on your sequence.</p>
+                          <p className="text-sm mt-2 italic text-slate-400">Perfect for when you want to play along and not worry about managing the game.</p>
+                      </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Admin Tools</h3>
+                  <ul className="list-disc pl-5 space-y-2 text-sm">
+                    <li><strong>Uploads:</strong> CSV files require headers: <code>text, level, type, gender</code> (T/D, F/M/B) for Standard, and <code>male, female, level</code> for Match.</li>
+                    <li><strong>Singles vs Couples:</strong> The game detects if players are Single or Couples. If Couples join, the game <strong>will not start</strong> until both partners (matching ID) are present.</li>
+                    <li><strong>Bot System:</strong> If total players are odd, "Brad Pitt" joins to ensure everyone has a partner in Match rounds.</li>
+                  </ul>
+                </section>
+              </>
+            )}
+
+            {/* --- MANUAL DE JUGADOR --- */}
+            {type === 'player' && (
+              <>
+                 <section>
+                  <h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3>
+                  <ol className="list-decimal pl-5 space-y-3">
+                      <li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li>
+                      <li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li>
+                      <li><strong>Male's Last 4 Digits:</strong> 
+                          <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm">
+                              <li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li>
+                              <li>If you are <strong>Single</strong>: Just enter any random 4 digits (e.g. 1234).</li>
+                          </ul>
+                      </li>
+                      <li><strong>Game Code:</strong> Ask the Admin for the code.</li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
+                  <div className="space-y-4">
+                      <div className="bg-slate-900 p-4 rounded-lg">
+                          <strong className="text-blue-400 text-lg block mb-2">Truth & Dare Rounds</strong>
+                          <p className="text-sm">When your name appears on the big screen, look at your phone!</p>
+                          <ul className="list-disc pl-5 mt-1 text-sm text-slate-300">
+                              <li><strong>Truth:</strong> Read the question aloud and answer it.</li>
+                              <li><strong>Dare:</strong> Perform the action described.</li>
+                          </ul>
+                          <p className="text-xs mt-2 text-slate-500">The group will vote if you pass or fail.</p>
+                      </div>
+
+                      <div className="bg-slate-900 p-4 rounded-lg">
+                          <strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong>
+                          <p className="text-sm mb-2">The system will secretly pair you with another player. A statement will appear on your screen.</p>
+                          <p className="text-sm italic text-yellow-400 mb-2 font-mono bg-black/30 p-2 rounded text-center">"I prefer lights off"</p>
+                          <p className="text-sm">You must answer <strong>YES</strong> or <strong>NO</strong> honestly. You only score points if your answer <strong>MATCHES</strong> your partner's answer!</p>
+                      </div>
+                  </div>
+                </section>
+              </>
+            )}
+
+          </div>
+          
+          <div className="mt-8 text-center border-t border-slate-700 pt-6">
+            <button onClick={onClose} className="bg-blue-600 px-8 py-3 rounded-xl font-bold text-white hover:bg-blue-500 shadow-lg transition-transform active:scale-95">
+              Got it
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function TruthAndDareApp() {
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('');
-  const [gender, setGender] = useState('male');
+  const [gender, setGender] = useState(''); // Default empty to force selection
   const [coupleNumber, setCoupleNumber] = useState('');
+  const [relationshipStatus, setRelationshipStatus] = useState<'single'|'couple'>('single');
   const [code, setCode] = useState('');
     
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -242,7 +297,7 @@ export default function TruthAndDareApp() {
   const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const selectionMode = useRef<'add' | 'remove'>('add');
-  const [searchTerm, setSearchTerm] = useState(''); // SEARCH STATE
+  const [searchTerm, setSearchTerm] = useState(''); 
     
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
@@ -257,10 +312,10 @@ export default function TruthAndDareApp() {
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
     switch (level) {
-      case '4': return 'border-red-600 bg-red-950/40 shadow-[0_0_30px_rgba(220,38,38,0.3)]'; // Extremo
-      case '3': return 'border-orange-500 bg-orange-950/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]'; // Picante
-      case '2': return 'border-yellow-500 bg-yellow-950/40'; // Intermedio
-      case '1': return 'border-green-500 bg-green-950/40'; // Suave
+      case '4': return 'border-red-600 bg-red-950/40 shadow-[0_0_30px_rgba(220,38,38,0.3)]'; 
+      case '3': return 'border-orange-500 bg-orange-950/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]'; 
+      case '2': return 'border-yellow-500 bg-yellow-950/40'; 
+      case '1': return 'border-green-500 bg-green-950/40'; 
       default: return 'border-slate-600 bg-slate-800';
     }
   };
@@ -299,14 +354,9 @@ export default function TruthAndDareApp() {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
-        
-        // Sincronizar Setup Local con Global
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
-        
-        // Sincronizar selectores si vienen del estado global
         if (data.roundLevel && data.roundLevel !== selectedLevel) setSelectedLevel(data.roundLevel);
         if (data.nextType && data.nextType !== selectedType) setSelectedType(data.nextType);
-
       } else {
         setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
       }
@@ -388,15 +438,41 @@ export default function TruthAndDareApp() {
       }
   };
 
+  const handleSelfLeave = async () => {
+      if (!user) return;
+      if (confirm("Are you sure you want to leave and reset?")) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid));
+          // UI will auto-update to login screen because user doc is gone
+      }
+  };
+
+  const checkCouplesCompleteness = () => {
+      const couples = players.filter(p => p.relationshipStatus === 'couple');
+      const counts: Record<string, number> = {};
+      couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1);
+      
+      const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2);
+      return { 
+          valid: incompleteIds.length === 0, 
+          incompleteIds 
+      };
+  };
+
   // --- GAME LOGIC ---
 
   const joinGame = async () => {
     if (!userName.trim() || !user) return;
+    if (!gender) { showError("Please select a gender."); return; }
+    
     localStorage.setItem('td_username', userName);
     if (userName.toLowerCase() === 'admin') { setIsAdmin(true); return; }
-    if (!gender || !code || !coupleNumber) return;
-    if (code !== gameState?.code) { showError('Invalid code'); return; }
+    
+    if (!code || !coupleNumber) return;
+    
+    // Case Insensitive Code Check
+    if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { showError('Invalid code'); return; }
 
+    // Check duplicate logic
     const existingPartner = players.find(p => p.coupleNumber === coupleNumber && p.gender === gender && p.uid !== user.uid);
     if (existingPartner) {
         if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${coupleNumber} (${gender}). Do you want to RESET this slot and join?`)) {
@@ -407,13 +483,14 @@ export default function TruthAndDareApp() {
     }
 
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
-      uid: user.uid, name: userName, gender, coupleNumber, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0
+      uid: user.uid, name: userName, gender, coupleNumber, relationshipStatus, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0
     });
   };
 
   const setGameCode = async () => {
     if (!code.trim()) return;
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code });
+    // Save as Uppercase
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code.trim().toUpperCase() });
   };
 
   const updateGlobalLevel = async (newLvl: string) => {
@@ -447,6 +524,12 @@ export default function TruthAndDareApp() {
         return;
     }
 
+    const { valid, incompleteIds } = checkCouplesCompleteness();
+    if (!valid) {
+        showError(`Cannot start! Couple IDs incomplete: ${incompleteIds.join(', ')}`);
+        return;
+    }
+
     const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length % 2 !== 0) {
         const males = realPlayers.filter(p => p.gender === 'male').length;
@@ -457,7 +540,7 @@ export default function TruthAndDareApp() {
         
         const botUid = 'bot_' + Date.now();
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), {
-            uid: botUid, name: botName, gender: botGender, coupleNumber: '999', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0
+            uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0
         });
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
@@ -467,15 +550,33 @@ export default function TruthAndDareApp() {
 
   const computePairs = () => {
     const pairs: Record<string, string> = {}; 
-    const males = players.filter(p => p.gender === 'male');
-    const females = players.filter(p => p.gender === 'female');
+    const assigned = new Set<string>();
+
+    // 1. Prioritize Real Couples
+    const realCouples = players.filter(p => p.relationshipStatus === 'couple');
+    realCouples.forEach(p1 => {
+        if (assigned.has(p1.uid)) return;
+        const p2 = realCouples.find(p => p.coupleNumber === p1.coupleNumber && p.uid !== p1.uid);
+        if (p2 && !assigned.has(p2.uid)) {
+            pairs[p1.uid] = p2.uid;
+            pairs[p2.uid] = p1.uid;
+            assigned.add(p1.uid);
+            assigned.add(p2.uid);
+        }
+    });
+
+    // 2. Randomize the rest
+    const remaining = players.filter(p => !assigned.has(p.uid));
+    const males = remaining.filter(p => p.gender === 'male');
+    const females = remaining.filter(p => p.gender === 'female');
+    
+    // Simple mixing strategy for remaining
     const shuffledMales = [...males].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
     const assignedFemales = new Set<string>();
 
     shuffledMales.forEach(male => {
-        let partner = shuffledFemales.find(f => !assignedFemales.has(f.uid) && f.coupleNumber !== male.coupleNumber);
-        if (!partner) partner = shuffledFemales.find(f => !assignedFemales.has(f.uid));
+        let partner = shuffledFemales.find(f => !assignedFemales.has(f.uid));
         if (partner) {
             pairs[male.uid] = partner.uid;
             pairs[partner.uid] = male.uid;
@@ -537,7 +638,6 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote });
   };
 
-  // GENERO LOGIC: filtramos segun playerGender y usamos la propiedad 'gender'
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => {
       let currentLvl = parseInt(startLevel);
       let found = null;
@@ -553,17 +653,15 @@ export default function TruthAndDareApp() {
           const snapshot = await getDocs(q);
           let validDocs = snapshot.docs.filter(d => !d.data().paused);
 
-          // LOGICA DE FILTRO DE GÉNERO
           if (type !== 'YN') {
              validDocs = validDocs.filter(d => {
                  const data = d.data();
-                 // Compatibilidad: usar gender si existe, sino sexo, sino 'B'
                  const qSex = (data.gender || data.sexo || 'B').toUpperCase();
                  if (qSex === 'B') return true; 
                  if (playerGender === 'male') {
-                     return qSex !== 'F'; // Si soy Hombre, NO quiero preguntas marcadas 'F'
+                     return qSex !== 'F'; 
                  } else {
-                     return qSex !== 'M'; // Si soy Mujer, NO quiero preguntas marcadas 'M'
+                     return qSex !== 'M'; 
                  }
              });
           }
@@ -743,7 +841,7 @@ export default function TruthAndDareApp() {
           const ref = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id);
           const updates: any = {};
           if (bulkLevel) updates.level = bulkLevel;
-          if (managerTab === 'td' && bulkGender) updates.gender = bulkGender; // Updated to 'gender'
+          if (managerTab === 'td' && bulkGender) updates.gender = bulkGender; 
           batch.update(ref, updates);
       });
       await batch.commit();
@@ -765,13 +863,13 @@ export default function TruthAndDareApp() {
       await batch.commit(); setSelectedIds(new Set());
   };
   const checkPendingSettings = () => {
-      const pendingTD = challenges.filter(c => !c.level || !c.type || (!c.gender && !c.sexo)).length; // Checked gender or sexo
+      const pendingTD = challenges.filter(c => !c.level || !c.type || (!c.gender && !c.sexo)).length; 
       const pendingMM = pairChallenges.filter(c => !c.level).length;
       return { pendingTD, pendingMM, total: pendingTD + pendingMM };
   };
   const handleExportCSV = (isTemplate: boolean) => {
       const isTD = managerTab === 'td';
-      const headers = isTD ? "text,level,type,gender" : "male,female,level"; // Changed header to gender
+      const headers = isTD ? "text,level,type,gender" : "male,female,level"; 
       let csvContent = "data:text/csv;charset=utf-8," + headers + "\n";
       if (!isTemplate) {
           const data = isTD ? challenges : pairChallenges;
@@ -806,7 +904,7 @@ export default function TruthAndDareApp() {
           if(!line.trim()) return;
           const cleanText = line.trim().replace(/^"|"$/g, ''); 
           const docRef = doc(ref);
-          batch.set(docRef, { text: cleanText, level: '', type: fixedType, gender: '', answered: false, paused: false }); // Saves as gender
+          batch.set(docRef, { text: cleanText, level: '', type: fixedType, gender: '', answered: false, paused: false }); 
       });
       await batch.commit(); setUploading(false); showError(`Uploaded ${fixedType} questions.`);
   };
@@ -968,9 +1066,25 @@ export default function TruthAndDareApp() {
           <h1 className="text-3xl font-bold mb-6 tracking-widest">SEXY GAME</h1>
           
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={userName} onChange={e=>setUserName(e.target.value)} />
-          <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none"><option value="male">Male</option><option value="female">Female</option></select>
-          <input type="number" placeholder="Male's Last 4 Digits" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          
+          <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 focus:border-purple-500 outline-none ${gender === '' ? 'text-slate-400' : 'text-white'}`}>
+              <option value="" disabled>Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+          </select>
+
+          <div className="mb-4 text-left">
+              <label className="text-xs text-slate-400 uppercase font-bold ml-1">Status</label>
+              <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-purple-500 outline-none mt-1">
+                  <option value="single">Single</option>
+                  <option value="couple">Couple</option>
+              </select>
+          </div>
+
+          <input type="number" placeholder="Male's Last 4 Phone Digits" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          
           {userName.toLowerCase()!=='admin' && <input type="text" placeholder="Ask code to admin" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={code} onChange={e=>setCode(e.target.value)} />}
+          
           <button onClick={joinGame} disabled={!userName.trim()} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 p-3 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">Enter Game</button>
         </div>
       </div>
@@ -1068,7 +1182,7 @@ export default function TruthAndDareApp() {
                                 <td className="p-2 text-center" onMouseDown={(e)=>e.stopPropagation()}><button onClick={()=>updateSingleField(collectionName, c.id!, 'paused', !c.paused)}>{c.paused ? <PauseCircle size={16}/> : <PlayCircle size={16} className="text-green-500"/>}</button></td>
                                 <td className="p-2">{c.level || <span className="text-red-500">?</span>}</td>
                                 {managerTab === 'td' && <td className="p-2">{c.type || <span className="text-red-500">?</span>}</td>}
-                                {managerTab === 'td' && <td className="p-2">{c.gender || c.sexo || <span className="text-red-500">?</span>}</td>}
+                                {managerTab === 'td' && <td className="p-2">{c.gender || <span className="text-red-500">?</span>}</td>}
                                 {managerTab === 'td' ? (<td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.text || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'text', e.target.value)}/></td>) : (<><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.male || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'male', e.target.value)}/></td><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.female || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'female', e.target.value)}/></td></>)}
                             </tr>
                         ))}
@@ -1083,6 +1197,12 @@ export default function TruthAndDareApp() {
   if (isAdmin) {
     if (!gameState || gameState?.mode === 'lobby') {
         const { total } = checkPendingSettings();
+        
+        // COUPLE VALIDATION
+        const singlesCount = players.filter(p => p.relationshipStatus === 'single').length;
+        const couplesCount = players.filter(p => p.relationshipStatus === 'couple').length;
+        const { valid: couplesValid, incompleteIds } = checkCouplesCompleteness();
+
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900 relative">
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
@@ -1099,11 +1219,20 @@ export default function TruthAndDareApp() {
               <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
               <h2 className="text-2xl font-bold mb-4">Lobby ({players.length})</h2>
               
+              {/* ADMIN STATS BAR */}
+              <div className="flex gap-4 mb-4 text-xs font-mono bg-black/30 p-2 rounded-lg">
+                  <div className="flex items-center gap-1 text-blue-400"><User size={14}/> Singles: {singlesCount}</div>
+                  <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
+              </div>
+
               <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm mb-6 border border-slate-700">
                 {players.length === 0 && <span className="text-slate-500 text-sm">No players yet.</span>}
                 {players.map(p=>(
                     <div key={p.uid} className={`flex justify-between items-center py-1 ${p.isBot?'text-purple-400':''}`}>
-                        <span>{p.name} {p.isBot && '(Bot)'}</span>
+                        <div className="flex flex-col leading-tight">
+                            <span>{p.name} {p.isBot && '(Bot)'}</span>
+                            {p.relationshipStatus === 'couple' && <span className="text-[10px] text-pink-400">Couple #{p.coupleNumber}</span>}
+                        </div>
                         <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500 hover:text-red-300" title="Reset Player"><UserX size={16}/></button>
                     </div>
                 ))}
@@ -1131,13 +1260,21 @@ export default function TruthAndDareApp() {
               
               {uploading && <div className="text-yellow-400 mb-2">Uploading...</div>}
               
+              {/* BLOCKING START IF INVALID */}
+              {!couplesValid && (
+                  <div className="bg-red-900/80 p-3 rounded text-center text-sm mb-4 border border-red-500 max-w-sm w-full">
+                      <strong className="block text-red-200 mb-1">Cannot Start!</strong>
+                      Wait for partners for IDs: {incompleteIds.join(', ')}
+                  </div>
+              )}
+
               {total > 0 ? (
                   <div className="bg-red-900/50 p-3 rounded text-center text-sm mb-4 border border-red-500">
                       <AlertTriangle className="inline mr-2" size={16}/>
                       Complete setup for {total} questions to start.
                   </div>
               ) : (
-                  <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95">Start Game</button>
+                  <button onClick={startGame} disabled={!couplesValid} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Start Game</button>
               )}
               
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4 hover:bg-red-500 transition shadow-lg active:scale-95">Reset All</button>
@@ -1319,30 +1456,40 @@ export default function TruthAndDareApp() {
             </button>
 
             {/* NAME EDIT HEADER */}
-            <div className="text-center py-2 border-b border-slate-700 mb-4 w-full flex items-center justify-center gap-2 relative">
-                {isEditingName ? (
-                    <div className="flex gap-2">
-                        <input 
-                            className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
-                            autoFocus
-                            placeholder={userName}
-                            value={newName} 
-                            onChange={(e) => setNewName(e.target.value)} 
-                        />
-                        <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
-                        <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
-                    </div>
-                ) : (
-                    <>
-                        <h1 className="text-3xl font-black text-white">{userName}</h1>
-                        <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
-                    </>
+            <div className="text-center py-2 border-b border-slate-700 mb-4 w-full flex items-center justify-center gap-2 relative flex-col">
+                <div className="flex items-center gap-2">
+                    {isEditingName ? (
+                        <div className="flex gap-2">
+                            <input 
+                                className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
+                                autoFocus
+                                placeholder={userName}
+                                value={newName} 
+                                onChange={(e) => setNewName(e.target.value)} 
+                            />
+                            <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
+                            <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
+                        </div>
+                    ) : (
+                        <>
+                            <h1 className="text-3xl font-black text-white">{userName}</h1>
+                            <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
+                        </>
+                    )}
+                </div>
+                {/* SHOW COUPLE NUMBER IF COUPLE */}
+                {relationshipStatus === 'couple' && (
+                    <div className="text-xs text-pink-400 font-mono mt-1">Couple #: {coupleNumber}</div>
                 )}
             </div>
             
             <ScoreBoard />
             <MyMatchHistory />
-            <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-10">Waiting for next round...</div>
+            <div className="mt-8 flex justify-center">
+                <button onClick={handleSelfLeave} className="bg-red-900/50 border border-red-600 px-4 py-2 rounded-lg text-red-200 flex items-center gap-2 text-sm hover:bg-red-900"><LogOut size={14}/> Leave / Reset Me</button>
+            </div>
+            
+            <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-6">Waiting for next round...</div>
             <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
         </div>
     );
@@ -1397,24 +1544,29 @@ export default function TruthAndDareApp() {
       <CustomAlert/>
        
       {/* HEADER WITH EDIT NAME */}
-      <div className="text-center py-2 border-b border-slate-700 mb-4 z-10 flex items-center justify-center gap-2">
-        {isEditingName ? (
-            <div className="flex gap-2">
-                <input 
-                    className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
-                    autoFocus
-                    placeholder={userName}
-                    value={newName} 
-                    onChange={(e) => setNewName(e.target.value)} 
-                />
-                <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
-                <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
-            </div>
-        ) : (
-            <>
-                <h1 className="text-3xl font-black tracking-widest">{userName.toUpperCase()}</h1>
-                <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
-            </>
+      <div className="text-center py-2 border-b border-slate-700 mb-4 z-10 flex flex-col items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
+            {isEditingName ? (
+                <div className="flex gap-2">
+                    <input 
+                        className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
+                        autoFocus
+                        placeholder={userName}
+                        value={newName} 
+                        onChange={(e) => setNewName(e.target.value)} 
+                    />
+                    <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
+                    <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
+                </div>
+            ) : (
+                <>
+                    <h1 className="text-3xl font-black tracking-widest">{userName.toUpperCase()}</h1>
+                    <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
+                </>
+            )}
+        </div>
+        {relationshipStatus === 'couple' && (
+            <div className="text-xs text-pink-400 font-mono mt-1">Couple #: {coupleNumber}</div>
         )}
       </div>
        
