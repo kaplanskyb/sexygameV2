@@ -7,13 +7,13 @@ import {
 import { 
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
-import type { User } from 'firebase/auth';
+import type { User } from 'firebase/auth'; // User (Tipo de Firebase)
 import { 
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User, LogOut, ChevronDown, ChevronUp
-} from 'lucide-react';
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp
+} from 'lucide-react'; // User renombrado a UserIcon para evitar conflicto
 
 // --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
@@ -36,7 +36,7 @@ interface Player {
   name: string;
   gender: string;
   coupleNumber: string;
-  relationshipStatus: 'single' | 'couple'; // NUEVO CAMPO
+  relationshipStatus: 'single' | 'couple';
   joinedAt: any;
   isActive: boolean;
   isBot?: boolean;
@@ -312,10 +312,10 @@ export default function TruthAndDareApp() {
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
     switch (level) {
-      case '4': return 'border-red-600 bg-red-950/40 shadow-[0_0_30px_rgba(220,38,38,0.3)]'; 
-      case '3': return 'border-orange-500 bg-orange-950/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]'; 
-      case '2': return 'border-yellow-500 bg-yellow-950/40'; 
-      case '1': return 'border-green-500 bg-green-950/40'; 
+      case '4': return 'border-red-600 bg-red-950/40 shadow-[0_0_30px_rgba(220,38,38,0.3)]'; // Extremo
+      case '3': return 'border-orange-500 bg-orange-950/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]'; // Picante
+      case '2': return 'border-yellow-500 bg-yellow-950/40'; // Intermedio
+      case '1': return 'border-green-500 bg-green-950/40'; // Suave
       default: return 'border-slate-600 bg-slate-800';
     }
   };
@@ -1182,7 +1182,7 @@ export default function TruthAndDareApp() {
                                 <td className="p-2 text-center" onMouseDown={(e)=>e.stopPropagation()}><button onClick={()=>updateSingleField(collectionName, c.id!, 'paused', !c.paused)}>{c.paused ? <PauseCircle size={16}/> : <PlayCircle size={16} className="text-green-500"/>}</button></td>
                                 <td className="p-2">{c.level || <span className="text-red-500">?</span>}</td>
                                 {managerTab === 'td' && <td className="p-2">{c.type || <span className="text-red-500">?</span>}</td>}
-                                {managerTab === 'td' && <td className="p-2">{c.gender || <span className="text-red-500">?</span>}</td>}
+                                {managerTab === 'td' && <td className="p-2">{c.gender || c.sexo || <span className="text-red-500">?</span>}</td>}
                                 {managerTab === 'td' ? (<td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.text || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'text', e.target.value)}/></td>) : (<><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.male || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'male', e.target.value)}/></td><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.female || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'female', e.target.value)}/></td></>)}
                             </tr>
                         ))}
@@ -1221,7 +1221,7 @@ export default function TruthAndDareApp() {
               
               {/* ADMIN STATS BAR */}
               <div className="flex gap-4 mb-4 text-xs font-mono bg-black/30 p-2 rounded-lg">
-                  <div className="flex items-center gap-1 text-blue-400"><User size={14}/> Singles: {singlesCount}</div>
+                  <div className="flex items-center gap-1 text-blue-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
                   <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
               </div>
 
@@ -1477,7 +1477,6 @@ export default function TruthAndDareApp() {
                         </>
                     )}
                 </div>
-                {/* SHOW COUPLE NUMBER IF COUPLE */}
                 {relationshipStatus === 'couple' && (
                     <div className="text-xs text-pink-400 font-mono mt-1">Couple #: {coupleNumber}</div>
                 )}
@@ -1544,29 +1543,24 @@ export default function TruthAndDareApp() {
       <CustomAlert/>
        
       {/* HEADER WITH EDIT NAME */}
-      <div className="text-center py-2 border-b border-slate-700 mb-4 z-10 flex flex-col items-center justify-center gap-2">
-        <div className="flex items-center gap-2">
-            {isEditingName ? (
-                <div className="flex gap-2">
-                    <input 
-                        className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
-                        autoFocus
-                        placeholder={userName}
-                        value={newName} 
-                        onChange={(e) => setNewName(e.target.value)} 
-                    />
-                    <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
-                    <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
-                </div>
-            ) : (
-                <>
-                    <h1 className="text-3xl font-black tracking-widest">{userName.toUpperCase()}</h1>
-                    <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
-                </>
-            )}
-        </div>
-        {relationshipStatus === 'couple' && (
-            <div className="text-xs text-pink-400 font-mono mt-1">Couple #: {coupleNumber}</div>
+      <div className="text-center py-2 border-b border-slate-700 mb-4 z-10 flex items-center justify-center gap-2">
+        {isEditingName ? (
+            <div className="flex gap-2">
+                <input 
+                    className="bg-slate-800 border border-slate-600 p-1 rounded text-center text-lg font-bold text-white w-40" 
+                    autoFocus
+                    placeholder={userName}
+                    value={newName} 
+                    onChange={(e) => setNewName(e.target.value)} 
+                />
+                <button onClick={handleUpdateName} className="bg-green-600 px-2 rounded font-bold">Save</button>
+                <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-2 rounded">X</button>
+            </div>
+        ) : (
+            <>
+                <h1 className="text-3xl font-black tracking-widest">{userName.toUpperCase()}</h1>
+                <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-slate-500 hover:text-white"><Edit2 size={16}/></button>
+            </>
         )}
       </div>
        
