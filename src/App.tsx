@@ -81,7 +81,7 @@ interface GameState {
   sequenceIndex?: number;
   matchHistory?: HistoryEntry[];
   nextType?: string; 
-  isEnding?: boolean; // New flag for graceful shutdown
+  isEnding?: boolean; 
 }
 
 // --- COMPONENTES DE AYUDA ---
@@ -203,7 +203,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                             <div className="bg-slate-950 p-3 rounded border border-blue-900/50">
                                 <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
                                 <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code>
-                                <br/><span className="text-xs text-slate-500">Gender = M, F or B.</span>
+                                <br/><span className="text-xs text-slate-500">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span>
                             </div>
                             <div className="bg-slate-950 p-3 rounded border border-green-900/50">
                                 <span className="text-green-300 font-bold block mb-1">Match Files:</span>
@@ -294,7 +294,7 @@ export default function TruthAndDareApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null); 
-  const [customSuccess, setCustomSuccess] = useState<string | null>(null); // NEW: Success state
+  const [customSuccess, setCustomSuccess] = useState<string | null>(null);
   
   // Modal States
   const [showAdminHelp, setShowAdminHelp] = useState(false);
@@ -539,11 +539,6 @@ export default function TruthAndDareApp() {
   };
 
   const startGame = async () => {
-    if (!selectedLevel) {
-        showError("Please select a Risk Level before starting!");
-        return;
-    }
-
     const { total } = checkPendingSettings();
     if (total > 0) {
         showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`);
@@ -906,14 +901,14 @@ export default function TruthAndDareApp() {
   };
   const handleExportCSV = (isTemplate: boolean) => {
       const isTD = managerTab === 'td';
-      const headers = isTD ? "text,level,gender" : "male,female,level"; 
+      const headers = isTD ? "text,level,type,gender" : "male,female,level"; 
       let csvContent = "data:text/csv;charset=utf-8," + headers + "\n";
       if (!isTemplate) {
           const data = isTD ? challenges : pairChallenges;
           data.forEach(row => {
               if (isTD) {
                   const safeText = `"${(row.text || '').replace(/"/g, '""')}"`;
-                  csvContent += `${safeText},${row.level||''},${row.gender||row.sexo||''}\n`;
+                  csvContent += `${safeText},${row.level||''},${row.type||''},${row.gender||row.sexo||''}\n`;
               } else {
                   const safeMale = `"${(row.male || '').replace(/"/g, '""')}"`;
                   const safeFemale = `"${(row.female || '').replace(/"/g, '""')}"`;
