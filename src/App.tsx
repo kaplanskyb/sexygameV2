@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, Link2
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -125,7 +125,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                         <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
                         {expandedSection === 'truth' && (
                             <div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in">
-                                <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. They must read it to the group and answer honestly.</p>
+                                <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p>
                                 <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Punish" on their phones.</p>
                                 <em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em>
                             </div>
@@ -198,15 +198,20 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                   <ul className="list-disc pl-5 space-y-4 text-sm">
                     <li>
                         <strong>1. Uploading Questions:</strong>
-                        <div className="mt-2 space-y-2">
-                            <div className="bg-slate-950 p-2 rounded">
-                                <span className="text-blue-300 font-bold block mb-1">For Truth & Dare Files:</span>
-                                <span className="text-slate-400">Headers must be exactly:</span> <code className="text-green-400">text, level, type, gender</code>
-                                <br/><span className="text-xs text-slate-500">Type = T or D. Gender = M, F or B.</span>
+                        <div className="mt-2 space-y-3">
+                            <div className="bg-slate-950 p-3 rounded border border-blue-900/50">
+                                <span className="text-blue-300 font-bold block mb-1">To upload Truth Questions:</span>
+                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">text, level, gender</code>
+                                <br/><span className="text-xs text-slate-500">Gender = M, F or B. (Type is automatically set to Truth).</span>
                             </div>
-                            <div className="bg-slate-950 p-2 rounded">
-                                <span className="text-green-300 font-bold block mb-1">For Match Files:</span>
-                                <span className="text-slate-400">Headers must be exactly:</span> <code className="text-green-400">male, female, level</code>
+                            <div className="bg-slate-950 p-3 rounded border border-pink-900/50">
+                                <span className="text-pink-300 font-bold block mb-1">To upload Dare Challenges:</span>
+                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">text, level, gender</code>
+                                <br/><span className="text-xs text-slate-500">Gender = M, F or B. (Type is automatically set to Dare).</span>
+                            </div>
+                            <div className="bg-slate-950 p-3 rounded border border-green-900/50">
+                                <span className="text-green-300 font-bold block mb-1">To upload Match Pairs:</span>
+                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">male, female, level</code>
                             </div>
                         </div>
                     </li>
@@ -228,7 +233,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                       <li><strong>Male's Last 4 Phone Digits:</strong> 
                           <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm">
                               <li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li>
-                              <li>If you are <strong>Single</strong>: Just enter any random 4 digits (e.g. 1234).</li>
+                              <li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li>
                           </ul>
                       </li>
                       <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
@@ -240,8 +245,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                   <div className="space-y-4">
                       <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-blue-500">
                           <strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong>
-                          <p className="text-sm">When your name appears on the big screen, look at your phone!</p>
-                          <p className="text-sm">Read the question aloud and answer it honestly. The group will vote if you pass or fail.</p>
+                          <p className="text-sm">When it's your turn, a question will appear. Read it aloud and answer honestly. The group will award points based on your answer.</p>
                       </div>
                       
                       <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-pink-500">
@@ -911,51 +915,28 @@ export default function TruthAndDareApp() {
       const lines = text.split('\n');
       const headerLine = lines[0].toLowerCase().trim();
       
-      // Strict Validation
-      if (!headerLine.includes('text') || !headerLine.includes('type') || !headerLine.includes('level') || !headerLine.includes('gender')) {
-          if(!confirm("Warning: Header seems invalid. Expected: text, level, type, gender. Continue anyway?")) return;
+      // Strict Validation - Check for required columns
+      if (!headerLine.includes('text') || !headerLine.includes('level') || !headerLine.includes('gender')) {
+          if(!confirm("Warning: Header seems invalid. Expected: text, level, gender. Continue anyway?")) return;
       }
 
       setUploading(true);
       const ref = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
       const batch = writeBatch(db);
+      
       lines.slice(1).forEach(line => {
           if(!line.trim()) return;
-          // Simple parsing assuming comma separation and basic structure
-          // For real production use a library like PapaParse, but here we do manual split
-          // This splits by comma, but isn't robust for commas inside quotes.
-          // For this specific request, we keep simple logic but could be improved.
-          const parts = line.split(','); 
-          // We rely on the structure. If user follows template, it works.
-          // Getting index of headers would be better, but assuming order for now:
-          // text, level, type, gender (based on template export)
-          // If using the template provided by the app, it will match.
-          
-          // Fallback to basic row addition if complex parsing isn't needed
-          const cleanText = line.trim(); 
-          // Note: The previous logic just saved the whole line as text if not careful.
-          // We will stick to the previous simple logic but with header check.
-          
-          // Actually, let's try to parse if we can, otherwise just save raw for editing in Manager
-          // But to be safe and consistent with previous code which worked for simple lists:
-          // We will extract text if possible or just use the whole line if it's a simple list upload
-          
-          // REVERTING to simple logic but with header check passed.
-          // The previous code didn't parse CSV columns into fields, it just put text.
-          // To support full CSV upload we would need proper parsing. 
-          // Assuming the user might upload a simple list or a full CSV.
-          
-          // Let's stick to the existing "Simple Upload" logic but adding the header check was the key request.
-          // We will just upload. The Content Manager is where they map fields if needed or we assume standard CSV.
-          
-          // Actually, if they upload a full CSV, we should probably try to map it.
-          // But for now, ensuring the header check is what was asked.
-          
+          const parts = line.split(',');
+          // Assuming standard CSV format from template: text, level, gender
+          // We will assign fixedType to the type field automatically.
+          // Note: This is a simple CSV split. For robustness with commas in text, use a library.
+          // But based on previous code simple logic:
+          const textVal = parts[0]?.replace(/^"|"$/g, '').trim();
+          const levelVal = parts[1]?.trim();
+          const genderVal = parts[2]?.trim();
+
           const docRef = doc(ref);
-          // Only saving text for now as per original code, fields need to be set in manager or strict CSV parsing added.
-          // To keep it safe:
-          const textVal = line.split(',')[0].replace(/^"|"$/g, '');
-          batch.set(docRef, { text: textVal, level: '', type: fixedType, gender: '', answered: false, paused: false }); 
+          batch.set(docRef, { text: textVal, level: levelVal, type: fixedType, gender: genderVal, answered: false, paused: false }); 
       });
       await batch.commit(); setUploading(false); showError(`Uploaded ${fixedType} questions.`);
   };
@@ -976,11 +957,13 @@ export default function TruthAndDareApp() {
       lines.slice(1).forEach(line => {
           if(!line.trim()) return;
           const parts = line.split(',');
-          if (parts.length < 2) return;
-          const male = parts[0].trim().replace(/^"|"$/g, '');
-          const female = parts.slice(1).join(',').trim().replace(/^"|"$/g, '');
+          // Assuming standard CSV: male, female, level
+          const male = parts[0]?.replace(/^"|"$/g, '').trim();
+          const female = parts[1]?.replace(/^"|"$/g, '').trim();
+          const level = parts[2]?.trim();
+
           const docRef = doc(ref);
-          batch.set(docRef, { male, female, level: '', answered: false, paused: false });
+          batch.set(docRef, { male, female, level, answered: false, paused: false });
       });
       await batch.commit(); setUploading(false); showError(`Uploaded pairs.`);
   };
@@ -1238,7 +1221,7 @@ export default function TruthAndDareApp() {
                                 <td className="p-2 text-center" onMouseDown={(e)=>e.stopPropagation()}><button onClick={()=>updateSingleField(collectionName, c.id!, 'paused', !c.paused)}>{c.paused ? <PauseCircle size={16}/> : <PlayCircle size={16} className="text-green-500"/>}</button></td>
                                 <td className="p-2">{c.level || <span className="text-red-500">?</span>}</td>
                                 {managerTab === 'td' && <td className="p-2">{c.type || <span className="text-red-500">?</span>}</td>}
-                                {managerTab === 'td' && <td className="p-2">{c.gender || <span className="text-red-500">?</span>}</td>}
+                                {managerTab === 'td' && <td className="p-2">{c.gender || c.sexo || <span className="text-red-500">?</span>}</td>}
                                 {managerTab === 'td' ? (<td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.text || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'text', e.target.value)}/></td>) : (<><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.male || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'male', e.target.value)}/></td><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.female || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'female', e.target.value)}/></td></>)}
                             </tr>
                         ))}
@@ -1552,12 +1535,14 @@ export default function TruthAndDareApp() {
             
             <ScoreBoard />
             <MyMatchHistory />
-            <div className="mt-8 flex justify-center">
-                <button onClick={handleSelfLeave} className="bg-red-900/50 border border-red-600 px-4 py-2 rounded-lg text-red-200 flex items-center gap-2 text-sm hover:bg-red-900"><LogOut size={14}/> Leave / Reset Me</button>
-            </div>
             
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-6">Waiting for next round...</div>
-            <div className="text-slate-400">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
+            <div className="text-slate-400 text-center mb-8">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
+
+            {/* RESET BUTTON AT BOTTOM */}
+            <div className="mt-auto w-full flex justify-center pb-4">
+                <button onClick={handleSelfLeave} className="bg-red-900/50 border border-red-600 px-4 py-2 rounded-lg text-red-200 flex items-center gap-2 text-sm hover:bg-red-900"><LogOut size={14}/> Reset Player</button>
+            </div>
         </div>
     );
   }
