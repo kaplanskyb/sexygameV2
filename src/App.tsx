@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -83,61 +83,117 @@ interface GameState {
   nextType?: string; 
 }
 
-// --- COMPONENTE DE AYUDA (INGLÉS) ---
-const HelpModal = ({ onClose }: { onClose: () => void }) => (
+// --- COMPONENTES DE AYUDA (ADMIN VS PLAYER) ---
+
+const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => (
   <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-    <div className="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in slide-in-from-bottom-4" onClick={e => e.stopPropagation()}>
       <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
         <X size={24} />
       </button>
       
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 text-yellow-500 flex items-center gap-2">
-          <HelpCircle /> Game Manual
+      <div className="p-8">
+        <h2 className="text-3xl font-bold mb-8 text-yellow-500 flex items-center gap-3 border-b border-slate-700 pb-4">
+          {type === 'admin' ? <BookOpen size={32}/> : <HelpCircle size={32}/>}
+          {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
         </h2>
 
-        <div className="space-y-6 text-slate-300">
-          <section>
-            <h3 className="text-lg font-bold text-white mb-2">🎯 Objective & Game Types</h3>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Truth:</strong> Personal questions. Risk level determines intensity.</li>
-              <li><strong>Dare:</strong> Physical challenges or actions.</li>
-              <li><strong>Match/Mismatch:</strong> Two players are paired. They must answer YES or NO to a question (e.g., "Would you date?"). If answers match, they gain points.</li>
-            </ul>
-          </section>
+        <div className="space-y-8 text-slate-300">
+          
+          {/* --- MANUAL DE ADMIN --- */}
+          {type === 'admin' && (
+            <>
+              <section>
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Concept</h3>
+                <p className="mb-2 leading-relaxed">
+                  **Sexy Game** is a high-energy social game designed to test boundaries, honesty, and compatibility. As the Admin, you control the flow. The game revolves around earning points by completing challenges or matching answers with a partner.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                      <strong className="text-blue-400 block mb-2 text-lg">1. Truth (Verdad)</strong>
+                      <p className="text-sm">The player must answer a question honestly. Other players vote "Good Answer" or "Punish".</p>
+                      <em className="text-xs text-slate-500 block mt-2">Example: "What is your biggest sexual regret?"</em>
+                   </div>
+                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                      <strong className="text-pink-400 block mb-2 text-lg">2. Dare (Reto)</strong>
+                      <p className="text-sm">Physical or social actions. The player must perform it to get points.</p>
+                      <em className="text-xs text-slate-500 block mt-2">Example: "Let the person to your right check your browser history."</em>
+                   </div>
+                   <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                      <strong className="text-green-400 block mb-2 text-lg">3. Match/Mismatch</strong>
+                      <p className="text-sm">The system pairs two people (secretly). A question appears (e.g., "Would you kiss?"). Both answer YES/NO secretly. If they match, they score!</p>
+                   </div>
+                </div>
+              </section>
 
-          <section>
-            <h3 className="text-lg font-bold text-white mb-2">⚙️ Admin Setup</h3>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Upload Excel:</strong> Upload your question database via CSV.
-                <br/><code className="text-xs bg-slate-900 p-1">Truth/Dare: text, level, type (T/D), sexo (F/B)</code>
-                <br/><code className="text-xs bg-slate-900 p-1">Match/Mismatch: male, female, level</code>
-              </li>
-              <li><strong>Game Code:</strong> A unique code (e.g., "A1B2") for players to sync their devices.</li>
-              <li><strong>Manage Questions:</strong> Edit typos or change levels of uploaded questions without re-uploading the file.</li>
-            </ul>
-          </section>
+              <section>
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Technical Setup</h3>
+                <ul className="list-disc pl-5 space-y-2 text-sm">
+                  <li><strong>Uploading Questions:</strong> You must upload CSV files.
+                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Truth/Dare Header: text, level, type, sexo</code> (Note: 'type' must be T or D. 'sexo' must be F, M or B).
+                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Match Header: male, female, level</code> (Male question column and Female question column).
+                  </li>
+                  <li><strong>Game Code:</strong> Set a simple code (e.g., "PARTY") and tell players to enter it. This links everyone to your screen.</li>
+                  <li><strong>Bot System:</strong> If you have an odd number of players (e.g., 7), the system automatically adds a Bot (like "Brad Pitt") to ensure everyone has a partner during Match/Mismatch rounds.</li>
+                </ul>
+              </section>
 
-          <section>
-            <h3 className="text-lg font-bold text-white mb-2">🕹️ Control Modes</h3>
-            <p className="mb-2"><strong>Auto Mode:</strong> Define a sequence (e.g., 1 Truth, 1 Dare, 1 Match). The game advances automatically.</p>
-            <p><strong>Manual Mode:</strong> The Admin manually selects the Risk Level and Game Type before each round.</p>
-          </section>
+              <section>
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Managing the Game</h3>
+                <p className="mb-2"><strong>Risk Levels (1-4):</strong> Use this to control the "heat". Start with Level 1 (Icebreakers) and move to Level 4 (Extreme) as the night progresses.</p>
+                <p className="mb-2"><strong>Auto vs. Manual:</strong>
+                    <br/>- <em>Manual:</em> You pick "Next is Truth, Level 3". Best for control.
+                    <br/>- <em>Auto:</em> You define a loop (e.g., 2 Truths, 1 Match). The game runs itself.
+                </p>
+                <div className="bg-red-900/20 p-4 rounded border border-red-500/50 mt-4">
+                    <strong className="text-red-400">⚠️ Reset vs Kick Player</strong>
+                    <ul className="list-disc pl-5 mt-1 text-sm">
+                        <li><strong>Kick (Trash Icon in Scoreboard):</strong> Removes ONE player. Use this if someone leaves early.</li>
+                        <li><strong>RESET ALL (Bottom Button):</strong> Wipes EVERYTHING (Score, Players, History). Only use this when starting a completely new game with new people.</li>
+                    </ul>
+                </div>
+              </section>
+            </>
+          )}
 
-          <section>
-            <h3 className="text-lg font-bold text-white mb-2">👥 Player Rules</h3>
-            <p>The system handles pairs and "threesomes" automatically. If there is an odd number of players, the system adds a <strong>BOT</strong> (e.g., Brad Pitt) to complete the pairs for Match/Mismatch games.</p>
-          </section>
+          {/* --- MANUAL DE JUGADOR --- */}
+          {type === 'player' && (
+            <>
+               <section>
+                <h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3>
+                <ol className="list-decimal pl-5 space-y-3">
+                    <li><strong>Name:</strong> Enter your nickname.</li>
+                    <li><strong>Gender:</strong> Select Male or Female (this affects which questions you get).</li>
+                    <li><strong>Couple Number:</strong> <span className="text-yellow-400">Important!</span> This is used to identify existing real-life couples.
+                        <br/><span className="text-sm text-slate-400">If you are here with a partner, enter the <strong>Last 4 digits of the Male's phone number</strong> (or any shared secret number). If you are single, enter a random number like 1234.</span>
+                    </li>
+                    <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
+                </ol>
+              </section>
 
-          <section>
-            <h3 className="text-lg font-bold text-white mb-2">⚠️ Reset Player vs Reset All</h3>
-            <p><strong>Reset Player:</strong> Use the Trash icon in the Scoreboard to remove/reset a single player.</p>
-            <p className="text-red-400"><strong>Reset All:</strong> The RESET button wipes ALL players and scores. Use only when starting a new party.</p>
-          </section>
+              <section>
+                <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
+                <div className="space-y-4">
+                    <div className="bg-slate-900 p-4 rounded-lg">
+                        <strong className="text-blue-400">When it's your turn (Truth/Dare):</strong>
+                        <p className="text-sm mt-1">Your phone will turn green. Read the question aloud to the group! Then answer it or do the dare. The group will vote if you passed or failed.</p>
+                    </div>
+                    <div className="bg-slate-900 p-4 rounded-lg">
+                        <strong className="text-green-400">Match/Mismatch Rounds:</strong>
+                        <p className="text-sm mt-1">The system will pair you with someone random. A question will appear on your screen (e.g., "Would we make a good couple?").</p>
+                        <p className="text-sm mt-1">Answer <strong>YES</strong> or <strong>NO</strong> honestly. You only get points if your answer <strong>MATCHES</strong> your partner's answer!</p>
+                    </div>
+                </div>
+              </section>
+            </>
+          )}
+
         </div>
         
-        <div className="mt-8 text-center">
-          <button onClick={onClose} className="bg-blue-600 px-6 py-2 rounded-lg font-bold text-white hover:bg-blue-500">Got it</button>
+        <div className="mt-8 text-center border-t border-slate-700 pt-6">
+          <button onClick={onClose} className="bg-blue-600 px-8 py-3 rounded-xl font-bold text-white hover:bg-blue-500 shadow-lg transition-transform active:scale-95">
+            Close Manual
+          </button>
         </div>
       </div>
     </div>
@@ -164,7 +220,10 @@ export default function TruthAndDareApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null); 
-  const [showHelp, setShowHelp] = useState(false);
+  
+  // Modal States
+  const [showAdminHelp, setShowAdminHelp] = useState(false);
+  const [showPlayerHelp, setShowPlayerHelp] = useState(false);
 
   // Name Editing State
   const [isEditingName, setIsEditingName] = useState(false);
@@ -318,7 +377,6 @@ export default function TruthAndDareApp() {
   };
 
   const handleKickPlayer = async (uid: string, name: string) => {
-      // MODIFICACIÓN: Texto cambiado a "Reset player"
       if(confirm(`Reset player ${name}?`)) {
           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid));
       }
@@ -421,7 +479,7 @@ export default function TruthAndDareApp() {
     return pairs;
   };
 
-  // MODIFICACIÓN: `startRound` ahora pasa el género del primer jugador
+  // GENERO LOGIC: pasamos el género del jugador actual
   const startRound = async () => {
     let sequence: string[] = [];
     if (isAutoSetup) {
@@ -433,7 +491,6 @@ export default function TruthAndDareApp() {
     let initialMode = isAutoSetup && sequence.length > 0 ? sequence[0] : (selectedType === 'yn' ? 'yn' : selectedType === 'truth' ? 'question' : 'dare');
     let typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
 
-    // Obtener género del primer jugador para filtrar preguntas
     const firstPlayerGender = players.length > 0 ? players[0].gender : 'male';
     const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel, firstPlayerGender);
     
@@ -475,7 +532,7 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote });
   };
 
-  // MODIFICACIÓN: Agregado `playerGender` para filtrar F vs M
+  // GENERO LOGIC: filtramos segun playerGender
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => {
       let currentLvl = parseInt(startLevel);
       let found = null;
@@ -496,18 +553,11 @@ export default function TruthAndDareApp() {
              validDocs = validDocs.filter(d => {
                  const data = d.data();
                  const qSex = (data.sexo || 'B').toUpperCase();
-                 // B = Both (Everyone)
-                 // F = Female only
-                 // M = Male only (si existe)
-                 
                  if (qSex === 'B') return true; 
-
                  if (playerGender === 'male') {
-                     // Si soy Hombre, NO quiero preguntas marcadas como Female ('F')
-                     return qSex !== 'F';
+                     return qSex !== 'F'; // Si soy Hombre, NO quiero preguntas marcadas 'F'
                  } else {
-                     // Si soy Mujer, NO quiero preguntas marcadas como Male ('M')
-                     return qSex !== 'M';
+                     return qSex !== 'M'; // Si soy Mujer, NO quiero preguntas marcadas 'M'
                  }
              });
           }
@@ -594,7 +644,6 @@ export default function TruthAndDareApp() {
             updates.votes = {};
             const typeChar = gameState.mode === 'question' ? 'T' : 'D';
             
-            // MODIFICACIÓN: Pasamos el género del SIGUIENTE jugador
             const nextPlayerGender = players[nextIdx].gender;
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
             
@@ -622,7 +671,6 @@ export default function TruthAndDareApp() {
 
             let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
             
-            // Si empieza nueva ronda, usualmente es el primer jugador (Index 0).
             const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
             const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
             
@@ -897,17 +945,27 @@ export default function TruthAndDareApp() {
 
   if (!isJoined) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900 relative">
         <CustomAlert/>
-        <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center">
+        {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
+
+        {/* Player Login Help Button */}
+        <button 
+          onClick={() => setShowPlayerHelp(true)} 
+          className="absolute top-4 right-4 bg-slate-800 p-2 rounded-full hover:bg-slate-700 border border-slate-600 text-blue-400 transition-all"
+        >
+          <HelpCircle size={24} />
+        </button>
+
+        <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-purple-500/30 text-center shadow-2xl">
           <Flame className="w-16 h-16 text-purple-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-6">SEXY GAME v17</h1>
+          <h1 className="text-3xl font-bold mb-6 tracking-widest">SEXY GAME</h1>
           
-          <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={userName} onChange={e=>setUserName(e.target.value)} />
-          <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white"><option value="male">Male</option><option value="female">Female</option></select>
-          <input type="number" placeholder="Male's Phone (Last 4 digits)" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
-          {userName.toLowerCase()!=='admin' && <input type="text" placeholder="Ask code to admin" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={code} onChange={e=>setCode(e.target.value)} />}
-          <button onClick={joinGame} disabled={!userName.trim()} className="w-full bg-purple-600 p-3 rounded-lg font-bold">Enter</button>
+          <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={userName} onChange={e=>setUserName(e.target.value)} />
+          <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none"><option value="male">Male</option><option value="female">Female</option></select>
+          <input type="number" placeholder="Couple ID (e.g. 1234)" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          {userName.toLowerCase()!=='admin' && <input type="text" placeholder="Game Code" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={code} onChange={e=>setCode(e.target.value)} />}
+          <button onClick={joinGame} disabled={!userName.trim()} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 p-3 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">Enter Game</button>
         </div>
       </div>
     );
@@ -992,10 +1050,10 @@ export default function TruthAndDareApp() {
         const { total } = checkPendingSettings();
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900 relative">
-              {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+              {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
               
               <button 
-                onClick={() => setShowHelp(true)} 
+                onClick={() => setShowAdminHelp(true)} 
                 className="absolute top-4 right-4 bg-slate-800 p-2 rounded-full hover:bg-slate-700 border border-slate-600 text-yellow-500 transition-all"
                 title="Help / Manual"
               >
@@ -1016,8 +1074,12 @@ export default function TruthAndDareApp() {
                 ))}
               </div>
 
-              <input type="text" placeholder="Set Code" className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white" value={code} onChange={e=>setCode(e.target.value)} />
-              <button onClick={setGameCode} className="w-full max-w-sm bg-blue-600 p-3 rounded-lg font-bold mb-4">Set Code</button>
+              <input type="text" placeholder="Set Code" className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-blue-500 outline-none" value={code} onChange={e=>setCode(e.target.value)} />
+              
+              {/* BUTTON SEND CODE - VISIBLE CLICK */}
+              <button onClick={setGameCode} className="w-full max-w-sm bg-blue-600 p-3 rounded-lg font-bold mb-4 shadow-lg active:scale-95 transition-transform duration-100 flex items-center justify-center gap-2 hover:bg-blue-500">
+                  <Send size={18}/> Set Code
+              </button>
               
               <div className="flex flex-col gap-2 w-full max-w-sm mb-2">
                   <div className="flex gap-2">
@@ -1040,10 +1102,10 @@ export default function TruthAndDareApp() {
                       Complete setup for {total} questions to start.
                   </div>
               ) : (
-                  <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition">Start Game</button>
+                  <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95">Start Game</button>
               )}
               
-              <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4 hover:bg-red-500 transition">Reset All</button>
+              <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4 hover:bg-red-500 transition shadow-lg active:scale-95">Reset All</button>
             </div>
         );
     }
@@ -1051,9 +1113,9 @@ export default function TruthAndDareApp() {
     if (gameState?.mode === 'admin_setup') {
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900 relative">
-                {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+                {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
                 <button 
-                  onClick={() => setShowHelp(true)} 
+                  onClick={() => setShowAdminHelp(true)} 
                   className="absolute top-4 right-4 bg-slate-800 p-2 rounded-full hover:bg-slate-700 border border-slate-600 text-yellow-500 transition-all"
                   title="Help / Manual"
                 >
@@ -1135,9 +1197,9 @@ export default function TruthAndDareApp() {
     const answers = gameState?.answers || {};
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900 relative">
-        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+        {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button 
-          onClick={() => setShowHelp(true)} 
+          onClick={() => setShowAdminHelp(true)} 
           className="absolute top-4 right-4 bg-slate-800 p-2 rounded-full hover:bg-slate-700 border border-slate-600 text-yellow-500 transition-all z-50"
           title="Help / Manual"
         >
@@ -1210,8 +1272,17 @@ export default function TruthAndDareApp() {
 
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900">
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900 relative">
             <CustomAlert/>
+            {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
+            
+            <button 
+              onClick={() => setShowPlayerHelp(true)} 
+              className="absolute top-4 right-4 bg-slate-800 p-2 rounded-full hover:bg-slate-700 border border-slate-600 text-blue-400 transition-all z-50"
+            >
+              <HelpCircle size={24} />
+            </button>
+
             {/* NAME EDIT HEADER */}
             <div className="text-center py-2 border-b border-slate-700 mb-4 w-full flex items-center justify-center gap-2 relative">
                 {isEditingName ? (
