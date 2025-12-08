@@ -102,7 +102,7 @@ const parseCSVLine = (text: string) => {
     return a;
 };
 
-// --- COMPONENTES DE AYUDA ---
+// --- COMPONENTES DE AYUDA (MANUAL RESTAURADO) ---
 
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -110,6 +110,23 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
+
+  const Section = ({ title, id, children }: { title: string, id: string, children: React.ReactNode }) => (
+    <div className="border border-slate-600 rounded-xl overflow-hidden mb-4">
+      <button 
+        onClick={() => toggleSection(id)}
+        className="w-full flex justify-between items-center p-4 bg-slate-700/50 hover:bg-slate-700 transition-colors text-left"
+      >
+        <span className="font-bold text-lg text-white">{title}</span>
+        {expandedSection === id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      </button>
+      {expandedSection === id && (
+        <div className="p-4 bg-slate-800 text-slate-300 text-sm leading-relaxed">
+          {children}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
@@ -124,9 +141,73 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
             {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
           </h2>
 
-          <div className="space-y-8 text-slate-300">
-            {/* ... Manual content omitted for brevity (same as previous) ... */}
-            <p>Please refer to the detailed guide provided previously.</p>
+          <div className="space-y-4">
+            {type === 'admin' ? (
+              <>
+                <Section title="1. Setup & Starting" id="setup">
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Enter as Admin:</strong> Use the name "admin" (case insensitive) to access the dashboard.</li>
+                    <li><strong>Set Game Code:</strong> Create a unique code in the lobby so players can join your specific session.</li>
+                    <li><strong>Managing Players:</strong> You can kick/reset players from the lobby list if needed.</li>
+                    <li><strong>Bot Logic:</strong> If there is an odd number of players, the system will automatically add a "Bot" to ensure everyone has a partner for Match/Mismatch.</li>
+                  </ul>
+                </Section>
+                
+                <Section title="2. Content Manager (CSV)" id="csv">
+                  <p className="mb-2">Go to "Content & Uploads" to manage questions. You can upload CSV files for Truth, Dare, and Match/Mismatch.</p>
+                  
+                  <div className="bg-black/30 p-3 rounded mb-3">
+                    <strong className="text-blue-400">Truth & Dare CSV Format:</strong>
+                    <div className="font-mono text-xs mt-1">text,level,gender</div>
+                    <div className="text-xs text-slate-400 mt-1">Example: "Have you ever cheated?",2,B</div>
+                    <div className="text-xs text-slate-400">Gender: M (Male), F (Female), B (Both)</div>
+                  </div>
+
+                  <div className="bg-black/30 p-3 rounded">
+                    <strong className="text-green-400">Match/Mismatch CSV Format:</strong>
+                    <div className="font-mono text-xs mt-1">male,female,level</div>
+                    <div className="text-xs text-slate-400 mt-1">Example: "Do you like feet?","Does he like feet?",3</div>
+                  </div>
+                </Section>
+
+                <Section title="3. Game Modes" id="modes">
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Manual Mode:</strong> You select the Risk Level and Type (Truth, Dare, or Match) for each round manually.</li>
+                    <li><strong>Auto Mode:</strong> Define a sequence (e.g., 2 Truths, 1 Dare, 1 Match). The game will cycle through this sequence automatically.</li>
+                    <li><strong>Ending:</strong> Click "End Game" to finish after the current round. A scoreboard will be displayed.</li>
+                  </ul>
+                </Section>
+              </>
+            ) : (
+              <>
+                 <Section title="1. How to Join" id="join">
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>Enter your Name and Gender.</li>
+                    <li><strong>Status:</strong> Choose "Single" or "Couple".</li>
+                    <li><strong>Couple ID:</strong> If you are a couple, both must enter the SAME "Male's Last 4 Phone Digits" to be paired together internally.</li>
+                    <li><strong>Game Code:</strong> Ask the Game Master for the code.</li>
+                  </ul>
+                </Section>
+
+                <Section title="2. Truth & Dare" id="td">
+                  <p>When it's your turn:</p>
+                  <ul className="list-disc pl-5 space-y-2 mt-2">
+                    <li><strong>Truth:</strong> Read the question aloud. Answer honestly. Other players will vote "Good Answer" or "Nah". "Good" votes give you points.</li>
+                    <li><strong>Dare:</strong> Perform the action. Other players vote if you "Completed" or "Failed" it.</li>
+                  </ul>
+                </Section>
+
+                <Section title="3. Match / Mismatch" id="mm">
+                  <p>A "He said / She said" style game.</p>
+                  <ul className="list-disc pl-5 space-y-2 mt-2">
+                    <li>The system creates temporary pairs (Couples are paired together; Singles are paired randomly).</li>
+                    <li>A question appears (e.g., "Does he snore?").</li>
+                    <li>You answer YES or NO secretly on your phone.</li>
+                    <li>If your answer matches your partner's answer, it's a <strong>MATCH</strong> (Points!). If not, MISMATCH.</li>
+                  </ul>
+                </Section>
+              </>
+            )}
           </div>
           
           <div className="mt-8 text-center border-t border-slate-700 pt-6">
@@ -930,38 +1011,38 @@ export default function TruthAndDareApp() {
 
             {/* UPLOAD SECTION (CONTEXTUAL) - BIG BUTTONS */}
             <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-slate-700 flex flex-col gap-2">
-                 
-                 {managerTab === 'truth' && (
-                     <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-blue-500/50 ${!hasTruth ? 'bg-gradient-to-r from-blue-900 to-blue-800 animate-pulse border-blue-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
-                         <div className="bg-blue-500/20 p-3 rounded-full group-hover:bg-blue-500 transition-colors"><Upload size={24} className="text-white"/></div>
-                         <div className="flex flex-col text-left">
-                            <span className="font-bold text-lg text-white">UPLOAD TRUTH CSV</span>
-                            <span className="text-xs text-blue-200">Click to browse file...</span>
-                         </div>
-                         <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'T')}/>
-                     </label>
-                 )}
-                 {managerTab === 'dare' && (
-                     <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-pink-500/50 ${!hasDare ? 'bg-gradient-to-r from-pink-900 to-pink-800 animate-pulse border-pink-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
-                         <div className="bg-pink-500/20 p-3 rounded-full group-hover:bg-pink-500 transition-colors"><Upload size={24} className="text-white"/></div>
-                         <div className="flex flex-col text-left">
-                            <span className="font-bold text-lg text-white">UPLOAD DARE CSV</span>
-                            <span className="text-xs text-pink-200">Click to browse file...</span>
-                         </div>
-                         <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'D')}/>
-                     </label>
-                 )}
-                 {managerTab === 'mm' && (
-                     <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-green-500/50 ${!hasMatch ? 'bg-gradient-to-r from-green-900 to-green-800 animate-pulse border-green-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
-                         <div className="bg-green-500/20 p-3 rounded-full group-hover:bg-green-500 transition-colors"><Upload size={24} className="text-white"/></div>
-                         <div className="flex flex-col text-left">
-                            <span className="font-bold text-lg text-white">UPLOAD MATCH/MISMATCH CSV</span>
-                            <span className="text-xs text-green-200">Click to browse file...</span>
-                         </div>
-                         <input type="file" className="hidden" onChange={handleUploadDoubleCol}/>
-                     </label>
-                 )}
-                 {uploading && <div className="text-xs text-yellow-400 text-center mt-2 font-bold animate-pulse">Processing file...</div>}
+                  
+                  {managerTab === 'truth' && (
+                      <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-blue-500/50 ${!hasTruth ? 'bg-gradient-to-r from-blue-900 to-blue-800 animate-pulse border-blue-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
+                          <div className="bg-blue-500/20 p-3 rounded-full group-hover:bg-blue-500 transition-colors"><Upload size={24} className="text-white"/></div>
+                          <div className="flex flex-col text-left">
+                             <span className="font-bold text-lg text-white">UPLOAD TRUTH CSV</span>
+                             <span className="text-xs text-blue-200">Click to browse file...</span>
+                          </div>
+                          <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'T')}/>
+                      </label>
+                  )}
+                  {managerTab === 'dare' && (
+                      <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-pink-500/50 ${!hasDare ? 'bg-gradient-to-r from-pink-900 to-pink-800 animate-pulse border-pink-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
+                          <div className="bg-pink-500/20 p-3 rounded-full group-hover:bg-pink-500 transition-colors"><Upload size={24} className="text-white"/></div>
+                          <div className="flex flex-col text-left">
+                             <span className="font-bold text-lg text-white">UPLOAD DARE CSV</span>
+                             <span className="text-xs text-pink-200">Click to browse file...</span>
+                          </div>
+                          <input type="file" className="hidden" onChange={(e)=>handleUploadSingleCol(e, 'D')}/>
+                      </label>
+                  )}
+                  {managerTab === 'mm' && (
+                      <label className={`group flex items-center justify-center gap-3 w-full p-6 rounded-xl cursor-pointer transition-all transform hover:scale-[1.02] shadow-lg border-2 border-green-500/50 ${!hasMatch ? 'bg-gradient-to-r from-green-900 to-green-800 animate-pulse border-green-400' : 'bg-slate-700/50 hover:bg-slate-700'}`}>
+                          <div className="bg-green-500/20 p-3 rounded-full group-hover:bg-green-500 transition-colors"><Upload size={24} className="text-white"/></div>
+                          <div className="flex flex-col text-left">
+                             <span className="font-bold text-lg text-white">UPLOAD MATCH/MISMATCH CSV</span>
+                             <span className="text-xs text-green-200">Click to browse file...</span>
+                          </div>
+                          <input type="file" className="hidden" onChange={handleUploadDoubleCol}/>
+                      </label>
+                  )}
+                  {uploading && <div className="text-xs text-yellow-400 text-center mt-2 font-bold animate-pulse">Processing file...</div>}
             </div>
 
             <div className="bg-slate-800 p-3 rounded-xl mb-4 flex flex-wrap gap-3 items-end text-sm">
@@ -1266,16 +1347,11 @@ export default function TruthAndDareApp() {
       <ScoreBoard />
       <MyMatchHistory />
         
-      {/* NEW HEADER WITH BIG MODE NAME AND COUPLE NUMBER */}
+      {/* NEW HEADER WITH BIG MODE NAME - COUPLE CODE REMOVED HERE */}
       <div className="flex flex-col items-center mt-6 mb-2 z-10 animate-in slide-in-from-top-4 fade-in duration-500">
           <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 tracking-tighter uppercase drop-shadow-sm">
              {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
           </h2>
-          {currentPlayerObj?.relationshipStatus === 'couple' && gameState.mode !== 'yn' && (
-              <div className="text-pink-400 font-mono font-bold mt-2 text-xl border border-pink-500/50 px-4 py-0.5 rounded-full bg-pink-900/20 shadow-[0_0_10px_rgba(236,72,153,0.3)]">
-                 Couple #{currentPlayerObj.coupleNumber}
-              </div>
-          )}
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center z-10 relative">
@@ -1320,4 +1396,4 @@ export default function TruthAndDareApp() {
       </div>
     </div>
   );
-} 
+}
