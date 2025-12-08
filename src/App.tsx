@@ -86,8 +86,8 @@ interface GameState {
 }
 
 // --- HELPER CSV PARSER ---
-// Parsea una línea CSV respetando comillas: "Hola, mundo", 1 -> ["Hola, mundo", "1"]
 const parseCSVLine = (text: string) => {
+    // Regex compleja para separar por comas pero ignorar comas dentro de comillas
     const re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
     const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
     
@@ -103,19 +103,193 @@ const parseCSVLine = (text: string) => {
     return a;
 };
 
-// --- COMPONENTES DE AYUDA ---
-// (Se mantiene igual, oculto por brevedad, asumiendo que ya tienes el HelpModal del código anterior)
+// --- COMPONENTES DE AYUDA (RESTAURADOS) ---
+
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
-  // ... (Mismo código del modal que tenías)
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
-        <div className="bg-slate-800 p-8 rounded-xl max-w-2xl text-white relative">
-            <button onClick={onClose} className="absolute top-4 right-4"><X/></button>
-            <h2 className="text-2xl font-bold mb-4">{type === 'admin' ? 'Game Master Manual' : 'Player Help'}</h2>
-            <p>Please refer to the documentation or the previous help sections.</p>
+    <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-slate-800 rounded-2xl border border-slate-600 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in slide-in-from-bottom-4" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <X size={24} />
+        </button>
+        
+        <div className="p-8">
+          <h2 className="text-3xl font-bold mb-8 text-yellow-500 flex items-center gap-3 border-b border-slate-700 pb-4">
+            {type === 'admin' ? <BookOpen size={32}/> : <HelpCircle size={32}/>}
+            {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
+          </h2>
+
+          <div className="space-y-8 text-slate-300">
+            
+            {/* --- MANUAL DE ADMIN --- */}
+            {type === 'admin' && (
+              <>
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Modes (Click to expand)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* TRUTH BOX */}
+                      <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400 ring-2 ring-blue-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('truth')}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-blue-400 text-lg">1. Truth</strong>
+                            {expandedSection === 'truth' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
+                        {expandedSection === 'truth' && (
+                            <div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p>
+                                <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p>
+                                <em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em>
+                            </div>
+                        )}
+                      </div>
+
+                      {/* DARE BOX */}
+                      <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400 ring-2 ring-pink-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('dare')}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-pink-400 text-lg">2. Dare</strong>
+                            {expandedSection === 'dare' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Physical actions.</p>
+                        {expandedSection === 'dare' && (
+                            <div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p>
+                                <p className="mb-2"><strong>Voting:</strong> The group acts as the judge. They vote "Completed" or "Failed".</p>
+                                <em className="text-pink-300">Example: "Let the person to your right read your last DM."</em>
+                            </div>
+                        )}
+                      </div>
+
+                      {/* MATCH BOX */}
+                      <div 
+                        className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400 ring-2 ring-green-500' : 'bg-slate-900/50 border-slate-700 hover:bg-slate-800'}`}
+                        onClick={() => toggleSection('match')}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                            <strong className="text-green-400 text-lg">3. Match/Mismatch</strong>
+                            {expandedSection === 'match' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                        </div>
+                        <p className="text-sm text-slate-400">Compatibility test. 2 players answer blindly.</p>
+                        {expandedSection === 'match' && (
+                            <div className="mt-4 text-sm text-white border-t border-green-500/30 pt-2 animate-in fade-in">
+                                <p className="mb-2"><strong>How it works:</strong> The system secretly pairs two people (e.g., John & Sarah). A statement appears (e.g., "I prefer lights off").</p>
+                                <p className="mb-2"><strong>The Goal:</strong> Both answer YES or NO secretly on their phones. If they <strong>MATCH</strong> (both Yes or both No), they get points.</p>
+                            </div>
+                        )}
+                      </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control</h3>
+                  <div className="space-y-4">
+                      <div className="bg-slate-900 p-5 rounded-xl border-l-4 border-purple-500">
+                          <h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4>
+                          <p className="text-sm mb-2">In this mode, <strong>YOU control everything</strong>. Before every single turn, you must select:</p>
+                          <ul className="list-disc pl-5 text-sm space-y-1">
+                              <li><strong>Risk Level:</strong> How intense should the next question be?</li>
+                              <li><strong>Game Type:</strong> Do you want a Truth, a Dare, or a Match round next?</li>
+                          </ul>
+                          <p className="text-sm mt-2 italic text-slate-400">Use this when you want to read the room's vibe and adjust specifically.</p>
+                      </div>
+
+                      <div className="bg-slate-900 p-5 rounded-xl border-l-4 border-green-500">
+                          <h4 className="text-green-400 font-bold text-lg mb-2">MODE B: AUTOMATIC (Autopilot)</h4>
+                          <p className="text-sm mb-2">You set a "Loop Configuration" (e.g., 2 Truths, 2 Dares, 1 Match) and the game runs itself in that order endlessly.</p>
+                          <p className="text-sm">You simply click "Next" (or let the timer do it) and the system automatically picks the type based on your sequence.</p>
+                          <p className="text-sm mt-2 italic text-slate-400">Perfect for when you want to play along and not worry about managing the game.</p>
+                      </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Admin Tools</h3>
+                  <ul className="list-disc pl-5 space-y-4 text-sm">
+                    <li>
+                        <strong>1. Uploading Questions:</strong>
+                        <div className="mt-2 space-y-3">
+                            <div className="bg-slate-950 p-3 rounded border border-blue-900/50">
+                                <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
+                                <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code>
+                                <br/><span className="text-xs text-slate-500">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span>
+                            </div>
+                            <div className="bg-slate-950 p-3 rounded border border-green-900/50">
+                                <span className="text-green-300 font-bold block mb-1">Match Files:</span>
+                                <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">male, female, level</code>
+                            </div>
+                        </div>
+                    </li>
+                    <li><strong>Singles vs Couples:</strong> The system <strong>understands</strong> if players are Single or Couples. If Couples join, the game <strong>will not start</strong> until both partners (matching ID) are present.</li>
+                    <li><strong>Bot System:</strong> If total players are odd, "Brad Pitt" (or "Scarlett Johansson") joins to ensure everyone has a partner in Match rounds.</li>
+                  </ul>
+                </section>
+              </>
+            )}
+
+            {/* --- MANUAL DE JUGADOR --- */}
+            {type === 'player' && (
+              <>
+                  <section>
+                  <h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3>
+                  <ol className="list-decimal pl-5 space-y-3">
+                      <li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li>
+                      <li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li>
+                      <li><strong>Male's Last 4 Phone Digits:</strong> 
+                          <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm">
+                              <li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li>
+                              <li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li>
+                          </ul>
+                      </li>
+                      <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
+                  <div className="space-y-4">
+                      <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-blue-500">
+                          <strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong>
+                          <p className="text-sm">When it's your turn, a question will appear. Read it aloud and answer honestly. The group will award points based on your answer.</p>
+                      </div>
+                      
+                      <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-pink-500">
+                          <strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong>
+                          <p className="text-sm">A challenge will appear. You must perform the action described to earn points.</p>
+                      </div>
+
+                      <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-green-500">
+                          <strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong>
+                          <p className="text-sm mb-2">The system will secretly pair you with another player. A statement will appear on your screen.</p>
+                          <p className="text-sm italic text-yellow-400 mb-2 font-mono bg-black/30 p-2 rounded text-center">"I prefer lights off"</p>
+                          <p className="text-sm">You must answer <strong>YES</strong> or <strong>NO</strong> honestly. You only score points if your answer <strong>MATCHES</strong> your partner's answer!</p>
+                      </div>
+                  </div>
+                </section>
+              </>
+            )}
+
+          </div>
+          
+          <div className="mt-8 text-center border-t border-slate-700 pt-6">
+            <button onClick={onClose} className="bg-blue-600 px-8 py-3 rounded-xl font-bold text-white hover:bg-blue-500 shadow-lg transition-transform active:scale-95">
+              Got it
+            </button>
+          </div>
         </div>
+      </div>
     </div>
-  )
+  );
 };
 
 export default function TruthAndDareApp() {
@@ -285,7 +459,6 @@ export default function TruthAndDareApp() {
       setTimeout(() => setCustomSuccess(null), 3000);
   };
 
-  // ... (Update Name, Kick Player, Self Leave functions omitted for brevity - same as before)
   const handleUpdateName = async () => { if (!newName.trim() || !user) return; try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { name: newName }); setUserName(newName); localStorage.setItem('td_username', newName); setIsEditingName(false); } catch (e) { showError("Could not update name."); } };
   const handleKickPlayer = async (uid: string, name: string) => { if(confirm(`Reset player ${name}?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid)); } };
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
