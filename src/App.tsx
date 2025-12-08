@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -48,7 +48,7 @@ interface Challenge {
   level: string;
   type: string;
   text?: string;
-  sexo?: string;
+  gender?: string; // Cambiado de 'sexo' a 'gender'
   male?: string;
   female?: string;
   answered: boolean;
@@ -110,12 +110,12 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <strong className="text-blue-400 block mb-2 text-lg">1. Truth (Verdad)</strong>
+                      <strong className="text-blue-400 block mb-2 text-lg">1. Truth</strong>
                       <p className="text-sm">The player must answer a question honestly. Other players vote "Good Answer" or "Punish".</p>
                       <em className="text-xs text-slate-500 block mt-2">Example: "What is your biggest sexual regret?"</em>
                    </div>
                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <strong className="text-pink-400 block mb-2 text-lg">2. Dare (Reto)</strong>
+                      <strong className="text-pink-400 block mb-2 text-lg">2. Dare</strong>
                       <p className="text-sm">Physical or social actions. The player must perform it to get points.</p>
                       <em className="text-xs text-slate-500 block mt-2">Example: "Let the person to your right check your browser history."</em>
                    </div>
@@ -130,7 +130,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                 <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Technical Setup</h3>
                 <ul className="list-disc pl-5 space-y-2 text-sm">
                   <li><strong>Uploading Questions:</strong> You must upload CSV files.
-                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Truth/Dare Header: text, level, type, sexo</code> (Note: 'type' must be T or D. 'sexo' must be F, M or B).
+                    <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Truth/Dare Header: text, level, type, gender</code> (Note: 'type' must be T or D. 'gender' must be F, M or B).
                     <br/><code className="text-xs bg-slate-950 p-1 rounded text-green-300">Match Header: male, female, level</code> (Male question column and Female question column).
                   </li>
                   <li><strong>Game Code:</strong> Set a simple code (e.g., "PARTY") and tell players to enter it. This links everyone to your screen.</li>
@@ -164,9 +164,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                 <ol className="list-decimal pl-5 space-y-3">
                     <li><strong>Name:</strong> Enter your nickname.</li>
                     <li><strong>Gender:</strong> Select Male or Female (this affects which questions you get).</li>
-                    <li><strong>Couple Number:</strong> <span className="text-yellow-400">Important!</span> This is used to identify existing real-life couples.
-                        <br/><span className="text-sm text-slate-400">If you are here with a partner, enter the <strong>Last 4 digits of the Male's phone number</strong> (or any shared secret number). If you are single, enter a random number like 1234.</span>
-                    </li>
+                    <li><strong>Couple Number:</strong> If you are playing with a partner, use this number to link your devices so the system knows you are a couple (e.g. use the same 4 digits). If you are single, just put any random number.</li>
                     <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
                 </ol>
               </section>
@@ -174,14 +172,21 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
               <section>
                 <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
                 <div className="space-y-4">
-                    <div className="bg-slate-900 p-4 rounded-lg">
-                        <strong className="text-blue-400">When it's your turn (Truth/Dare):</strong>
-                        <p className="text-sm mt-1">Your phone will turn green. Read the question aloud to the group! Then answer it or do the dare. The group will vote if you passed or failed.</p>
+                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-blue-500">
+                        <strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong>
+                        <p className="text-sm">If it's your turn, a question will appear. Read it aloud! Answer it honestly. The group will vote if your answer was good enough.</p>
                     </div>
-                    <div className="bg-slate-900 p-4 rounded-lg">
-                        <strong className="text-green-400">Match/Mismatch Rounds:</strong>
-                        <p className="text-sm mt-1">The system will pair you with someone random. A question will appear on your screen (e.g., "Would we make a good couple?").</p>
-                        <p className="text-sm mt-1">Answer <strong>YES</strong> or <strong>NO</strong> honestly. You only get points if your answer <strong>MATCHES</strong> your partner's answer!</p>
+                    
+                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-pink-500">
+                        <strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong>
+                        <p className="text-sm">A challenge will appear. You must perform the action to earn points.</p>
+                    </div>
+
+                    <div className="bg-slate-900 p-4 rounded-lg border-l-4 border-green-500">
+                        <strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong>
+                        <p className="text-sm mb-2">The system will pair you with someone random. A question will appear on your screen.</p>
+                        <p className="text-sm italic text-slate-400 mb-2">Example: "I prefer lights off."</p>
+                        <p className="text-sm">Answer <strong>YES</strong> or <strong>NO</strong> honestly. You only get points if your answer <strong>MATCHES</strong> your partner's answer!</p>
                     </div>
                 </div>
               </section>
@@ -237,6 +242,7 @@ export default function TruthAndDareApp() {
   const [sortConfig, setSortConfig] = useState<{key: keyof Challenge, direction: 'asc' | 'desc'} | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const selectionMode = useRef<'add' | 'remove'>('add');
+  const [searchTerm, setSearchTerm] = useState(''); // SEARCH STATE
     
   // Bulk Edit
   const [bulkLevel, setBulkLevel] = useState('');
@@ -479,7 +485,6 @@ export default function TruthAndDareApp() {
     return pairs;
   };
 
-  // GENERO LOGIC: pasamos el género del jugador actual
   const startRound = async () => {
     let sequence: string[] = [];
     if (isAutoSetup) {
@@ -532,7 +537,7 @@ export default function TruthAndDareApp() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote });
   };
 
-  // GENERO LOGIC: filtramos segun playerGender
+  // GENERO LOGIC: filtramos segun playerGender y usamos la propiedad 'gender'
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => {
       let currentLvl = parseInt(startLevel);
       let found = null;
@@ -552,7 +557,8 @@ export default function TruthAndDareApp() {
           if (type !== 'YN') {
              validDocs = validDocs.filter(d => {
                  const data = d.data();
-                 const qSex = (data.sexo || 'B').toUpperCase();
+                 // Compatibilidad: usar gender si existe, sino sexo, sino 'B'
+                 const qSex = (data.gender || data.sexo || 'B').toUpperCase();
                  if (qSex === 'B') return true; 
                  if (playerGender === 'male') {
                      return qSex !== 'F'; // Si soy Hombre, NO quiero preguntas marcadas 'F'
@@ -737,7 +743,7 @@ export default function TruthAndDareApp() {
           const ref = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id);
           const updates: any = {};
           if (bulkLevel) updates.level = bulkLevel;
-          if (managerTab === 'td' && bulkGender) updates.sexo = bulkGender;
+          if (managerTab === 'td' && bulkGender) updates.gender = bulkGender; // Updated to 'gender'
           batch.update(ref, updates);
       });
       await batch.commit();
@@ -759,20 +765,20 @@ export default function TruthAndDareApp() {
       await batch.commit(); setSelectedIds(new Set());
   };
   const checkPendingSettings = () => {
-      const pendingTD = challenges.filter(c => !c.level || !c.type || !c.sexo).length;
+      const pendingTD = challenges.filter(c => !c.level || !c.type || (!c.gender && !c.sexo)).length; // Checked gender or sexo
       const pendingMM = pairChallenges.filter(c => !c.level).length;
       return { pendingTD, pendingMM, total: pendingTD + pendingMM };
   };
   const handleExportCSV = (isTemplate: boolean) => {
       const isTD = managerTab === 'td';
-      const headers = isTD ? "text,level,type,sexo" : "male,female,level";
+      const headers = isTD ? "text,level,type,gender" : "male,female,level"; // Changed header to gender
       let csvContent = "data:text/csv;charset=utf-8," + headers + "\n";
       if (!isTemplate) {
           const data = isTD ? challenges : pairChallenges;
           data.forEach(row => {
               if (isTD) {
                   const safeText = `"${(row.text || '').replace(/"/g, '""')}"`;
-                  csvContent += `${safeText},${row.level||''},${row.type||''},${row.sexo||''}\n`;
+                  csvContent += `${safeText},${row.level||''},${row.type||''},${row.gender||row.sexo||''}\n`;
               } else {
                   const safeMale = `"${(row.male || '').replace(/"/g, '""')}"`;
                   const safeFemale = `"${(row.female || '').replace(/"/g, '""')}"`;
@@ -800,7 +806,7 @@ export default function TruthAndDareApp() {
           if(!line.trim()) return;
           const cleanText = line.trim().replace(/^"|"$/g, ''); 
           const docRef = doc(ref);
-          batch.set(docRef, { text: cleanText, level: '', type: fixedType, sexo: '', answered: false, paused: false });
+          batch.set(docRef, { text: cleanText, level: '', type: fixedType, gender: '', answered: false, paused: false }); // Saves as gender
       });
       await batch.commit(); setUploading(false); showError(`Uploaded ${fixedType} questions.`);
   };
@@ -963,8 +969,8 @@ export default function TruthAndDareApp() {
           
           <input type="text" placeholder="Name" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={userName} onChange={e=>setUserName(e.target.value)} />
           <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none"><option value="male">Male</option><option value="female">Female</option></select>
-          <input type="number" placeholder="Couple ID (e.g. 1234)" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
-          {userName.toLowerCase()!=='admin' && <input type="text" placeholder="Game Code" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={code} onChange={e=>setCode(e.target.value)} />}
+          <input type="number" placeholder="Male's Last 4 Digits" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          {userName.toLowerCase()!=='admin' && <input type="text" placeholder="Ask code to admin" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 mb-4 text-white focus:border-purple-500 outline-none" value={code} onChange={e=>setCode(e.target.value)} />}
           <button onClick={joinGame} disabled={!userName.trim()} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 p-3 rounded-lg font-bold shadow-lg active:scale-95 transition-transform">Enter Game</button>
         </div>
       </div>
@@ -974,7 +980,17 @@ export default function TruthAndDareApp() {
   // --- MANAGER RENDER ---
   if (isAdmin && isManaging) {
       const data = managerTab === 'td' ? challenges : pairChallenges;
-      let displayedData = showPendingOnly ? (managerTab === 'td' ? data.filter(c => !c.level || !c.type || !c.sexo) : data.filter(c => !c.level)) : data;
+      let displayedData = showPendingOnly ? (managerTab === 'td' ? data.filter(c => !c.level || !c.type || (!c.gender && !c.sexo)) : data.filter(c => !c.level)) : data;
+      
+      // SEARCH FILTER
+      if (searchTerm) {
+          displayedData = displayedData.filter(c => 
+             (c.text && c.text.toLowerCase().includes(searchTerm.toLowerCase())) ||
+             (c.male && c.male.toLowerCase().includes(searchTerm.toLowerCase())) ||
+             (c.female && c.female.toLowerCase().includes(searchTerm.toLowerCase()))
+          );
+      }
+
       if (sortConfig) {
           displayedData = [...displayedData].sort((a, b) => {
               // @ts-ignore
@@ -992,7 +1008,19 @@ export default function TruthAndDareApp() {
         <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col" onMouseUp={()=>setIsDragging(false)}>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Settings/> Content Manager</h2>
-                <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
+                <div className="flex gap-2">
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            placeholder="Search..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="bg-slate-800 border border-slate-600 rounded-lg pl-8 pr-2 py-1 text-sm focus:border-blue-500 outline-none"
+                        />
+                        <Search size={14} className="absolute left-2 top-2 text-slate-400"/>
+                    </div>
+                    <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
+                </div>
             </div>
             <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2">
                 <button onClick={()=>setManagerTab('td')} className={`px-4 py-2 rounded ${managerTab==='td' ? 'bg-blue-600' : 'bg-slate-700'}`}>Truth/Dare</button>
@@ -1002,11 +1030,18 @@ export default function TruthAndDareApp() {
                 <div className="flex flex-col"><label className="text-xs text-slate-400">Set Level</label><select className="bg-slate-900 border border-slate-600 p-1 rounded" value={bulkLevel} onChange={e=>setBulkLevel(e.target.value)}><option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
                 {managerTab === 'td' && (<div className="flex flex-col"><label className="text-xs text-slate-400">Set Gender</label><select className="bg-slate-900 border border-slate-600 p-1 rounded" value={bulkGender} onChange={e=>setBulkGender(e.target.value)}><option value="">-</option><option value="F">Female</option><option value="B">Both</option></select></div>)}
                 <button onClick={applyBulkEdit} disabled={selectedIds.size === 0} className="bg-green-600 px-3 py-1 rounded font-bold disabled:opacity-50">Apply ({selectedIds.size})</button>
-                <button onClick={()=>bulkPause(true)} disabled={selectedIds.size === 0} className="bg-yellow-600 px-3 py-1 rounded disabled:opacity-50" title="Pause"><PauseCircle size={16}/></button>
-                <button onClick={()=>bulkPause(false)} disabled={selectedIds.size === 0} className="bg-green-700 px-3 py-1 rounded disabled:opacity-50" title="Resume"><PlayCircle size={16}/></button>
-                <button onClick={deleteSelected} disabled={selectedIds.size === 0} className="bg-red-600 px-3 py-1 rounded font-bold flex items-center gap-2 disabled:opacity-50"><Trash2 size={16}/> Delete</button>
+                
+                {/* BIGGER PLAY/PAUSE BUTTONS */}
+                <button onClick={()=>bulkPause(true)} disabled={selectedIds.size === 0} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg border border-slate-500 disabled:opacity-50 transition-colors" title="Pause Selected">
+                    <PauseCircle size={20} className="text-yellow-400"/>
+                </button>
+                <button onClick={()=>bulkPause(false)} disabled={selectedIds.size === 0} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg border border-slate-500 disabled:opacity-50 transition-colors" title="Resume Selected">
+                    <PlayCircle size={20} className="text-green-400"/>
+                </button>
+
+                <button onClick={deleteSelected} disabled={selectedIds.size === 0} className="bg-red-600 px-3 py-1 rounded font-bold flex items-center gap-2 disabled:opacity-50 ml-auto"><Trash2 size={16}/> Delete</button>
                 <button onClick={()=>toggleSelectAll(displayedData)} className="bg-slate-600 px-3 py-1 rounded flex items-center gap-1">{selectedIds.size === displayedData.length ? <CheckSquare size={14}/> : <Square size={14}/>} All</button>
-                <button onClick={()=>setShowPendingOnly(!showPendingOnly)} className={`ml-auto px-3 py-1 rounded flex items-center gap-1 ${showPendingOnly ? 'bg-yellow-600' : 'bg-slate-600'}`}><Filter size={14}/> Needs Setup</button>
+                <button onClick={()=>setShowPendingOnly(!showPendingOnly)} className={`px-3 py-1 rounded flex items-center gap-1 ${showPendingOnly ? 'bg-yellow-600' : 'bg-slate-600'}`}><Filter size={14}/> Needs Setup</button>
             </div>
             <div className="flex gap-2 mb-2 justify-end text-xs">
                 <button onClick={()=>handleExportCSV(false)} className="bg-blue-600 px-3 py-1 rounded flex items-center gap-1"><Download size={14}/> Export Data</button>
@@ -1022,7 +1057,7 @@ export default function TruthAndDareApp() {
                             <th className="p-2 w-8 text-center"></th>
                             <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('level')}>Level <ArrowUpDown size={12} className="inline"/></th>
                             {managerTab === 'td' && <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('type')}>Type <ArrowUpDown size={12} className="inline"/></th>}
-                            {managerTab === 'td' && <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('sexo')}>Gender <ArrowUpDown size={12} className="inline"/></th>}
+                            {managerTab === 'td' && <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('gender')}>Gender <ArrowUpDown size={12} className="inline"/></th>}
                             {managerTab === 'td' ? <th className="p-2 cursor-pointer hover:text-white min-w-[300px]" onClick={()=>handleSort('text')}>Text <ArrowUpDown size={12} className="inline"/></th> : <><th className="p-2 cursor-pointer hover:text-white min-w-[200px]" onClick={()=>handleSort('male')}>Male Question <ArrowUpDown size={12} className="inline"/></th><th className="p-2 cursor-pointer hover:text-white min-w-[200px]" onClick={()=>handleSort('female')}>Female Question <ArrowUpDown size={12} className="inline"/></th></>}
                         </tr>
                     </thead>
@@ -1033,7 +1068,7 @@ export default function TruthAndDareApp() {
                                 <td className="p-2 text-center" onMouseDown={(e)=>e.stopPropagation()}><button onClick={()=>updateSingleField(collectionName, c.id!, 'paused', !c.paused)}>{c.paused ? <PauseCircle size={16}/> : <PlayCircle size={16} className="text-green-500"/>}</button></td>
                                 <td className="p-2">{c.level || <span className="text-red-500">?</span>}</td>
                                 {managerTab === 'td' && <td className="p-2">{c.type || <span className="text-red-500">?</span>}</td>}
-                                {managerTab === 'td' && <td className="p-2">{c.sexo || <span className="text-red-500">?</span>}</td>}
+                                {managerTab === 'td' && <td className="p-2">{c.gender || c.sexo || <span className="text-red-500">?</span>}</td>}
                                 {managerTab === 'td' ? (<td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.text || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'text', e.target.value)}/></td>) : (<><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.male || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'male', e.target.value)}/></td><td className="p-2" onMouseDown={(e)=>e.stopPropagation()}><input className="bg-transparent w-full border-b border-transparent focus:border-blue-500 outline-none" value={c.female || ''} onChange={(e)=>updateSingleField(collectionName, c.id!, 'female', e.target.value)}/></td></>)}
                             </tr>
                         ))}
