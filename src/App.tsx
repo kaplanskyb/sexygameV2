@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown, 
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle, 
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -81,6 +81,7 @@ interface GameState {
   sequenceIndex?: number;
   matchHistory?: HistoryEntry[];
   nextType?: string; 
+  isEnding?: boolean; // New flag for graceful shutdown
 }
 
 // --- COMPONENTES DE AYUDA ---
@@ -126,7 +127,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                         {expandedSection === 'truth' && (
                             <div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in">
                                 <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p>
-                                <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Punish" on their phones.</p>
+                                <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p>
                                 <em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em>
                             </div>
                         )}
@@ -141,7 +142,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                             <strong className="text-pink-400 text-lg">2. Dare</strong>
                             {expandedSection === 'dare' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
                         </div>
-                        <p className="text-sm text-slate-400">Physical actions. Do it to earn points.</p>
+                        <p className="text-sm text-slate-400">Physical actions.</p>
                         {expandedSection === 'dare' && (
                             <div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in">
                                 <p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p>
@@ -172,7 +173,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                 </section>
 
                 <section>
-                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control (Read Carefully)</h3>
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control</h3>
                   <div className="space-y-4">
                       <div className="bg-slate-900 p-5 rounded-xl border-l-4 border-purple-500">
                           <h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4>
@@ -200,18 +201,13 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                         <strong>1. Uploading Questions:</strong>
                         <div className="mt-2 space-y-3">
                             <div className="bg-slate-950 p-3 rounded border border-blue-900/50">
-                                <span className="text-blue-300 font-bold block mb-1">To upload Truth Questions:</span>
-                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">text, level, gender</code>
-                                <br/><span className="text-xs text-slate-500">Gender = M, F or B. (Type is automatically set to Truth).</span>
-                            </div>
-                            <div className="bg-slate-950 p-3 rounded border border-pink-900/50">
-                                <span className="text-pink-300 font-bold block mb-1">To upload Dare Challenges:</span>
-                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">text, level, gender</code>
-                                <br/><span className="text-xs text-slate-500">Gender = M, F or B. (Type is automatically set to Dare).</span>
+                                <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
+                                <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code>
+                                <br/><span className="text-xs text-slate-500">Gender = M, F or B.</span>
                             </div>
                             <div className="bg-slate-950 p-3 rounded border border-green-900/50">
-                                <span className="text-green-300 font-bold block mb-1">To upload Match Pairs:</span>
-                                <span className="text-slate-400">CSV Headers must be:</span> <code className="text-green-400">male, female, level</code>
+                                <span className="text-green-300 font-bold block mb-1">Match Files:</span>
+                                <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">male, female, level</code>
                             </div>
                         </div>
                     </li>
@@ -298,6 +294,7 @@ export default function TruthAndDareApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null); 
+  const [customSuccess, setCustomSuccess] = useState<string | null>(null); // NEW: Success state
   
   // Modal States
   const [showAdminHelp, setShowAdminHelp] = useState(false);
@@ -437,6 +434,10 @@ export default function TruthAndDareApp() {
   // --- HELPER FUNCTIONS ---
   const showError = (msg: string) => setCustomError(msg);
   const closeError = () => setCustomError(null);
+  const showSuccess = (msg: string) => {
+      setCustomSuccess(msg);
+      setTimeout(() => setCustomSuccess(null), 3000);
+  };
 
   const handleUpdateName = async () => {
     if (!newName.trim() || !user) return;
@@ -538,6 +539,11 @@ export default function TruthAndDareApp() {
   };
 
   const startGame = async () => {
+    if (!selectedLevel) {
+        showError("Please select a Risk Level before starting!");
+        return;
+    }
+
     const { total } = checkPendingSettings();
     if (total > 0) {
         showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`);
@@ -565,7 +571,7 @@ export default function TruthAndDareApp() {
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
 
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [] });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [], isEnding: false });
   };
 
   const computePairs = () => {
@@ -606,6 +612,11 @@ export default function TruthAndDareApp() {
   };
 
   const startRound = async () => {
+    if (!selectedLevel) {
+        showError("Select Level First!");
+        return;
+    }
+
     let sequence: string[] = [];
     if (isAutoSetup) {
         for(let i=0; i<qtyTruth; i++) sequence.push('question');
@@ -697,6 +708,13 @@ export default function TruthAndDareApp() {
   const nextTurn = async () => {
     if (!gameState) return;
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+    
+    // Check if ending requested
+    if (gameState.isEnding) {
+        await updateDoc(gameRef, { mode: 'ended' });
+        return;
+    }
+
     let updates: any = {};
     const points = { ...(gameState.points || {}) };
     const batch = writeBatch(db); 
@@ -888,14 +906,14 @@ export default function TruthAndDareApp() {
   };
   const handleExportCSV = (isTemplate: boolean) => {
       const isTD = managerTab === 'td';
-      const headers = isTD ? "text,level,type,gender" : "male,female,level"; 
+      const headers = isTD ? "text,level,gender" : "male,female,level"; 
       let csvContent = "data:text/csv;charset=utf-8," + headers + "\n";
       if (!isTemplate) {
           const data = isTD ? challenges : pairChallenges;
           data.forEach(row => {
               if (isTD) {
                   const safeText = `"${(row.text || '').replace(/"/g, '""')}"`;
-                  csvContent += `${safeText},${row.level||''},${row.type||''},${row.gender||row.sexo||''}\n`;
+                  csvContent += `${safeText},${row.level||''},${row.gender||row.sexo||''}\n`;
               } else {
                   const safeMale = `"${(row.male || '').replace(/"/g, '""')}"`;
                   const safeFemale = `"${(row.female || '').replace(/"/g, '""')}"`;
@@ -917,28 +935,32 @@ export default function TruthAndDareApp() {
       
       // Strict Validation - Check for required columns
       if (!headerLine.includes('text') || !headerLine.includes('level') || !headerLine.includes('gender')) {
-          if(!confirm("Warning: Header seems invalid. Expected: text, level, gender. Continue anyway?")) return;
+          showError(`Invalid CSV for ${fixedType === 'T' ? 'Truth' : 'Dare'}.\nExpected headers: text, level, gender\nFound: ${headerLine}`);
+          return;
       }
 
       setUploading(true);
       const ref = collection(db, 'artifacts', appId, 'public', 'data', 'challenges');
       const batch = writeBatch(db);
       
+      let count = 0;
       lines.slice(1).forEach(line => {
           if(!line.trim()) return;
           const parts = line.split(',');
           // Assuming standard CSV format from template: text, level, gender
-          // We will assign fixedType to the type field automatically.
-          // Note: This is a simple CSV split. For robustness with commas in text, use a library.
-          // But based on previous code simple logic:
           const textVal = parts[0]?.replace(/^"|"$/g, '').trim();
           const levelVal = parts[1]?.trim();
           const genderVal = parts[2]?.trim();
 
-          const docRef = doc(ref);
-          batch.set(docRef, { text: textVal, level: levelVal, type: fixedType, gender: genderVal, answered: false, paused: false }); 
+          if(textVal) {
+              const docRef = doc(ref);
+              batch.set(docRef, { text: textVal, level: levelVal, type: fixedType, gender: genderVal, answered: false, paused: false }); 
+              count++;
+          }
       });
-      await batch.commit(); setUploading(false); showError(`Uploaded ${fixedType} questions.`);
+      await batch.commit(); 
+      setUploading(false); 
+      showSuccess(`Uploaded ${count} ${fixedType === 'T' ? 'Truth' : 'Dare'} questions.`);
   };
   const handleUploadDoubleCol = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]; if(!file) return;
@@ -948,32 +970,45 @@ export default function TruthAndDareApp() {
 
       // Strict Validation
       if (!headerLine.includes('male') || !headerLine.includes('female') || !headerLine.includes('level')) {
-          if(!confirm("Warning: Header seems invalid. Expected: male, female, level. Continue anyway?")) return;
+          showError(`Invalid CSV for Match/Mismatch.\nExpected headers: male, female, level\nFound: ${headerLine}`);
+          return;
       }
 
       setUploading(true);
       const ref = collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges');
       const batch = writeBatch(db);
+      
+      let count = 0;
       lines.slice(1).forEach(line => {
           if(!line.trim()) return;
           const parts = line.split(',');
-          // Assuming standard CSV: male, female, level
           const male = parts[0]?.replace(/^"|"$/g, '').trim();
           const female = parts[1]?.replace(/^"|"$/g, '').trim();
           const level = parts[2]?.trim();
 
-          const docRef = doc(ref);
-          batch.set(docRef, { male, female, level, answered: false, paused: false });
+          if (male && female) {
+              const docRef = doc(ref);
+              batch.set(docRef, { male, female, level, answered: false, paused: false });
+              count++;
+          }
       });
-      await batch.commit(); setUploading(false); showError(`Uploaded pairs.`);
+      await batch.commit(); 
+      setUploading(false); 
+      showSuccess(`Uploaded ${count} Match/Mismatch questions.`);
   };
-  const handleEndGame = async () => { if(confirm('End game?')) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'ended' }); };
-  const handleRestart = async () => { if(confirm('Restart?')) { 
+  
+  const handleEndGame = async () => { 
+      if(confirm('End game after this round?')) {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isEnding: true }); 
+      }
+  };
+  
+  const handleRestart = async () => { if(confirm('RESET EVERYTHING? Use this only for a new party.')) { 
         const batch = writeBatch(db);
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'))).forEach(d=>batch.delete(d.ref));
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'challenges'))).forEach(d=>batch.update(d.ref, {answered:false}));
         (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges'))).forEach(d=>batch.update(d.ref, {answered:false}));
-        batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null, matchHistory: [] });
+        batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null, matchHistory: [], isEnding: false });
         await batch.commit();
   }};
 
@@ -998,12 +1033,19 @@ export default function TruthAndDareApp() {
 
   // --- COMPONENTS ---
   const CustomAlert = () => customError ? (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-50">
-          <div className="bg-slate-800 p-6 rounded-xl border border-red-500 max-w-sm text-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-[150]">
+          <div className="bg-slate-800 p-6 rounded-xl border border-red-500 max-w-md text-center shadow-2xl">
               <AlertTriangle className="mx-auto text-red-500 mb-2" size={40}/>
-              <p className="text-white mb-4">{customError}</p>
+              <p className="text-white mb-4 whitespace-pre-line">{customError}</p>
               <button onClick={closeError} className="bg-red-600 px-6 py-2 rounded font-bold">OK</button>
           </div>
+      </div>
+  ) : null;
+
+  const CustomSuccess = () => customSuccess ? (
+      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-2 z-[150] animate-in fade-in slide-in-from-top-4">
+          <CheckCircle size={20} />
+          <span className="font-bold">{customSuccess}</span>
       </div>
   ) : null;
 
@@ -1159,19 +1201,11 @@ export default function TruthAndDareApp() {
 
       return (
         <div className="min-h-screen p-4 text-white bg-slate-900 flex flex-col" onMouseUp={()=>setIsDragging(false)}>
+            <CustomSuccess />
+            <CustomAlert />
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Settings/> Content Manager</h2>
                 <div className="flex gap-2">
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-800 border border-slate-600 rounded-lg pl-8 pr-2 py-1 text-sm focus:border-blue-500 outline-none"
-                        />
-                        <Search size={14} className="absolute left-2 top-2 text-slate-400"/>
-                    </div>
                     <button onClick={()=>setIsManaging(false)} className="bg-red-600 px-3 py-1 rounded text-sm">Back</button>
                 </div>
             </div>
@@ -1211,7 +1245,42 @@ export default function TruthAndDareApp() {
                             <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('level')}>Level <ArrowUpDown size={12} className="inline"/></th>
                             {managerTab === 'td' && <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('type')}>Type <ArrowUpDown size={12} className="inline"/></th>}
                             {managerTab === 'td' && <th className="p-2 cursor-pointer hover:text-white whitespace-nowrap" onClick={()=>handleSort('gender')}>Gender <ArrowUpDown size={12} className="inline"/></th>}
-                            {managerTab === 'td' ? <th className="p-2 cursor-pointer hover:text-white min-w-[300px]" onClick={()=>handleSort('text')}>Text <ArrowUpDown size={12} className="inline"/></th> : <><th className="p-2 cursor-pointer hover:text-white min-w-[200px]" onClick={()=>handleSort('male')}>Male Question <ArrowUpDown size={12} className="inline"/></th><th className="p-2 cursor-pointer hover:text-white min-w-[200px]" onClick={()=>handleSort('female')}>Female Question <ArrowUpDown size={12} className="inline"/></th></>}
+                            {managerTab === 'td' ? (
+                                <th className="p-2 min-w-[300px]">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center cursor-pointer hover:text-white" onClick={()=>handleSort('text')}>Text <ArrowUpDown size={12} className="inline ml-1"/></div>
+                                        <div className="relative">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search..." 
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="bg-slate-900 border border-slate-600 rounded pl-6 pr-2 py-0.5 text-xs focus:border-blue-500 outline-none w-full text-white"
+                                            />
+                                            <Search size={10} className="absolute left-1.5 top-1.5 text-slate-400"/>
+                                        </div>
+                                    </div>
+                                </th>
+                            ) : (
+                                <>
+                                    <th className="p-2 min-w-[200px]">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center cursor-pointer hover:text-white" onClick={()=>handleSort('male')}>Male Question <ArrowUpDown size={12} className="inline ml-1"/></div>
+                                            <div className="relative">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Search..." 
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    className="bg-slate-900 border border-slate-600 rounded pl-6 pr-2 py-0.5 text-xs focus:border-blue-500 outline-none w-full text-white"
+                                                />
+                                                <Search size={10} className="absolute left-1.5 top-1.5 text-slate-400"/>
+                                            </div>
+                                        </div>
+                                    </th>
+                                    <th className="p-2 min-w-[200px]" onClick={()=>handleSort('female')}>Female Question <ArrowUpDown size={12} className="inline"/></th>
+                                </>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700">
@@ -1254,6 +1323,7 @@ export default function TruthAndDareApp() {
         return (
             <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white bg-slate-900 relative">
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
+              <CustomSuccess />
               
               <button 
                 onClick={() => setShowAdminHelp(true)} 
@@ -1418,6 +1488,19 @@ export default function TruthAndDareApp() {
 
     const card = currentCard();
     const answers = gameState?.answers || {};
+    
+    // Calculate pending players
+    const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+        if(gameState.mode === 'question' || gameState.mode === 'dare') {
+            if(p.uid === players[gameState.currentTurnIndex]?.uid) return false;
+            return !gameState.votes?.[p.uid];
+        }
+        if(gameState.mode === 'yn') {
+            return !gameState.answers?.[p.uid];
+        }
+        return false;
+    });
+
     return (
       <div className="min-h-screen text-white flex flex-col p-6 bg-slate-900 relative">
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
@@ -1478,13 +1561,24 @@ export default function TruthAndDareApp() {
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
-          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4"><h4 className="font-bold mb-2">Progress:</h4>{players.map(p => (<div key={p.uid} className="flex justify-between py-1 border-b border-slate-700"><span>{p.name} {p.isBot && '(Bot)'}</span><span className="font-bold">{gameState?.mode === 'question' || gameState?.mode === 'yn' ? (answers[p.uid] ? 'Answered' : '-') : (gameState?.votes?.[p.uid] || '-')}</span></div>))}</div>
+          
+          <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4">
+              <h4 className="font-bold mb-2 flex items-center gap-2"><RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Progress:</h4>
+              {pendingPlayers.length === 0 ? (
+                  <div className="text-green-400 font-bold text-center">All done!</div>
+              ) : (
+                  <div className="text-sm text-slate-300">
+                      Waiting for: <span className="font-bold text-white">{pendingPlayers.map(p => p.name).join(', ')}</span>
+                  </div>
+              )}
+          </div>
+
           {gameState?.isAutoMode ? (
               <div className="text-center text-green-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center"><RefreshCw className="animate-spin" size={16}/> Auto-Advancing Sequence...</div>
           ) : (
               <button onClick={nextTurn} className="w-full max-w-md bg-indigo-600 p-3 rounded-lg font-bold">Next (Force)</button>
           )}
-          <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">End Game</button>
+          <button onClick={handleEndGame} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">{gameState.isEnding ? "Ending after round..." : "End Game"}</button>
           <button onClick={handleRestart} className="w-full max-w-md bg-red-600 p-3 rounded-lg font-bold mt-4">Reset All</button>
         </div>
       </div>
@@ -1624,7 +1718,6 @@ export default function TruthAndDareApp() {
         <div className="font-bold flex gap-2 items-center bg-slate-800 px-3 py-1 rounded-full text-xs">
           <Zap size={14} className="text-yellow-400"/> 
           {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'} 
-          {gameState.mode !== 'yn' && card?.level && <span className={`ml-2 px-2 rounded text-black font-bold ${card.level === '4' ? 'bg-red-500' : 'bg-slate-400'}`}>Lvl {card.level}</span>}
         </div>
       </div>
 
@@ -1640,6 +1733,8 @@ export default function TruthAndDareApp() {
                     <div className="mb-4 opacity-50">
                         {gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? null : <Flame size={32}/>}
                     </div>
+                    {/* BIG MODE TITLE INSIDE CARD */}
+                    <div className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">{gameState.mode === 'yn' ? 'MATCH / MISMATCH' : gameState.mode.toUpperCase()}</div>
                     <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">
                         {getCardText(card)}
                     </h3>
@@ -1649,7 +1744,7 @@ export default function TruthAndDareApp() {
                     {!isMyTurn() && gameState.mode !== 'yn' && (
                         <div className="text-center mb-6">
                             <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Current Player</div>
-                            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all`}>
+                            <div className={`text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all animate-pulse`}>
                                 {currentPlayerName()}
                             </div>
                         </div>
@@ -1662,7 +1757,7 @@ export default function TruthAndDareApp() {
                     {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
                             <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-green-500 to-green-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><ThumbsUp className="mb-1" size={24}/><span className="font-bold">Good Answer</span></button>
-                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><ThumbsDown className="mb-1" size={24}/><span className="font-bold">Punish!</span></button>
+                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg active:scale-95 transition-transform"><ThumbsDown className="mb-1" size={24}/><span className="font-bold">Nah..</span></button>
                         </div>
                     )}
                      
