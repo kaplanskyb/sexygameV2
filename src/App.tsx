@@ -204,10 +204,20 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                                 <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
                                 <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code>
                                 <br/><span className="text-xs text-slate-500">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span>
+                                <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono text-slate-400">
+                                    Example Row:<br/>
+                                    "Have you had a one-night stand?", 1, B<br/>
+                                    "Kiss the person to your right", 2, F
+                                </div>
                             </div>
                             <div className="bg-slate-950 p-3 rounded border border-green-900/50">
                                 <span className="text-green-300 font-bold block mb-1">Match Files:</span>
                                 <span className="text-slate-400">Headers must be:</span> <code className="text-green-400">male, female, level</code>
+                                <div className="mt-2 p-2 bg-black/40 rounded text-xs font-mono text-slate-400">
+                                    Example Row:<br/>
+                                    "I watch porn alone", "I watch porn alone", 3<br/>
+                                    "I enjoy spanking", "I enjoy being spanked", 1
+                                </div>
                             </div>
                         </div>
                     </li>
@@ -608,7 +618,7 @@ export default function TruthAndDareApp() {
 
   const startRound = async () => {
     if (!selectedLevel) {
-        showError("Select Level First!");
+        showError("Please select a Risk Level before starting!");
         return;
     }
 
@@ -1483,8 +1493,6 @@ export default function TruthAndDareApp() {
 
     const card = currentCard();
     const answers = gameState?.answers || {};
-    
-    // Calculate pending players
     const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
         if(gameState.mode === 'question' || gameState.mode === 'dare') {
             if(p.uid === players[gameState.currentTurnIndex]?.uid) return false;
@@ -1556,7 +1564,6 @@ export default function TruthAndDareApp() {
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
-          
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4">
               <h4 className="font-bold mb-2 flex items-center gap-2"><RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Progress:</h4>
               {pendingPlayers.length === 0 ? (
@@ -1567,7 +1574,6 @@ export default function TruthAndDareApp() {
                   </div>
               )}
           </div>
-
           {gameState?.isAutoMode ? (
               <div className="text-center text-green-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center"><RefreshCw className="animate-spin" size={16}/> Auto-Advancing Sequence...</div>
           ) : (
