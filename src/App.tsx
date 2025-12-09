@@ -102,8 +102,7 @@ const parseCSVLine = (text: string) => {
     return a;
 };
 
-// --- COMPONENTES DE AYUDA (MANUAL ELEGIDO) ---
-
+// --- COMPONENTES DE AYUDA (MANUAL) ---
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
@@ -289,7 +288,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
         </div>
       </div>
     );
-  };
+};
 
 export default function TruthAndDareApp() {
   const [user, setUser] = useState<User | null>(null);
@@ -382,6 +381,19 @@ export default function TruthAndDareApp() {
       }
     });
   }, []);
+
+  // PERSISTENCIA DEL USUARIO (COUPLE ID)
+  useEffect(() => {
+    if (user && players.length > 0) {
+        const me = players.find(p => p.uid === user.uid);
+        if (me) {
+            if (me.coupleNumber) setCoupleNumber(me.coupleNumber);
+            if (me.relationshipStatus) setRelationshipStatus(me.relationshipStatus);
+            if (me.name) setUserName(me.name); 
+            if (me.gender) setGender(me.gender); 
+        }
+    }
+  }, [user, players]);
 
   useEffect(() => {
     if (!user) return;
@@ -523,12 +535,15 @@ export default function TruthAndDareApp() {
   };
 
   const startGame = async () => {
+    // 3 PLAYER MINIMUM RULE
+    const realPlayers = players.filter(p => !p.isBot);
+    if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
+
     const { total } = checkPendingSettings();
     if (total > 0) { showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`); return; }
     const { valid, incompleteIds } = checkCouplesCompleteness();
     if (!valid) { showError(`Cannot start! Missing partner for IDs: ${incompleteIds.join(', ')}`); return; }
 
-    const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length % 2 !== 0) {
         const males = realPlayers.filter(p => p.gender === 'male').length;
         const females = realPlayers.filter(p => p.gender === 'female').length;
@@ -568,10 +583,12 @@ export default function TruthAndDareApp() {
   };
 
   const startRound = async () => {
-    // 1. Check Level (Manual OR Auto)
-    if (!selectedLevel) {
-        showError("⚠️ Please select a Risk Level before starting!");
-        return;
+    // ADMIN VALIDATION
+    if (isAutoSetup) {
+        if (!selectedLevel) { showError("⚠️ Select a Level to start Auto Mode!"); return; }
+    } else {
+        if (!selectedLevel) { showError("⚠️ Select Risk Level!"); return; }
+        if (!selectedType) { showError("⚠️ Select Game Type!"); return; }
     }
 
     let sequence: string[] = [];
@@ -904,6 +921,14 @@ export default function TruthAndDareApp() {
   
   const handleEndGame = async () => { if(confirm('End game after this round?')) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isEnding: true }); } };
   
+  const handleReturnToLobby = async () => {
+      if(confirm('Return to Lobby?')) {
+          const batch = writeBatch(db);
+          batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, isEnding: false });
+          await batch.commit();
+      }
+  };
+
   const handleRestart = async () => { 
       if(confirm('RESET EVERYTHING? Use this only for a new party.')) { 
         // Clear local error state to avoid "Please select Level" showing up on reset
@@ -1024,6 +1049,29 @@ export default function TruthAndDareApp() {
         </div>
       </div>
     );
+  }
+
+  // --- GAME ENDED SCREEN (MOVED TO TOP PRIORITY) ---
+  if (gameState?.mode === 'ended') {
+      return (
+        <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center bg-slate-900">
+            <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Game Ended</h2>
+            <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm max-h-96 overflow-y-auto mb-6">
+                {players.map(p => (
+                    <div key={p.uid} className="py-2 border-b border-slate-700 flex justify-between">
+                        <span>{p.name}</span>
+                        <span className="font-bold text-yellow-400">{gameState?.points[p.uid] || 0} pts</span>
+                    </div>
+                ))}
+            </div>
+            {isAdmin && (
+                <button onClick={handleReturnToLobby} className="bg-blue-600 px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-500 transition-transform active:scale-95 w-full max-w-sm">
+                    Return to Lobby (New Game)
+                </button>
+            )}
+        </div>
+      );
   }
 
   // --- MANAGER RENDER (MODIFIED) ---
@@ -1191,7 +1239,9 @@ export default function TruthAndDareApp() {
 
   // --- ADMIN MAIN ---
   if (isAdmin) {
-    if (!gameState || gameState?.mode === 'lobby') {
+    // FIX: Catch-all for Lobby mode. If mode is undefined, null, empty string OR specifically 'lobby', render Lobby.
+    // This fixes the "Blue Screen" issue when mode is manually cleared in Firebase.
+    if (!gameState || !gameState.mode || gameState.mode === 'lobby' || !['admin_setup', 'question', 'dare', 'yn', 'ended'].includes(gameState.mode)) {
         const { total } = checkPendingSettings();
         const singlesCount = players.filter(p => p.relationshipStatus === 'single').length;
         const couplesCount = players.filter(p => p.relationshipStatus === 'couple').length;
@@ -1272,7 +1322,7 @@ export default function TruthAndDareApp() {
                       Complete setup for {total} questions to start.
                   </div>
               ) : (
-                  <button onClick={startGame} disabled={!couplesValid} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Start Game</button>
+                  <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Start Game</button>
               )}
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4 hover:bg-red-500 transition shadow-lg active:scale-95">Reset All</button>
             </div>
@@ -1339,7 +1389,13 @@ export default function TruthAndDareApp() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className={`w-full max-w-md p-8 rounded-2xl border-2 text-center mb-8 border-indigo-500 bg-indigo-900/20`}><h3 className="text-2xl font-bold">{getCardText(card)}</h3></div>
+          <div className={`w-full max-w-md p-8 rounded-3xl border-4 text-center mb-8 transition-all duration-500 ${cardStyle} flex flex-col items-center justify-center min-h-[200px] relative`}>
+              <div className="absolute top-4 left-4 text-xs font-bold opacity-60 uppercase tracking-widest text-white/50">
+                  GAME: {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+              </div>
+              <div className="mb-4 opacity-50">{gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? null : <Flame size={32}/>}</div>
+              <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(card)}</h3>
+          </div>
           <div className="w-full max-w-md bg-slate-800 p-4 rounded-xl mb-4">
               <h4 className="font-bold mb-2 flex items-center gap-2"><RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Progress:</h4>
               {pendingPlayers.length === 0 ? (<div className="text-green-400 font-bold text-center">All done!</div>) : (<div className="text-sm text-slate-300">Waiting for: <span className="font-bold text-white">{pendingPlayers.map(p => p.name).join(', ')}</span></div>)}
@@ -1375,11 +1431,6 @@ export default function TruthAndDareApp() {
         </div>
       );
   }
-  
-  if (gameState.mode === 'ended') {
-      // ... (Ended screen same as before)
-      return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center bg-slate-900"><Trophy className="w-20 h-20 text-yellow-500 mb-6" /><h2 className="text-2xl font-bold mb-4">Game Ended</h2><div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm max-h-96 overflow-y-auto mb-6">{players.map(p => <div key={p.uid} className="py-2 border-b border-slate-700 flex justify-between"><span>{p.name}</span><span className="font-bold text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
-  }
 
   const card = currentCard();
   if (!card && gameState.currentChallengeId) { return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-900"><div className="text-xl animate-pulse">Syncing card data...</div></div>; }
@@ -1408,7 +1459,7 @@ export default function TruthAndDareApp() {
       {card?.level === '4' && <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none z-0"></div>}
       <CustomAlert/>
       
-      {/* -------------------- START OF HEADER LOGIC (GOLD STYLE) -------------------- */}
+      {/* HEADER: GOLD STYLE (Fixed) */}
       <div className="text-center py-4 border-b border-slate-700 mb-4 z-10 flex flex-col items-center justify-center">
             <div className="flex items-center justify-center gap-3">
                 {isEditingName ? (
@@ -1426,25 +1477,19 @@ export default function TruthAndDareApp() {
                     </>
                 )}
             </div>
+            
+            {/* PERSISTENT COUPLE ID */}
             {relationshipStatus === 'couple' && (
-                <div className="mt-2 inline-flex items-center justify-center gap-2 bg-slate-800/80 px-4 py-1 rounded-full border border-yellow-500/30">
+                <div className="mt-2 inline-flex items-center justify-center gap-2 bg-slate-800/80 px-4 py-1 rounded-full border border-yellow-500/30 animate-in fade-in slide-in-from-top-1">
                     <Users size={12} className="text-yellow-500"/>
-                    <span className="text-yellow-500 text-xs font-bold uppercase">Pareja:</span>
+                    <span className="text-yellow-500 text-xs font-bold uppercase">COUPLE:</span>
                     <span className="text-white font-mono font-bold tracking-widest">{coupleNumber}</span>
                 </div>
             )}
         </div>
-      {/* -------------------- END OF HEADER LOGIC -------------------- */}
 
       <ScoreBoard />
       <MyMatchHistory />
-        
-      {/* NEW HEADER WITH BIG MODE NAME */}
-      <div className="flex flex-col items-center mt-6 mb-2 z-10 animate-in slide-in-from-top-4 fade-in duration-500">
-          <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 tracking-tighter uppercase drop-shadow-sm">
-             {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-          </h2>
-      </div>
 
       <div className="flex-1 flex flex-col items-center justify-center z-10 relative">
         {isRoundFinishedTOrD ? (
@@ -1454,7 +1499,11 @@ export default function TruthAndDareApp() {
             </div>
         ) : (
             <>
-                <div className={`w-full max-w-md p-8 rounded-3xl border-4 text-center mb-8 transition-all duration-500 ${cardStyle} flex flex-col items-center justify-center min-h-[200px]`}>
+                {/* CARD WITH INTERNAL HEADER */}
+                <div className={`w-full max-w-md p-8 rounded-3xl border-4 text-center mb-8 transition-all duration-500 ${cardStyle} flex flex-col items-center justify-center min-h-[200px] relative`}>
+                    <div className="absolute top-4 left-4 text-xs font-bold opacity-60 uppercase tracking-widest text-white/50">
+                        GAME: {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+                    </div>
                     <div className="mb-4 opacity-50">{gameState.mode === 'question' ? <MessageCircle size={32}/> : gameState.mode === 'yn' ? null : <Flame size={32}/>}</div>
                     <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(card)}</h3>
                 </div>
