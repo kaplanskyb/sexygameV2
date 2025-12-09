@@ -102,7 +102,7 @@ const parseCSVLine = (text: string) => {
     return a;
 };
 
-// --- COMPONENTES DE AYUDA (MANUAL) ---
+// --- COMPONENTES DE AYUDA ---
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
@@ -389,8 +389,7 @@ export default function TruthAndDareApp() {
         if (me) {
             if (me.coupleNumber) setCoupleNumber(me.coupleNumber);
             if (me.relationshipStatus) setRelationshipStatus(me.relationshipStatus);
-            if (me.name) setUserName(me.name); 
-            if (me.gender) setGender(me.gender); 
+            // Optional: sync name if needed, though local state usually handles it
         }
     }
   }, [user, players]);
@@ -924,6 +923,7 @@ export default function TruthAndDareApp() {
   const handleReturnToLobby = async () => {
       if(confirm('Return to Lobby?')) {
           const batch = writeBatch(db);
+          // Reset game state to lobby, clear answers, points remain until full reset
           batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, isEnding: false });
           await batch.commit();
       }
@@ -1049,29 +1049,6 @@ export default function TruthAndDareApp() {
         </div>
       </div>
     );
-  }
-
-  // --- GAME ENDED SCREEN (MOVED TO TOP PRIORITY) ---
-  if (gameState?.mode === 'ended') {
-      return (
-        <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center bg-slate-900">
-            <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
-            <h2 className="text-2xl font-bold mb-4">Game Ended</h2>
-            <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm max-h-96 overflow-y-auto mb-6">
-                {players.map(p => (
-                    <div key={p.uid} className="py-2 border-b border-slate-700 flex justify-between">
-                        <span>{p.name}</span>
-                        <span className="font-bold text-yellow-400">{gameState?.points[p.uid] || 0} pts</span>
-                    </div>
-                ))}
-            </div>
-            {isAdmin && (
-                <button onClick={handleReturnToLobby} className="bg-blue-600 px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-500 transition-transform active:scale-95 w-full max-w-sm">
-                    Return to Lobby (New Game)
-                </button>
-            )}
-        </div>
-      );
   }
 
   // --- MANAGER RENDER (MODIFIED) ---
@@ -1239,9 +1216,7 @@ export default function TruthAndDareApp() {
 
   // --- ADMIN MAIN ---
   if (isAdmin) {
-    // FIX: Catch-all for Lobby mode. If mode is undefined, null, empty string OR specifically 'lobby', render Lobby.
-    // This fixes the "Blue Screen" issue when mode is manually cleared in Firebase.
-    if (!gameState || !gameState.mode || gameState.mode === 'lobby' || !['admin_setup', 'question', 'dare', 'yn', 'ended'].includes(gameState.mode)) {
+    if (!gameState || gameState?.mode === 'lobby') {
         const { total } = checkPendingSettings();
         const singlesCount = players.filter(p => p.relationshipStatus === 'single').length;
         const couplesCount = players.filter(p => p.relationshipStatus === 'couple').length;
@@ -1322,7 +1297,7 @@ export default function TruthAndDareApp() {
                       Complete setup for {total} questions to start.
                   </div>
               ) : (
-                  <button onClick={startGame} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Start Game</button>
+                  <button onClick={startGame} disabled={!couplesValid} className="w-full max-w-sm bg-green-600 p-3 rounded-lg font-bold hover:bg-green-500 transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Start Game</button>
               )}
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 p-3 rounded-lg font-bold mt-4 hover:bg-red-500 transition shadow-lg active:scale-95">Reset All</button>
             </div>
@@ -1428,6 +1403,28 @@ export default function TruthAndDareApp() {
             <div className="text-2xl font-bold animate-pulse mb-4 text-center mt-6">Waiting for next round...</div>
             <div className="text-slate-400 text-center mb-8">{gameState?.mode === 'lobby' ? "You are in the lobby." : "Round is starting..."}</div>
             <div className="mt-auto w-full flex justify-center pb-4"><button onClick={handleSelfLeave} className="bg-red-900/50 border border-red-600 px-4 py-2 rounded-lg text-red-200 flex items-center gap-2 text-sm hover:bg-red-900"><LogOut size={14}/> Reset Player</button></div>
+        </div>
+      );
+  }
+  
+  if (gameState.mode === 'ended') {
+      return (
+        <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center bg-slate-900">
+            <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Game Ended</h2>
+            <div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm max-h-96 overflow-y-auto mb-6">
+                {players.map(p => (
+                    <div key={p.uid} className="py-2 border-b border-slate-700 flex justify-between">
+                        <span>{p.name}</span>
+                        <span className="font-bold text-yellow-400">{gameState?.points[p.uid] || 0} pts</span>
+                    </div>
+                ))}
+            </div>
+            {isAdmin && (
+                <button onClick={handleReturnToLobby} className="bg-blue-600 px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-500 transition-transform active:scale-95 w-full max-w-sm">
+                    Return to Lobby (New Game)
+                </button>
+            )}
         </div>
       );
   }
