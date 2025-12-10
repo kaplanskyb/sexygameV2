@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown,
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle,
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2, Skull
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -86,6 +86,7 @@ interface GameState {
 const parseCSVLine = (text: string) => {
     const re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
     const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
+    
     if (!re_valid.test(text)) return null;
     const a = [];
     text.replace(re_value, function(m0, m1, m2, m3) {
@@ -101,12 +102,13 @@ const parseCSVLine = (text: string) => {
 // --- ESTILOS NEÓN Y GLASS ---
 const glassPanel = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl";
 const glassInput = "bg-black/20 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/30 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
-const neonText = "text-transparent bg-clip-text bg-gradient-to-r";
 
 // --- COMPONENTES DE AYUDA (MANUAL) ---
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
-    const toggleSection = (section: string) => { setExpandedSection(expandedSection === section ? null : section); };
+    const toggleSection = (section: string) => {
+      setExpandedSection(expandedSection === section ? null : section);
+    };
  
     return (
       <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm" onClick={onClose}>
@@ -120,28 +122,48 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
               </span>
             </h2>
             <div className="space-y-8 text-slate-300">
-                {/* (El contenido del manual se mantiene igual, solo cambio estilos contenedores) */}
-                <p className="text-white/70 italic">Welcome to the Sexy Game experience. Follow the instructions to play.</p>
-                {type === 'player' && (
-                    <div className="grid gap-4">
-                        <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                            <h3 className="text-cyan-400 font-bold mb-2 flex items-center gap-2"><MessageCircle size={18}/> Truth</h3>
-                            <p className="text-sm">Read the question aloud. Answer honestly. The group votes.</p>
+              {type === 'admin' ? (
+                <>
+                  <section>
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Modes (Click to expand)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400 ring-2 ring-blue-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('truth')}>
+                          <div className="flex justify-between items-center mb-2"><strong className="text-blue-400 text-lg">1. Truth</strong>{expandedSection === 'truth' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
+                          <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
+                          {expandedSection === 'truth' && (<div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p><p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p><em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em></div>)}
                         </div>
-                        <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                            <h3 className="text-pink-500 font-bold mb-2 flex items-center gap-2"><Flame size={18}/> Dare</h3>
-                            <p className="text-sm">Perform the action. The group judges if you completed it.</p>
+                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400 ring-2 ring-pink-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('dare')}>
+                          <div className="flex justify-between items-center mb-2"><strong className="text-pink-400 text-lg">2. Dare</strong>{expandedSection === 'dare' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
+                          <p className="text-sm text-slate-400">Physical actions.</p>
+                          {expandedSection === 'dare' && (<div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p><p className="mb-2"><strong>Voting:</strong> The group acts as the judge. They vote "Completed" or "Failed".</p><em className="text-pink-300">Example: "Let the person to your right read your last DM."</em></div>)}
                         </div>
-                        <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                            <h3 className="text-emerald-400 font-bold mb-2 flex items-center gap-2"><Zap size={18}/> Match</h3>
-                            <p className="text-sm">Answer secretly. Try to match with your partner!</p>
+                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400 ring-2 ring-green-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('match')}>
+                          <div className="flex justify-between items-center mb-2"><strong className="text-green-400 text-lg">3. Match/Mismatch</strong>{expandedSection === 'match' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
+                          <p className="text-sm text-slate-400">Compatibility test. 2 players answer blindly.</p>
+                          {expandedSection === 'match' && (<div className="mt-4 text-sm text-white border-t border-green-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> The system secretly pairs two people (e.g., John & Sarah). A statement appears (e.g., "I prefer lights off").</p><p className="mb-2"><strong>The Goal:</strong> Both answer YES or NO secretly on their phones. If they <strong>MATCH</strong> (both Yes or both No), they get points.</p></div>)}
                         </div>
                     </div>
-                )}
+                  </section>
+                  <section>
+                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control</h3>
+                    <div className="space-y-4">
+                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-purple-500"><h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4><p className="text-sm mb-2">In this mode, <strong>YOU control everything</strong>. Before every single turn, you must select:</p><ul className="list-disc pl-5 text-sm space-y-1"><li><strong>Risk Level:</strong> How intense should the next question be?</li><li><strong>Game Type:</strong> Do you want a Truth, a Dare, or a Match round next?</li></ul><p className="text-sm mt-2 italic text-slate-400">Use this when you want to read the room's vibe and adjust specifically.</p></div>
+                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-green-500"><h4 className="text-green-400 font-bold text-lg mb-2">MODE B: AUTOMATIC (Autopilot)</h4><p className="text-sm mb-2">You set a "Loop Configuration" (e.g., 2 Truths, 2 Dares, 1 Match) and the game runs itself in that order endlessly.</p><p className="text-sm">You simply click "Next" (or let the timer do it) and the system automatically picks the type based on your sequence.</p><p className="text-sm mt-2 italic text-slate-400">Perfect for when you want to play along and not worry about managing the game.</p></div>
+                    </div>
+                  </section>
+                  <section>
+                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Admin Tools</h3>
+                    <ul className="list-disc pl-5 space-y-4 text-sm"><li><strong>1. Uploading Questions:</strong><div className="mt-2 space-y-3"><div className="bg-black/30 p-3 rounded border border-blue-900/50"><span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span><span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code><br/><span className="text-xs text-slate-500">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span></div><div className="bg-black/30 p-3 rounded border border-green-900/50"><span className="text-green-300 font-bold block mb-1">Match Files:</span><span className="text-slate-400">Headers must be:</span> <code className="text-green-400">male, female, level</code></div></div></li><li><strong>Singles vs Couples:</strong> The system <strong>understands</strong> if players are Single or Couples. If Couples join, the game <strong>will not start</strong> until both partners (matching ID) are present.</li><li><strong>Bot System:</strong> If total players are odd, "Brad Pitt" (or "Scarlett Johansson") joins to ensure everyone has a partner in Match rounds.</li></ul>
+                  </section>
+                </>
+              ) : (
+                <>
+                    <section><h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3><ol className="list-decimal pl-5 space-y-3"><li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li><li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li><li><strong>Male's Last 4 Phone Digits:</strong> <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm"><li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li><li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li></ul></li><li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li></ol></section>
+                    <section><h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3><div className="space-y-4"><div className="bg-white/5 p-4 rounded-lg border-l-4 border-blue-500"><strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong><p className="text-sm">When it's your turn, a question will appear. Read it aloud and answer honestly. The group will award points based on your answer.</p></div><div className="bg-white/5 p-4 rounded-lg border-l-4 border-pink-500"><strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong><p className="text-sm">A challenge will appear. You must perform the action described to earn points.</p></div><div className="bg-white/5 p-4 rounded-lg border-l-4 border-green-500"><strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong><p className="text-sm mb-2">The system will secretly pair you with another player. A statement will appear on your screen.</p><p className="text-sm italic text-yellow-400 mb-2 font-mono bg-black/30 p-2 rounded text-center">"I prefer lights off"</p><p className="text-sm">You must answer <strong>YES</strong> or <strong>NO</strong> honestly. You only score points if your answer <strong>MATCHES</strong> your partner's answer!</p></div></div></section>
+                </>
+              )}
             </div>
-            <div className="mt-8 text-center border-t border-white/10 pt-6">
-                <button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(8,145,178,0.4)] hover:shadow-[0_0_30px_rgba(8,145,178,0.6)] transition-all active:scale-95">Got it</button>
-            </div>
+            <div className="mt-8 text-center border-t border-white/10 pt-6"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(8,145,178,0.4)] hover:shadow-[0_0_30px_rgba(8,145,178,0.6)] transition-all active:scale-95">Got it</button></div>
           </div>
         </div>
       </div>
@@ -149,7 +171,6 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
 };
 
 export default function TruthAndDareApp() {
-  // ... (ESTADOS E INICIALIZACIÓN IGUAL QUE ANTES) ...
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('');
   const [gender, setGender] = useState('');
@@ -203,7 +224,6 @@ export default function TruthAndDareApp() {
 
   // 0. GLOBALS
   useEffect(() => {
-    // Fondo más cool: Gradiente radial oscuro
     document.body.style.background = 'radial-gradient(circle at center, #1a1a2e 0%, #000000 100%)';
     document.body.style.color = 'white';
     document.body.style.margin = '0';
@@ -213,7 +233,7 @@ export default function TruthAndDareApp() {
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
-  // 1. AUTH & DATA FETCHING (Sin cambios en lógica)
+  // 1. Auth & Sync
   useEffect(() => {
     const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error(e); } };
     initAuth();
@@ -305,7 +325,7 @@ export default function TruthAndDareApp() {
     }
   }, [gameState, isAdmin, players.length]);
 
-  // --- LOGICA DE JUEGO (Igual) ---
+  // --- LOGICA DE JUEGO ---
   const showError = (msg: string) => setCustomError(msg);
   const closeError = () => setCustomError(null);
   const showSuccess = (msg: string) => { setCustomSuccess(msg); setTimeout(() => setCustomSuccess(null), 3000); };
@@ -321,7 +341,7 @@ export default function TruthAndDareApp() {
     localStorage.setItem('td_username', userName);
     const isUserAdmin = userName.toLowerCase() === 'admin';
     if (isUserAdmin) { setIsAdmin(true); }
-    if (!isUserAdmin && !code) { return; } // Admin entra sin código
+    if (!isUserAdmin && !code) { return; } 
     if (!coupleNumber) return;
     if (!isUserAdmin) { if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { showError('Invalid code'); return; } }
     const existingPartner = players.find(p => p.coupleNumber === coupleNumber && p.gender === gender && p.uid !== user.uid);
@@ -330,7 +350,6 @@ export default function TruthAndDareApp() {
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { uid: user.uid, name: userName, gender, coupleNumber, relationshipStatus: status, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0 });
   };
   
-  // ... (Resto de funciones: setGameCode, updateGlobalLevel, startGame, startRound, submitAnswer, etc. - IGUALES)
   const setGameCode = async () => { if (!code.trim()) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code.trim().toUpperCase() }); setIsSettingCode(false); };
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
@@ -375,7 +394,7 @@ export default function TruthAndDareApp() {
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
   const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
-  // ... (Funciones de manager: handleSort, applyBulkEdit, handleExportCSV, uploads, etc. - IGUALES)
+  // ... (Manager Logic)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => { setIsDragging(true); const newSet = new Set(selectedIds); if (newSet.has(id)) { newSet.delete(id); selectionMode.current = 'remove'; } else { newSet.add(id); selectionMode.current = 'add'; } setSelectedIds(newSet); };
   const handleRowMouseEnter = (id: string) => { if (isDragging) { const newSet = new Set(selectedIds); if (selectionMode.current === 'add') newSet.add(id); else newSet.delete(id); setSelectedIds(newSet); } };
@@ -453,7 +472,7 @@ export default function TruthAndDareApp() {
         
         <CustomAlert/>
         {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
-        <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all backdrop-blur-md"><HelpCircle size={24} /></button>
+        <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
         
         <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel}`}>
           <div className="mb-6 relative inline-block">
@@ -491,7 +510,7 @@ export default function TruthAndDareApp() {
       return (
         <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 to-black pointer-events-none"></div>
-            <Trophy className="w-24 h-24 text-yellow-400 mb-6 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+            <Trophy className="w-24 h-24 text-yellow-400 mb-6 drop-shadow-glow" />
             <h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2>
             <div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>
                 {players.map((p, i) => (
@@ -669,7 +688,7 @@ export default function TruthAndDareApp() {
               <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
               <CustomSuccess />
-              <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md" title="Help / Manual"><HelpCircle size={24} /></button>
+              <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
               <CustomAlert/>
               
               <Trophy className="w-20 h-20 text-yellow-500 mb-6 drop-shadow-glow" />
@@ -724,9 +743,9 @@ export default function TruthAndDareApp() {
                 <CustomAlert />
                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
                 {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
-                <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md"><HelpCircle size={24} /></button>
+                <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
                 
-                <h2 className="text-3xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">SETUP ROUND</h2>
+                <h2 className="text-3xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-12">SETUP ROUND</h2>
                 
                 <div className={`w-full max-w-md p-6 mb-6 ${glassPanel}`}>
                     <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
@@ -755,6 +774,7 @@ export default function TruthAndDareApp() {
                 </div>
                 
                 <button onClick={startRound} className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
+                {/* FIX: Move scoreboard down slightly to avoid overlap */}
                 <div className="mt-8 w-full max-w-md"><ScoreBoard /></div>
                 <button onClick={handleRestart} className="mt-8 text-red-400 text-xs hover:text-red-200 underline">Reset Entire Game</button>
             </div>
@@ -779,11 +799,12 @@ export default function TruthAndDareApp() {
       <div className="min-h-screen text-white flex flex-col p-6 relative overflow-hidden">
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
-        <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md"><HelpCircle size={24} /></button>
+        <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
         
-        <ScoreBoard />
+        {/* FIX: Add margin to scoreboard container so it clears the top buttons */}
+        <div className="mt-16 w-full max-w-md mx-auto mb-6"><ScoreBoard /></div>
         
-        <div className="flex justify-between items-center mb-6 mt-4 border-b border-white/10 pb-2">
+        <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-2">
             <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode?.toUpperCase()}</span></div>
             <div className="text-xs text-white/50 uppercase tracking-widest font-bold">Turn: <span className="text-white">{currentPlayerName()}</span></div>
         </div>
@@ -889,7 +910,7 @@ export default function TruthAndDareApp() {
       
       <CustomAlert/>
       
-      <div className="text-center py-6 border-b border-white/10 mb-6 z-10 flex flex-col items-center justify-center">
+      <div className="text-center py-6 border-b border-white/10 mb-6 z-10 flex flex-col items-center justify-center mt-12">
             <div className="flex items-center justify-center gap-3">
                 {isEditingName ? (
                     <div className="flex gap-2">
@@ -906,6 +927,8 @@ export default function TruthAndDareApp() {
                     </>
                 )}
             </div>
+            
+            {/* PERSISTENT COUPLE ID */}
             {relationshipStatus === 'couple' && (
                 <div className="mt-2 inline-flex items-center justify-center gap-2 bg-pink-900/20 px-4 py-1 rounded-full border border-pink-500/30 animate-in fade-in slide-in-from-top-1">
                     <Users size={12} className="text-pink-400"/>
@@ -966,8 +989,9 @@ export default function TruthAndDareApp() {
                     )}
                     
                     {gameState?.mode==='yn' && allYNAnswered && (
-                        <div className={`flex flex-col items-center justify-center p-8 rounded-2xl ${glassPanel} border-white/20`}>
-                            <div className="mb-6 text-lg text-white/70">Partner was: <span className="font-black text-yellow-400 text-2xl block mt-1">{myPartnerName}</span></div>
+                        // FIX: Updated Match Result container to prevent cut-off
+                        <div className={`flex flex-col items-center justify-center p-8 rounded-2xl ${glassPanel} border-white/20 min-h-[300px] w-full max-w-full overflow-hidden`}>
+                            <div className="mb-6 text-lg text-white/70">Partner was: <span className="font-black text-yellow-400 text-2xl block mt-1 break-words">{myPartnerName}</span></div>
                             {ynMatch === true ? (
                                 <div className="animate-bounce text-center">
                                     <Smile className="w-24 h-24 text-emerald-400 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]"/>
