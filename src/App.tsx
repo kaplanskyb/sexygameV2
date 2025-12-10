@@ -435,7 +435,7 @@ export default function TruthAndDareApp() {
       });
       if (Object.keys(stats).length === 0) return null;
       return (
-          <div className={`w-full p-2 mt-4 max-h-40 overflow-y-auto ${glassPanel}`}>
+          <div className={`w-full p-2 mt-2 max-h-32 overflow-y-auto ${glassPanel}`}>
               <div className="text-xs text-slate-400 mb-1 uppercase font-bold text-center tracking-widest">Interactions</div>
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-white/10 text-slate-400"><th className="text-left py-1">Name</th><th className="text-center py-1 text-green-400">Match</th><th className="text-center py-1 text-red-400">Miss</th></tr></thead>
@@ -446,7 +446,7 @@ export default function TruthAndDareApp() {
   };
   
   const ScoreBoard = () => (
-      <div className={`w-full p-3 mb-4 flex flex-col items-center gap-2 max-h-40 overflow-y-auto ${glassPanel}`}>
+      <div className={`w-full p-2 mb-2 flex flex-col items-center gap-2 max-h-40 overflow-y-auto ${glassPanel}`}>
           <div className="w-full text-xs text-center text-cyan-300 uppercase font-black tracking-[0.2em] border-b border-white/10 pb-1 mb-1">Scoreboard</div>
           <div className="flex flex-wrap gap-2 justify-center w-full">
             {players.map(p => (
@@ -465,7 +465,7 @@ export default function TruthAndDareApp() {
 
   if (!isJoined) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen flex flex-col items-center justify-center p-2 relative overflow-hidden">
         {/* Background blobs */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-900/30 blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-900/30 blur-[100px] pointer-events-none"></div>
@@ -474,12 +474,12 @@ export default function TruthAndDareApp() {
         {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
         <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
         
-        <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel}`}>
-          <div className="mb-6 relative inline-block">
+        <div className={`w-full max-w-md p-6 text-center relative z-10 ${glassPanel}`}>
+          <div className="mb-4 relative inline-block">
              <div className="absolute inset-0 bg-pink-500 blur-xl opacity-20 rounded-full"></div>
-             <Flame className="w-16 h-16 text-pink-500 relative z-10 mx-auto" />
+             <Flame className="w-12 h-12 text-pink-500 relative z-10 mx-auto" />
           </div>
-          <h1 className="text-4xl font-black mb-8 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">SEXY GAME</h1>
+          <h1 className="text-3xl font-black mb-6 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">SEXY GAME</h1>
           
           <input type="text" placeholder="YOUR NAME" className={`w-full mb-4 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} value={userName} onChange={e=>setUserName(e.target.value)} />
           
@@ -684,22 +684,22 @@ export default function TruthAndDareApp() {
         });
 
         return (
-            <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white relative">
+            <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
               <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
               <CustomSuccess />
               <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
               <CustomAlert/>
               
-              <Trophy className="w-20 h-20 text-yellow-500 mb-6 drop-shadow-glow" />
+              <Trophy className="w-20 h-20 text-yellow-500 mb-4 mt-8 drop-shadow-glow" />
               <h2 className="text-3xl font-black mb-4 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-600">LOBBY ({players.length})</h2>
               
-              <div className="flex gap-4 mb-6 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10">
+              <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10">
                   <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
                   <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
               </div>
 
-              <div className={`w-full max-w-sm mb-6 max-h-[40vh] overflow-y-auto p-4 ${glassPanel}`}>
+              <div className={`w-full max-w-sm mb-4 max-h-[40vh] overflow-y-auto p-4 ${glassPanel}`}>
                 {players.length === 0 && <span className="text-white/30 text-sm text-center block">Waiting for players to join...</span>}
                 {sortedPlayers.map(p => {
                     const isIncomplete = incompleteIds.includes(p.coupleNumber) && p.relationshipStatus === 'couple';
@@ -739,15 +739,15 @@ export default function TruthAndDareApp() {
 
     if (gameState?.mode === 'admin_setup') {
          return (
-            <div className="min-h-screen p-6 flex flex-col items-center justify-center text-white relative">
+            <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
                 <CustomAlert />
                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
                 {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
                 <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
                 
-                <h2 className="text-3xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-12">SETUP ROUND</h2>
+                <h2 className="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-8">SETUP ROUND</h2>
                 
-                <div className={`w-full max-w-md p-6 mb-6 ${glassPanel}`}>
+                <div className={`w-full max-w-md p-6 mb-4 ${glassPanel}`}>
                     <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
                         <div><div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div><div className={`font-black text-xl ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div></div>
                         <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
@@ -774,8 +774,7 @@ export default function TruthAndDareApp() {
                 </div>
                 
                 <button onClick={startRound} className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
-                {/* FIX: Move scoreboard down slightly to avoid overlap */}
-                <div className="mt-8 w-full max-w-md"><ScoreBoard /></div>
+                <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
                 <button onClick={handleRestart} className="mt-8 text-red-400 text-xs hover:text-red-200 underline">Reset Entire Game</button>
             </div>
          );
@@ -796,20 +795,19 @@ export default function TruthAndDareApp() {
     });
 
     return (
-      <div className="min-h-screen text-white flex flex-col p-6 relative overflow-hidden">
+      <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
         
-        {/* FIX: Add margin to scoreboard container so it clears the top buttons */}
-        <div className="mt-16 w-full max-w-md mx-auto mb-6"><ScoreBoard /></div>
+        <div className="mt-8 w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
         
-        <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-2">
+        <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
             <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode?.toUpperCase()}</span></div>
             <div className="text-xs text-white/50 uppercase tracking-widest font-bold">Turn: <span className="text-white">{currentPlayerName()}</span></div>
         </div>
         
-        <div className={`w-full max-w-md p-4 mb-6 flex flex-col gap-4 ${glassPanel}`}>
+        <div className={`w-full max-w-md p-4 mb-4 flex flex-col gap-4 ${glassPanel}`}>
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
                  <div><div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div><div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div></div>
                  <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
@@ -819,12 +817,12 @@ export default function TruthAndDareApp() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
-          <div className={`w-full p-10 rounded-3xl text-center mb-8 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2`}>
+          <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
               <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
                   {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
               </div>
-              <div className="mb-6 opacity-80 drop-shadow-glow">{gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}</div>
-              <h3 className="text-3xl font-bold leading-relaxed drop-shadow-md">{getCardText(finalCard)}</h3>
+              <div className="mb-4 opacity-80 drop-shadow-glow">{gameState.mode === 'question' ? <MessageCircle size={40} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={40} className="text-emerald-200"/> : <Flame size={40} className="text-pink-200"/>}</div>
+              <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(finalCard)}</h3>
           </div>
 
           <div className={`w-full p-4 mb-4 ${glassPanel}`}>
@@ -846,7 +844,7 @@ export default function TruthAndDareApp() {
   // (Estados de Lobby, Jugador en Espera, etc.)
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white relative overflow-hidden">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white relative overflow-hidden">
             <CustomAlert/>
             {isAdmin && (
                 <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
@@ -854,7 +852,7 @@ export default function TruthAndDareApp() {
             {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
             <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
             
-            <div className="text-center py-6 border-b border-white/10 mb-6 w-full flex items-center justify-center gap-2 relative flex-col">
+            <div className="text-center py-2 border-b border-white/10 mb-4 w-full flex items-center justify-center gap-2 relative flex-col mt-8">
                 <div className="flex items-center gap-3">
                     {isEditingName ? (<div className="flex gap-2"><input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} /><button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button><button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button></div>) : (<><h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 drop-shadow-sm">{userName.toUpperCase()}</h1><button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-white/30 hover:text-white transition-colors"><Edit2 size={18}/></button></>)}
                 </div>
@@ -864,7 +862,7 @@ export default function TruthAndDareApp() {
             <div className="w-full max-w-md"><ScoreBoard /></div>
             <div className="w-full max-w-md"><MyMatchHistory /></div>
             
-            <div className="text-center mt-12 mb-8">
+            <div className="text-center mt-8 mb-4">
                 <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR NEXT ROUND</div>
                 <div className="text-white/40 text-sm font-mono tracking-widest">{gameState?.mode === 'lobby' ? "LOBBY STATUS: OPEN" : "GAME STARTING..."}</div>
             </div>
@@ -901,7 +899,7 @@ export default function TruthAndDareApp() {
   const cardStyle = getLevelStyle(card?.level);
   
   return (
-    <div className="min-h-screen text-white flex flex-col p-6 relative overflow-hidden">
+    <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
       {isAdmin && (
           <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
       )}
@@ -910,7 +908,7 @@ export default function TruthAndDareApp() {
       
       <CustomAlert/>
       
-      <div className="text-center py-6 border-b border-white/10 mb-6 z-10 flex flex-col items-center justify-center mt-12">
+      <div className="text-center py-2 border-b border-white/10 mb-4 z-10 flex flex-col items-center justify-center mt-8">
             <div className="flex items-center justify-center gap-3">
                 {isEditingName ? (
                     <div className="flex gap-2">
@@ -920,7 +918,7 @@ export default function TruthAndDareApp() {
                     </div>
                 ) : (
                     <>
-                        <h1 className="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-yellow-100 to-yellow-600 drop-shadow-md filter backdrop-brightness-150">
+                        <h1 className="text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-yellow-100 to-yellow-600 drop-shadow-md filter backdrop-brightness-150">
                             {userName.toUpperCase()}
                         </h1>
                         <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-yellow-600/50 hover:text-yellow-200 transition-colors"><Edit2 size={18}/></button>
@@ -938,18 +936,18 @@ export default function TruthAndDareApp() {
             )}
       </div>
 
-      <div className="w-full max-w-md mx-auto mb-6"><ScoreBoard /></div>
-      <div className="w-full max-w-md mx-auto mb-6"><MyMatchHistory /></div>
+      <div className="w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
+      <div className="w-full max-w-md mx-auto mb-2"><MyMatchHistory /></div>
 
       <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full max-w-md mx-auto">
         {isRoundFinishedTOrD ? (
-             <div className={`p-10 text-center ${glassPanel} border-white/20 w-full`}>
+             <div className={`p-6 text-center ${glassPanel} border-white/20 w-full`}>
                 <div className="text-3xl font-black mb-4 text-white">ROUND FINISHED</div>
                 <div className="text-white/50 animate-pulse font-mono tracking-widest">LOADING NEXT VICTIM...</div>
             </div>
         ) : (
             <>
-                <div className={`w-full p-8 rounded-3xl text-center mb-8 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[220px] relative border-2`}>
+                <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
                     <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
                         GAME: {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
                     </div>
@@ -959,7 +957,7 @@ export default function TruthAndDareApp() {
 
                 <div className="w-full space-y-4">
                     {!isMyTurn() && gameState.mode !== 'yn' && (
-                        <div className="text-center mb-6">
+                        <div className="text-center mb-2">
                             <div className="text-[10px] text-white/40 uppercase tracking-[0.3em] mb-2 font-bold">CURRENT PLAYER</div>
                             <div className={`text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all animate-pulse drop-shadow-sm`}>{currentPlayerName()}</div>
                         </div>
@@ -969,29 +967,28 @@ export default function TruthAndDareApp() {
                     
                     {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-6 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={32}/><span className="font-black text-white text-lg">GOOD</span></button>
-                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-6 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={32}/><span className="font-black text-white text-lg">NAH...</span></button>
+                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
+                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-6 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={32}/><span className="font-black text-white text-lg">DONE</span></button>
-                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-6 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={32}/><span className="font-black text-white text-lg">FAIL</span></button>
+                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
+                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='yn' && !playerAnswered && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-8 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-3xl border border-emerald-400/30">YES</button>
-                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-8 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-3xl border border-red-400/30">NO</button>
+                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
+                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
                         </div>
                     )}
                     
                     {gameState?.mode==='yn' && allYNAnswered && (
-                        // FIX: Updated Match Result container to prevent cut-off
-                        <div className={`flex flex-col items-center justify-center p-8 rounded-2xl ${glassPanel} border-white/20 min-h-[300px] w-full max-w-full overflow-hidden`}>
-                            <div className="mb-6 text-lg text-white/70">Partner was: <span className="font-black text-yellow-400 text-2xl block mt-1 break-words">{myPartnerName}</span></div>
+                        <div className={`flex flex-col items-center justify-center p-6 rounded-2xl ${glassPanel} border-white/20 w-full`}>
+                            <div className="mb-4 text-lg text-white/70">Partner was: <span className="font-black text-yellow-400 text-2xl block mt-1 break-words">{myPartnerName}</span></div>
                             {ynMatch === true ? (
                                 <div className="animate-bounce text-center">
                                     <Smile className="w-24 h-24 text-emerald-400 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]"/>
