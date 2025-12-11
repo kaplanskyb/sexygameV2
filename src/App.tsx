@@ -86,7 +86,6 @@ interface GameState {
 const parseCSVLine = (text: string) => {
     const re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
     const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-    
     if (!re_valid.test(text)) return null;
     const a = [];
     text.replace(re_value, function(m0, m1, m2, m3) {
@@ -100,70 +99,65 @@ const parseCSVLine = (text: string) => {
 };
 
 // --- ESTILOS NEÓN Y GLASS ---
-const glassPanel = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl";
-const glassInput = "bg-black/20 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/30 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
+const glassPanel = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-xl";
+const glassInput = "bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder:text-white/30 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
 
 // --- COMPONENTES DE AYUDA (MANUAL) ---
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
-    const toggleSection = (section: string) => {
-      setExpandedSection(expandedSection === section ? null : section);
-    };
+    const toggleSection = (section: string) => { setExpandedSection(expandedSection === section ? null : section); };
  
     return (
-      <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-2 overflow-y-auto backdrop-blur-sm" onClick={onClose}>
         <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 ${glassPanel}`} onClick={e => e.stopPropagation()}>
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"><X size={24} /></button>
-          <div className="p-8">
-            <h2 className="text-3xl font-black mb-8 text-white flex items-center gap-3 border-b border-white/10 pb-4">
-              {type === 'admin' ? <BookOpen size={32} className="text-cyan-400"/> : <HelpCircle size={32} className="text-cyan-400"/>}
+          <button onClick={onClose} className="absolute top-3 right-3 text-white/50 hover:text-white transition-colors"><X size={20} /></button>
+          <div className="p-6">
+            <h2 className="text-2xl font-black mb-6 text-white flex items-center gap-2 border-b border-white/10 pb-3">
+              {type === 'admin' ? <BookOpen size={24} className="text-cyan-400"/> : <HelpCircle size={24} className="text-cyan-400"/>}
               <span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                 {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
               </span>
             </h2>
-            <div className="space-y-8 text-slate-300">
+            <div className="space-y-4 text-slate-300 text-sm">
               {type === 'admin' ? (
                 <>
                   <section>
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Flame className="text-orange-500"/> The Game Modes (Click to expand)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400 ring-2 ring-blue-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('truth')}>
-                          <div className="flex justify-between items-center mb-2"><strong className="text-blue-400 text-lg">1. Truth</strong>{expandedSection === 'truth' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
-                          <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
-                          {expandedSection === 'truth' && (<div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p><p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p><em className="text-blue-300">Example: "Who in this room would you date if you were single?"</em></div>)}
+                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Flame size={16} className="text-orange-500"/> Game Modes</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('truth')}>
+                          <div className="flex justify-between items-center mb-1"><strong className="text-blue-400">1. Truth</strong>{expandedSection === 'truth' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
+                          <p className="text-xs text-slate-400">Verbal questions.</p>
+                          {expandedSection === 'truth' && (<div className="mt-2 text-xs text-white border-t border-blue-500/30 pt-2"><p>Player reads and answers honestly. Group votes.</p></div>)}
                         </div>
-                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400 ring-2 ring-pink-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('dare')}>
-                          <div className="flex justify-between items-center mb-2"><strong className="text-pink-400 text-lg">2. Dare</strong>{expandedSection === 'dare' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
-                          <p className="text-sm text-slate-400">Physical actions.</p>
-                          {expandedSection === 'dare' && (<div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p><p className="mb-2"><strong>Voting:</strong> The group acts as the judge. They vote "Completed" or "Failed".</p><em className="text-pink-300">Example: "Let the person to your right read your last DM."</em></div>)}
+                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('dare')}>
+                          <div className="flex justify-between items-center mb-1"><strong className="text-pink-400">2. Dare</strong>{expandedSection === 'dare' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
+                          <p className="text-xs text-slate-400">Physical actions.</p>
+                          {expandedSection === 'dare' && (<div className="mt-2 text-xs text-white border-t border-pink-500/30 pt-2"><p>Player performs action. Group judges completion.</p></div>)}
                         </div>
-                        <div className={`cursor-pointer border rounded-lg p-4 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400 ring-2 ring-green-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('match')}>
-                          <div className="flex justify-between items-center mb-2"><strong className="text-green-400 text-lg">3. Match/Mismatch</strong>{expandedSection === 'match' ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
-                          <p className="text-sm text-slate-400">Compatibility test. 2 players answer blindly.</p>
-                          {expandedSection === 'match' && (<div className="mt-4 text-sm text-white border-t border-green-500/30 pt-2 animate-in fade-in"><p className="mb-2"><strong>How it works:</strong> The system secretly pairs two people (e.g., John & Sarah). A statement appears (e.g., "I prefer lights off").</p><p className="mb-2"><strong>The Goal:</strong> Both answer YES or NO secretly on their phones. If they <strong>MATCH</strong> (both Yes or both No), they get points.</p></div>)}
+                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('match')}>
+                          <div className="flex justify-between items-center mb-1"><strong className="text-green-400">3. Match</strong>{expandedSection === 'match' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
+                          <p className="text-xs text-slate-400">Compatibility.</p>
+                          {expandedSection === 'match' && (<div className="mt-2 text-xs text-white border-t border-green-500/30 pt-2"><p>Pair answers secretly. Goal is to match answers (Yes/No).</p></div>)}
                         </div>
                     </div>
                   </section>
                   <section>
-                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400"/> Game Control</h3>
-                    <div className="space-y-4">
-                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-purple-500"><h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4><p className="text-sm mb-2">In this mode, <strong>YOU control everything</strong>. Before every single turn, you must select:</p><ul className="list-disc pl-5 text-sm space-y-1"><li><strong>Risk Level:</strong> How intense should the next question be?</li><li><strong>Game Type:</strong> Do you want a Truth, a Dare, or a Match round next?</li></ul><p className="text-sm mt-2 italic text-slate-400">Use this when you want to read the room's vibe and adjust specifically.</p></div>
-                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-green-500"><h4 className="text-green-400 font-bold text-lg mb-2">MODE B: AUTOMATIC (Autopilot)</h4><p className="text-sm mb-2">You set a "Loop Configuration" (e.g., 2 Truths, 2 Dares, 1 Match) and the game runs itself in that order endlessly.</p><p className="text-sm">You simply click "Next" (or let the timer do it) and the system automatically picks the type based on your sequence.</p><p className="text-sm mt-2 italic text-slate-400">Perfect for when you want to play along and not worry about managing the game.</p></div>
-                    </div>
-                  </section>
-                  <section>
-                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400"/> Admin Tools</h3>
-                    <ul className="list-disc pl-5 space-y-4 text-sm"><li><strong>1. Uploading Questions:</strong><div className="mt-2 space-y-3"><div className="bg-black/30 p-3 rounded border border-blue-900/50"><span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span><span className="text-slate-400">Headers must be:</span> <code className="text-green-400">text, level, gender</code><br/><span className="text-xs text-slate-500">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span></div><div className="bg-black/30 p-3 rounded border border-green-900/50"><span className="text-green-300 font-bold block mb-1">Match Files:</span><span className="text-slate-400">Headers must be:</span> <code className="text-green-400">male, female, level</code></div></div></li><li><strong>Singles vs Couples:</strong> The system <strong>understands</strong> if players are Single or Couples. If Couples join, the game <strong>will not start</strong> until both partners (matching ID) are present.</li><li><strong>Bot System:</strong> If total players are odd, "Brad Pitt" (or "Scarlett Johansson") joins to ensure everyone has a partner in Match rounds.</li></ul>
+                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Settings size={16} className="text-gray-400"/> Tools</h3>
+                    <ul className="list-disc pl-4 space-y-2 text-xs">
+                        <li><strong>Uploads:</strong> Use CSV files. Headers: <code>text,level,gender</code> (T/D) or <code>male,female,level</code> (Match).</li>
+                        <li><strong>Couples:</strong> Game enforces partners join before start.</li>
+                        <li><strong>Bots:</strong> Auto-added for odd player counts.</li>
+                    </ul>
                   </section>
                 </>
               ) : (
                 <>
-                    <section><h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3><ol className="list-decimal pl-5 space-y-3"><li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li><li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li><li><strong>Male's Last 4 Phone Digits:</strong> <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm"><li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li><li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li></ul></li><li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li></ol></section>
-                    <section><h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3><div className="space-y-4"><div className="bg-white/5 p-4 rounded-lg border-l-4 border-blue-500"><strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong><p className="text-sm">When it's your turn, a question will appear. Read it aloud and answer honestly. The group will award points based on your answer.</p></div><div className="bg-white/5 p-4 rounded-lg border-l-4 border-pink-500"><strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong><p className="text-sm">A challenge will appear. You must perform the action described to earn points.</p></div><div className="bg-white/5 p-4 rounded-lg border-l-4 border-green-500"><strong className="text-green-400 text-lg block mb-2">Match/Mismatch Rounds</strong><p className="text-sm mb-2">The system will secretly pair you with another player. A statement will appear on your screen.</p><p className="text-sm italic text-yellow-400 mb-2 font-mono bg-black/30 p-2 rounded text-center">"I prefer lights off"</p><p className="text-sm">You must answer <strong>YES</strong> or <strong>NO</strong> honestly. You only score points if your answer <strong>MATCHES</strong> your partner's answer!</p></div></div></section>
+                    <section><h3 className="text-lg font-bold text-white mb-2">👋 Joining</h3><ol className="list-decimal pl-4 space-y-2"><li>Enter Name & Gender.</li><li>Choose Single/Couple status.</li><li><strong>Couples:</strong> Enter SAME 4-digit code to link.</li><li>Enter Game Code from Admin.</li></ol></section>
+                    <section><h3 className="text-lg font-bold text-white mb-2">🎮 Playing</h3><div className="grid gap-2"><div className="bg-white/5 p-3 rounded border-l-2 border-blue-500"><strong className="text-blue-400 block text-xs">Truth</strong><span className="text-xs">Read aloud. Answer honestly.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-pink-500"><strong className="text-pink-400 block text-xs">Dare</strong><span className="text-xs">Do the action. Don't fail.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-green-500"><strong className="text-green-400 block text-xs">Match</strong><span className="text-xs">Answer same as your partner to score.</span></div></div></section>
                 </>
               )}
             </div>
-            <div className="mt-8 text-center border-t border-white/10 pt-6"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(8,145,178,0.4)] hover:shadow-[0_0_30px_rgba(8,145,178,0.6)] transition-all active:scale-95">Got it</button></div>
+            <div className="mt-6 text-center border-t border-white/10 pt-4"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-2 rounded-lg font-bold text-white shadow-lg active:scale-95 text-sm">Close</button></div>
           </div>
         </div>
       </div>
@@ -233,7 +227,7 @@ export default function TruthAndDareApp() {
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
-  // 1. Auth & Sync
+  // 1. AUTH & DATA FETCHING
   useEffect(() => {
     const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error(e); } };
     initAuth();
@@ -987,20 +981,25 @@ export default function TruthAndDareApp() {
                     )}
                     
                     {gameState?.mode==='yn' && allYNAnswered && (
-                        <div className={`flex flex-col items-center justify-center p-6 rounded-2xl ${glassPanel} border-white/20 w-full`}>
-                            <div className="mb-4 text-lg text-white/70">Partner was: <span className="font-black text-yellow-400 text-2xl block mt-1 break-words">{myPartnerName}</span></div>
-                            {ynMatch === true ? (
-                                <div className="animate-bounce text-center">
-                                    <Smile className="w-24 h-24 text-emerald-400 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]"/>
-                                    <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600 tracking-tighter drop-shadow-sm">MATCH!</h3>
-                                </div>
-                            ) : (
-                                <div className="animate-pulse text-center">
-                                    <Frown className="w-24 h-24 text-red-500 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]"/>
-                                    <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter drop-shadow-sm">MISMATCH</h3>
-                                </div>
-                            )}
-                            <div className="text-white/30 mt-6 text-xs font-mono tracking-widest">NEXT ROUND STARTING SOON...</div>
+                        <div className={`flex flex-row items-center justify-between p-4 rounded-2xl ${glassPanel} border-white/20 w-full`}>
+                            <div className="flex flex-col items-center justify-center w-1/2 border-r border-white/10 pr-2">
+                                {ynMatch === true ? (
+                                    <>
+                                        <Smile className="w-12 h-12 text-emerald-400 drop-shadow-glow mb-1"/>
+                                        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600 tracking-tighter">MATCH!</h3>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Frown className="w-12 h-12 text-red-500 drop-shadow-glow mb-1"/>
+                                        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter">MISMATCH</h3>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex flex-col items-end justify-center w-1/2 pl-2">
+                                <div className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Partner</div>
+                                <span className="font-black text-yellow-400 text-xl leading-none text-right break-words line-clamp-2">{myPartnerName}</span>
+                                <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest animate-pulse">NEXT ROUND...</div>
+                            </div>
                         </div>
                     )}
                     
