@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown,
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle,
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2, Info, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -102,7 +102,18 @@ const parseCSVLine = (text: string) => {
 const glassPanel = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-xl";
 const glassInput = "bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder:text-white/30 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
 
-// --- COMPONENTES DE AYUDA (MANUAL) ---
+// --- COMPONENTES AUXILIARES ---
+
+// Tutorial Tooltip Component
+const TutorialTooltip = ({ text, onClick, className }: { text: string, onClick: () => void, className?: string }) => (
+    <div className={`absolute z-[100] cursor-pointer animate-bounce ${className}`} onClick={onClick}>
+        <div className="bg-yellow-400 text-black text-xs font-bold px-3 py-2 rounded-lg shadow-[0_0_20px_rgba(250,204,21,0.6)] relative max-w-[150px] text-center border-2 border-yellow-200">
+            {text}
+            {/* Triangles handled via logic or simple border css, simplified here */}
+        </div>
+    </div>
+);
+
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const toggleSection = (section: string) => { setExpandedSection(expandedSection === section ? null : section); };
@@ -139,6 +150,14 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                           <p className="text-xs text-slate-400">Compatibility.</p>
                           {expandedSection === 'match' && (<div className="mt-2 text-xs text-white border-t border-green-500/30 pt-2"><p>Pair answers secretly. Goal is to match answers (Yes/No).</p></div>)}
                         </div>
+                    </div>
+                  </section>
+                  <section>
+                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Zap size={16} className="text-yellow-400"/> Game Flow</h3>
+                    <div className="bg-white/5 p-3 rounded border border-white/10 text-xs space-y-2">
+                        <p><strong className="text-indigo-400">FORCE NEXT TURN:</strong> Use this button to skip waiting! If a player is too slow or stuck, click this to immediately finish the round and move to the next one.</p>
+                        <p><strong className="text-red-400">END GAME:</strong> Finishes the game after the current round ends. Displays the final scoreboard.</p>
+                        <p><strong className="text-white">RESET ALL:</strong> Danger! Completely wipes all players and scores to start a fresh party.</p>
                     </div>
                   </section>
                   <section>
@@ -204,6 +223,31 @@ export default function TruthAndDareApp() {
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
+  const [showRiskInfo, setShowRiskInfo] = useState(false);
+
+  // --- TUTORIAL STATE ---
+  const [tutorialStep, setTutorialStep] = useState(0);
+  useEffect(() => {
+      // Auto-advance tutorial steps if user is slow
+      if (isAdmin && !viewAsPlayer && gameState?.mode === 'lobby') {
+          const timer = setTimeout(() => {
+              if (tutorialStep < 5) setTutorialStep(prev => prev + 1);
+          }, 4000);
+          return () => clearTimeout(timer);
+      }
+      if (isAdmin && !viewAsPlayer && gameState?.mode === 'admin_setup') {
+         if (tutorialStep === 5) {
+             const timer = setTimeout(() => setTutorialStep(6), 4000);
+             return () => clearTimeout(timer);
+         }
+      }
+      if (isAdmin && !viewAsPlayer && (gameState?.mode === 'question' || gameState?.mode === 'dare' || gameState?.mode === 'yn')) {
+          if (tutorialStep === 6) {
+              const timer = setTimeout(() => setTutorialStep(7), 4000);
+              return () => clearTimeout(timer);
+          }
+      }
+  }, [tutorialStep, isAdmin, viewAsPlayer, gameState?.mode]);
 
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
@@ -479,17 +523,16 @@ export default function TruthAndDareApp() {
           <input type="text" placeholder="YOUR NAME" className={`w-full mb-4 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} value={userName} onChange={e=>setUserName(e.target.value)} />
           
           <div className="grid grid-cols-2 gap-4 mb-4">
-              <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none ${glassInput}`}>
+              <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-black ${glassInput}`}>
                   <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
               </select>
-              <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none ${glassInput}`}>
+              <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-black ${glassInput}`}>
                   <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
               </select>
           </div>
           
-          <input type="number" placeholder="Male's Last 4 Digits" className={`w-full mb-4 text-center tracking-widest font-mono ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          <input type="number" placeholder="Last 4 Digits of Phone Number" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
           
-          {/* FIX: Si es admin, no pedimos código */}
           {userName.toLowerCase() !== 'admin' && (
              <input type="text" placeholder="GAME CODE" className={`w-full mb-6 text-center tracking-widest uppercase font-bold ${glassInput}`} value={code} onChange={e=>setCode(e.target.value)} />
           )}
@@ -680,14 +723,23 @@ export default function TruthAndDareApp() {
 
         return (
             <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
+              {/* TUTORIAL TOOLTIPS FOR LOBBY */}
+              {tutorialStep === 0 && <TutorialTooltip text="Read the Manual!" onClick={() => setTutorialStep(1)} className="top-14 right-4" />}
+              {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-40 left-1/2 -translate-x-1/2" />}
+              {tutorialStep === 2 && players.length === 0 && <TutorialTooltip text="Wait for players..." onClick={() => setTutorialStep(3)} className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+              {tutorialStep === 3 && players.length > 0 && <TutorialTooltip text="Remove if needed" onClick={() => setTutorialStep(4)} className="top-1/3 right-10" />}
+              {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-20 left-1/2 -translate-x-1/2" />}
+
               <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
               <CustomSuccess />
-              <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
+              <button onClick={() => { setShowAdminHelp(true); if(tutorialStep===0) setTutorialStep(1); }} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
               <CustomAlert/>
               
-              <Trophy className="w-20 h-20 text-yellow-500 mb-4 mt-8 drop-shadow-glow" />
-              <h2 className="text-3xl font-black mb-4 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-600">LOBBY ({players.length})</h2>
+              <div className="flex items-center gap-2 mb-2 mt-8">
+                 <Users size={32} className="text-cyan-400"/>
+                 <h2 className="text-2xl font-black tracking-widest text-white">LOBBY ({players.length})</h2>
+              </div>
               
               <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10">
                   <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
@@ -727,7 +779,7 @@ export default function TruthAndDareApp() {
               ) : (
                   <button onClick={startGame} className="w-full max-w-sm bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">START GAME</button>
               )}
-              <button onClick={handleRestart} className="w-full max-w-sm bg-red-900/30 border border-red-800 p-3 rounded-xl font-bold mt-4 hover:bg-red-900/50 transition-colors text-red-300 text-sm">Reset All Data</button>
+              <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
             </div>
         );
     }
@@ -736,6 +788,9 @@ export default function TruthAndDareApp() {
          return (
             <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
                 <CustomAlert />
+                {tutorialStep === 5 && <TutorialTooltip text="Select Mode" onClick={() => setTutorialStep(6)} className="top-1/3 right-10" />}
+                {tutorialStep === 6 && <TutorialTooltip text="Start Round!" onClick={() => setTutorialStep(7)} className="bottom-20 left-1/2 -translate-x-1/2" />}
+                
                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
                 {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
                 <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
@@ -756,21 +811,37 @@ export default function TruthAndDareApp() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5"><span className="font-bold text-sm text-white/70 pl-2">Risk Level</span><select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
+                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm text-white/70">Risk Level</span>
+                                    <div className="relative">
+                                        <Info size={14} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
+                                        {showRiskInfo && <div className="absolute top-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level and game type any time.</div>}
+                                    </div>
+                                </div>
+                                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                            </div>
                             <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5"><span className="font-bold text-sm text-white/70 pl-2">Game Type</span><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select></div>
                         </div>
                     )}
                     
                     {isAutoSetup && (
-                        <div className="mt-4">
-                            <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="w-full bg-black/20 border border-white/20 rounded-lg p-3 text-white text-sm"><option value="">Select Risk Level (Required)</option>{uniqueLevels.map(l=><option key={l} value={l}>Level {l}</option>)}</select>
+                        <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-white/70">Risk Level</span>
+                                <div className="relative">
+                                    <Info size={14} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
+                                    {showRiskInfo && <div className="absolute top-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level any time.</div>}
+                                </div>
+                            </div>
+                            <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                         </div>
                     )}
                 </div>
                 
                 <button onClick={startRound} className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
                 <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
-                <button onClick={handleRestart} className="mt-8 text-red-400 text-xs hover:text-red-200 underline">Reset Entire Game</button>
+                <button onClick={handleRestart} className="w-full max-w-md bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
             </div>
          );
     }
@@ -791,6 +862,7 @@ export default function TruthAndDareApp() {
 
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
+        {tutorialStep === 7 && <TutorialTooltip text="Join the game!" onClick={() => setTutorialStep(8)} className="top-14 left-4" />}
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
@@ -798,7 +870,7 @@ export default function TruthAndDareApp() {
         <div className="mt-8 w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
         
         <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
-            <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode?.toUpperCase()}</span></div>
+            <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode === 'yn' ? 'MATCH' : gameState?.mode?.toUpperCase()}</span></div>
             <div className="text-xs text-white/50 uppercase tracking-widest font-bold">Turn: <span className="text-white">{currentPlayerName()}</span></div>
         </div>
         
@@ -807,7 +879,16 @@ export default function TruthAndDareApp() {
                  <div><div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div><div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div></div>
                  <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
             </div>
-            <div className="flex items-center justify-between"><span className="text-xs text-white/50 font-bold uppercase">Level</span><select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/50 font-bold uppercase">Risk Level</span>
+                    <div className="relative">
+                        <Info size={12} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
+                        {showRiskInfo && <div className="absolute bottom-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level any time.</div>}
+                    </div>
+                </div>
+                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+            </div>
             {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Type</span><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div>)}
         </div>
 
@@ -821,7 +902,7 @@ export default function TruthAndDareApp() {
           </div>
 
           <div className={`w-full p-4 mb-4 ${glassPanel}`}>
-              <h4 className="font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-white/50"><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Pending Action:</h4>
+              <h4 className={`font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest ${pendingPlayers.length > 0 ? "text-cyan-400 animate-pulse" : "text-white/50"}`}><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Pending Action:</h4>
               {pendingPlayers.length === 0 ? (<div className="text-emerald-400 font-bold text-center">Ready for next!</div>) : (<div className="text-sm text-white/70">Waiting for: <span className="font-bold text-white">{pendingPlayers.map(p => p.name).join(', ')}</span></div>)}
           </div>
 
@@ -981,6 +1062,7 @@ export default function TruthAndDareApp() {
                         </div>
                     )}
                     
+                    {/* REDESIGNED MATCH RESULT */}
                     {gameState?.mode==='yn' && allYNAnswered && (
                         <div className={`flex flex-col items-center justify-center p-6 rounded-2xl ${glassPanel} border-white/20 w-full animate-in zoom-in duration-300`}>
                             {ynMatch === true ? (
