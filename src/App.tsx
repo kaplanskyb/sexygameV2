@@ -12,7 +12,7 @@ import {
   Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown,
   Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle,
   Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2, Info, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2, Info
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -104,15 +104,30 @@ const glassInput = "bg-black/20 border border-white/10 rounded-lg p-2 text-white
 
 // --- COMPONENTES AUXILIARES ---
 
-// Tutorial Tooltip Component
-const TutorialTooltip = ({ text, onClick, className }: { text: string, onClick: () => void, className?: string }) => (
-    <div className={`absolute z-[100] cursor-pointer animate-bounce ${className}`} onClick={onClick}>
-        <div className="bg-yellow-400 text-black text-xs font-bold px-3 py-2 rounded-lg shadow-[0_0_20px_rgba(250,204,21,0.6)] relative max-w-[150px] text-center border-2 border-yellow-200">
+// Tutorial Tooltip: Posicionamiento inteligente con flecha
+const TutorialTooltip = ({ text, onClick, className, arrowPos = 'bottom' }: { text: string, onClick: () => void, className?: string, arrowPos?: 'top' | 'bottom' | 'left' | 'right' }) => (
+    <div className={`absolute z-[200] cursor-pointer animate-bounce ${className}`} onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <div className="bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.8)] relative whitespace-nowrap border-2 border-white">
             {text}
-            {/* Triangles handled via logic or simple border css, simplified here */}
+            {/* Flecha dinámica según posición */}
+            {arrowPos === 'bottom' && <div className="absolute top-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-yellow-400"></div>}
+            {arrowPos === 'top' && <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-yellow-400"></div>}
+            {arrowPos === 'left' && <div className="absolute top-1/2 right-full -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-yellow-400"></div>}
+            {arrowPos === 'right' && <div className="absolute top-1/2 left-full -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-yellow-400"></div>}
         </div>
     </div>
 );
+
+// Helper Icon with Popover
+const InfoIcon = ({ text }: { text: string }) => {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative inline-flex items-center ml-2">
+            <Info size={14} className="text-cyan-400 cursor-pointer hover:text-white transition-colors" onClick={() => setShow(!show)} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}/>
+            {show && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-48 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10 shadow-xl pointer-events-none text-center animate-in fade-in zoom-in-95">{text}</div>}
+        </div>
+    );
+};
 
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -155,9 +170,11 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                   <section>
                     <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Zap size={16} className="text-yellow-400"/> Game Flow</h3>
                     <div className="bg-white/5 p-3 rounded border border-white/10 text-xs space-y-2">
-                        <p><strong className="text-indigo-400">FORCE NEXT TURN:</strong> Use this button to skip waiting! If a player is too slow or stuck, click this to immediately finish the round and move to the next one.</p>
-                        <p><strong className="text-red-400">END GAME:</strong> Finishes the game after the current round ends. Displays the final scoreboard.</p>
-                        <p><strong className="text-white">RESET ALL:</strong> Danger! Completely wipes all players and scores to start a fresh party.</p>
+                        <div className="bg-white/5 p-2 rounded mb-2"><h4 className="text-purple-400 font-bold mb-1">MODE A: MANUAL</h4><p>You select Risk Level and Game Type before every turn.</p></div>
+                        <div className="bg-white/5 p-2 rounded mb-2"><h4 className="text-green-400 font-bold mb-1">MODE B: AUTOMATIC</h4><p>Loops T → D → M automatically.</p></div>
+                        <p><strong className="text-indigo-400">FORCE NEXT TURN:</strong> Skips waiting if a player is stuck.</p>
+                        <p><strong className="text-red-400">END GAME:</strong> Finishes game and shows scoreboard.</p>
+                        <p><strong className="text-white">RESET ALL:</strong> Danger! Wipes everything.</p>
                     </div>
                   </section>
                   <section>
@@ -172,11 +189,11 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
               ) : (
                 <>
                     <section><h3 className="text-lg font-bold text-white mb-2">👋 Joining</h3><ol className="list-decimal pl-4 space-y-2"><li>Enter Name & Gender.</li><li>Choose Single/Couple status.</li><li><strong>Couples:</strong> Enter SAME 4-digit code to link.</li><li>Enter Game Code from Admin.</li></ol></section>
-                    <section><h3 className="text-lg font-bold text-white mb-2">🎮 Playing</h3><div className="grid gap-2"><div className="bg-white/5 p-3 rounded border-l-2 border-blue-500"><strong className="text-blue-400 block text-xs">Truth</strong><span className="text-xs">Read aloud. Answer honestly.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-pink-500"><strong className="text-pink-400 block text-xs">Dare</strong><span className="text-xs">Do the action. Don't fail.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-green-500"><strong className="text-green-400 block text-xs">Match</strong><span className="text-xs">Answer same as your partner to score.</span></div></div></section>
+                    <section><h3 className="text-lg font-bold text-white mb-2">🎮 Playing</h3><div className="grid gap-2"><div className="bg-white/5 p-3 rounded border-l-2 border-blue-500"><strong className="text-blue-400 block text-xs">Truth Rounds</strong><span className="text-xs">Read aloud. Answer honestly.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-pink-500"><strong className="text-pink-400 block text-xs">Dare Rounds</strong><span className="text-xs">Do the action. Don't fail.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-green-500"><strong className="text-green-400 block text-xs">Match</strong><span className="text-xs">Answer same as your partner to score.</span></div></div></section>
                 </>
               )}
             </div>
-            <div className="mt-6 text-center border-t border-white/10 pt-4"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-2 rounded-lg font-bold text-white shadow-lg active:scale-95 text-sm">Close</button></div>
+            <div className="mt-6 text-center border-t border-white/10 pt-4"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-2 rounded-lg font-bold text-white shadow-lg active:scale-95 text-sm">Got it</button></div>
           </div>
         </div>
       </div>
@@ -225,29 +242,91 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
-  // --- TUTORIAL STATE ---
-  const [tutorialStep, setTutorialStep] = useState(0);
+  // --- TUTORIAL REACTIVO (NAGGING LOOP) ---
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const [codeTipShown, setCodeTipShown] = useState(false);
+  const [resetTipShown, setResetTipShown] = useState(false);
+  const [modeSwitchTipShown, setModeSwitchTipShown] = useState(false);
+  const [viewSwitchTipShown, setViewSwitchTipShown] = useState(false);
+  const [backToAdminTipShown, setBackToAdminTipShown] = useState(false);
+
   useEffect(() => {
-      // Auto-advance tutorial steps if user is slow
-      if (isAdmin && !viewAsPlayer && gameState?.mode === 'lobby') {
-          const timer = setTimeout(() => {
-              if (tutorialStep < 5) setTutorialStep(prev => prev + 1);
-          }, 4000);
-          return () => clearTimeout(timer);
-      }
-      if (isAdmin && !viewAsPlayer && gameState?.mode === 'admin_setup') {
-         if (tutorialStep === 5) {
-             const timer = setTimeout(() => setTutorialStep(6), 4000);
-             return () => clearTimeout(timer);
-         }
-      }
-      if (isAdmin && !viewAsPlayer && (gameState?.mode === 'question' || gameState?.mode === 'dare' || gameState?.mode === 'yn')) {
-          if (tutorialStep === 6) {
-              const timer = setTimeout(() => setTutorialStep(7), 4000);
-              return () => clearTimeout(timer);
+      // Cerebro del Tutorial
+      if (isAdmin && !viewAsPlayer) {
+          const checkTutorial = () => {
+              // LOBBY PHASE
+              if (gameState?.mode === 'lobby') {
+                  // 1. Falta Código (Obligatorio)
+                  if (!gameState.code) {
+                      setTutorialStep(1); return;
+                  }
+                  // 1.5. "Tell Code" (3 segundos, una sola vez)
+                  if (gameState.code && !codeTipShown) {
+                      setTutorialStep(15);
+                      setTimeout(() => { setCodeTipShown(true); setTutorialStep(null); }, 3000);
+                      return;
+                  }
+                  // 2. Faltan jugadores (Obligatorio)
+                  if (players.length < 3) {
+                      setTutorialStep(2); return;
+                  }
+                  // 3. Reset Players (Una vez, 3s)
+                  if (players.length >= 3 && !resetTipShown) {
+                      setTutorialStep(3);
+                      setTimeout(() => { setResetTipShown(true); setTutorialStep(null); }, 3000);
+                      return;
+                  }
+                  // 4. Start Game (Obligatorio)
+                  const couples = players.filter(p => p.relationshipStatus === 'couple');
+                  const counts: Record<string, number> = {};
+                  couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1);
+                  const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2);
+                  const couplesValid = incompleteIds.length === 0;
+
+                  if (players.length >= 3 && gameState.code && couplesValid) {
+                      setTutorialStep(4); return;
+                  }
+              }
+              // SETUP PHASE
+              else if (gameState?.mode === 'admin_setup') {
+                   // 5. Switch Mode Tip (Una vez, 3s)
+                   if (!modeSwitchTipShown) {
+                        setTutorialStep(5);
+                        setTimeout(() => { setModeSwitchTipShown(true); setTutorialStep(null); }, 3000);
+                        return;
+                   }
+                   // 6. Validacion Obligatoria de Inputs
+                   if (isAutoSetup && !selectedLevel) {
+                        setTutorialStep(51); return;
+                   }
+                   if (!isAutoSetup) {
+                       if (!selectedLevel) { setTutorialStep(52); return; }
+                       if (!selectedType) { setTutorialStep(53); return; }
+                   }
+              }
+              // GAME PHASE
+              else if (['question', 'dare', 'yn'].includes(gameState?.mode || '')) {
+                   // 7. View Switch Tip (Una vez, 4s)
+                   if (!viewSwitchTipShown) {
+                       setTutorialStep(7);
+                       setTimeout(() => { setViewSwitchTipShown(true); setTutorialStep(null); }, 4000);
+                       return;
+                   }
+              }
+              setTutorialStep(null);
+          };
+
+          checkTutorial();
+          const timer = setInterval(checkTutorial, 5000); // Check every 5s for persistent nagging
+          return () => clearInterval(timer);
+      } else if (isAdmin && viewAsPlayer) {
+          // 8. Back to Admin Tip (Una vez, 4s)
+          if (!backToAdminTipShown) {
+              setTutorialStep(8);
+              setTimeout(() => { setBackToAdminTipShown(true); setTutorialStep(null); }, 4000);
           }
       }
-  }, [tutorialStep, isAdmin, viewAsPlayer, gameState?.mode]);
+  }, [isAdmin, viewAsPlayer, gameState?.mode, gameState?.code, players.length, codeTipShown, resetTipShown, modeSwitchTipShown, viewSwitchTipShown, backToAdminTipShown, selectedLevel, selectedType, isAutoSetup]);
 
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
@@ -358,7 +437,6 @@ export default function TruthAndDareApp() {
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
     if (shouldAdvance) {
-        // FIX: Changed to 3000ms as requested
         const timer = setTimeout(() => { nextTurn(); }, 3000);
         return () => clearTimeout(timer);
     }
@@ -418,19 +496,77 @@ export default function TruthAndDareApp() {
     let typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
     if (typeChar === 'YN' && players.length < 3) { showError("❌ You need at least 3 players to play Match/Mismatch!"); return; }
     const firstPlayerGender = players.length > 0 ? players[0].gender : 'male';
-    const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel, firstPlayerGender);
-    if (!nextChallenge) { showError('No challenges found for this selection.'); return; }
+    // Random Challenge Logic
+    let currentLvl = parseInt(selectedLevel);
+    let found = null;
+    let collectionName = typeChar === 'YN' ? 'pairChallenges' : 'challenges';
+    let lvlString = currentLvl.toString();
+    let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+    let q = query(ref, where('level', '==', lvlString), where('answered', '==', false));
+    if(typeChar !== 'YN') {
+        q = query(ref, where('type', '==', typeChar), where('level', '==', lvlString), where('answered', '==', false));
+    }
+    const snapshot = await getDocs(q);
+    let validDocs = snapshot.docs.filter(d => !d.data().paused);
+    if (typeChar !== 'YN') {
+        validDocs = validDocs.filter(d => {
+            const data = d.data();
+            const qSex = (data.gender || data.sexo || 'B').toUpperCase();
+            if (qSex === 'B') return true;
+            if (firstPlayerGender === 'male') return qSex !== 'F';
+            else return qSex !== 'M';
+        });
+    }
+    if (validDocs.length > 0) {
+        found = validDocs[Math.floor(Math.random() * validDocs.length)];
+    } else {
+        const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel, firstPlayerGender);
+        if(nextChallenge) {
+             found = { id: nextChallenge.id, data: () => nextChallenge };
+        }
+    }
+    const nextChallengeToUse = found ? { id: found.id, ...found.data() } as Challenge : null;
+    
+    if (!nextChallengeToUse) { showError('No challenges found for this selection.'); return; }
     let initialAnswers: Record<string, string> = {};
     if (initialMode === 'yn') { players.filter(p => p.isBot).forEach(b => { initialAnswers[b.uid] = Math.random() > 0.5 ? 'yes' : 'no'; }); }
-    let updates: any = { mode: initialMode, currentTurnIndex: 0, answers: initialAnswers, votes: {}, adminUid: players[0].uid, currentChallengeId: nextChallenge.id, roundLevel: selectedLevel, isAutoMode: isAutoSetup, sequence: sequence, sequenceIndex: 0 };
+    let updates: any = { mode: initialMode, currentTurnIndex: 0, answers: initialAnswers, votes: {}, adminUid: players[0].uid, currentChallengeId: nextChallengeToUse.id, roundLevel: selectedLevel, isAutoMode: isAutoSetup, sequence: sequence, sequenceIndex: 0 };
     if (initialMode === 'yn') updates.pairs = computePairs();
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
     const coll = initialMode === 'yn' ? 'pairChallenges' : 'challenges';
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallengeToUse.id!), { answered: true });
   };
   const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
   const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
-  const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
+  
+  const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { 
+      let currentLvl = parseInt(startLevel); 
+      let found = null; 
+      let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; 
+      
+      for(let i = 0; i < 10; i++) { 
+          let lvlString = (currentLvl + i).toString(); 
+          let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); 
+          let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); 
+          if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } 
+          const snapshot = await getDocs(q); 
+          let validDocs = snapshot.docs.filter(d => !d.data().paused); 
+          if (type !== 'YN') { 
+              validDocs = validDocs.filter(d => { 
+                  const data = d.data(); 
+                  const qSex = (data.gender || data.sexo || 'B').toUpperCase(); 
+                  if (qSex === 'B') return true; 
+                  if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } 
+              }); 
+          } 
+          if (validDocs.length > 0) { 
+              found = validDocs[Math.floor(Math.random() * validDocs.length)]; 
+              break; 
+          } 
+      } 
+      if(found) return { id: found.id, ...found.data() } as Challenge; 
+      return null; 
+  };
   const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
   // ... (Manager Logic)
@@ -523,15 +659,21 @@ export default function TruthAndDareApp() {
           <input type="text" placeholder="YOUR NAME" className={`w-full mb-4 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} value={userName} onChange={e=>setUserName(e.target.value)} />
           
           <div className="grid grid-cols-2 gap-4 mb-4">
-              <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-black ${glassInput}`}>
-                  <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
-              </select>
-              <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-black ${glassInput}`}>
-                  <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
-              </select>
+              <div className="relative">
+                  <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-black pr-8 ${glassInput}`}>
+                      <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
+              </div>
+              <div className="relative">
+                  <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-black pr-8 ${glassInput}`}>
+                      <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
+              </div>
           </div>
           
-          <input type="number" placeholder="Last 4 Digits of Phone Number" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          <input type="number" placeholder="Male's Phone (Last 4)" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
           
           {userName.toLowerCase() !== 'admin' && (
              <input type="text" placeholder="GAME CODE" className={`w-full mb-6 text-center tracking-widest uppercase font-bold ${glassInput}`} value={code} onChange={e=>setCode(e.target.value)} />
@@ -557,7 +699,7 @@ export default function TruthAndDareApp() {
                             <span className="font-mono text-white/50 text-sm">#{i+1}</span>
                             <span className="font-bold text-lg">{p.name}</span>
                         </div>
-                        <span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0}</span>
+                        <span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span>
                     </div>
                 ))}
             </div>
@@ -723,12 +865,16 @@ export default function TruthAndDareApp() {
 
         return (
             <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
-              {/* TUTORIAL TOOLTIPS FOR LOBBY */}
-              {tutorialStep === 0 && <TutorialTooltip text="Read the Manual!" onClick={() => setTutorialStep(1)} className="top-14 right-4" />}
-              {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-40 left-1/2 -translate-x-1/2" />}
-              {tutorialStep === 2 && players.length === 0 && <TutorialTooltip text="Wait for players..." onClick={() => setTutorialStep(3)} className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
-              {tutorialStep === 3 && players.length > 0 && <TutorialTooltip text="Remove if needed" onClick={() => setTutorialStep(4)} className="top-1/3 right-10" />}
-              {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-20 left-1/2 -translate-x-1/2" />}
+              {/* TUTORIAL TOOLTIPS */}
+              {tutorialStep === 0 && <TutorialTooltip text="Read the Manual first!" onClick={() => setTutorialStep(1)} className="top-14 right-4" arrowPos="top" />}
+              {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+              {tutorialStep === 15 && <TutorialTooltip text="Tell code to players!" onClick={() => { setCodeTipShown(true); setTutorialStep(2); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+              
+              {tutorialStep === 2 && players.length === 0 && <TutorialTooltip text="Wait for players here..." onClick={() => setTutorialStep(3)} className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" arrowPos="bottom" />}
+              
+              {tutorialStep === 3 && players.length > 1 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="top-1/3 right-10" arrowPos="left" />}
+              
+              {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
 
               <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
               {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
@@ -763,9 +909,17 @@ export default function TruthAndDareApp() {
               </div>
 
               {!isSettingCode ? (
-                  <button onClick={() => setIsSettingCode(true)} className="w-full max-w-sm bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl font-bold mb-4 text-blue-200 hover:bg-blue-800/50 transition flex items-center justify-center gap-2 text-sm backdrop-blur-sm"><Send size={16}/> Set Game Code</button>
+                  <div className="relative w-full max-w-sm mb-4">
+                      {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                      <button onClick={() => setIsSettingCode(true)} className="w-full bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl font-bold text-blue-200 hover:bg-blue-800/50 transition flex items-center justify-center gap-2 text-sm backdrop-blur-sm"><Send size={16}/> Set Game Code</button>
+                  </div>
               ) : (
-                  <div className="w-full max-w-sm flex gap-2 mb-4 animate-in fade-in slide-in-from-top-2"><input type="text" placeholder="Enter Code..." className="bg-black/40 border border-white/20 rounded-xl p-3 text-white flex-1 outline-none focus:border-cyan-500" value={code} onChange={e=>setCode(e.target.value)} autoFocus /><button onClick={setGameCode} className="bg-green-600 px-4 rounded-xl font-bold hover:bg-green-500">Save</button><button onClick={() => setIsSettingCode(false)} className="bg-red-600 px-4 rounded-xl hover:bg-red-500">X</button></div>
+                  <div className="relative w-full max-w-sm flex gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+                      <input type="text" placeholder="Enter Code..." className="bg-black/40 border border-white/20 rounded-xl p-3 text-white flex-1 outline-none focus:border-cyan-500" value={code} onChange={e=>setCode(e.target.value)} autoFocus />
+                      <button onClick={setGameCode} className="bg-green-600 px-4 rounded-xl font-bold hover:bg-green-500">Save</button>
+                      <button onClick={() => setIsSettingCode(false)} className="bg-red-600 px-4 rounded-xl hover:bg-red-500">X</button>
+                      {tutorialStep === 15 && <TutorialTooltip text="Tell code to players!" onClick={() => setCodeTipShown(true)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                  </div>
               )}
               
               <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-white/5 p-4 rounded-xl font-bold mb-4 flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all relative">
@@ -774,11 +928,15 @@ export default function TruthAndDareApp() {
               </button>
               
               {!couplesValid && <div className="bg-red-900/80 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 max-w-sm w-full animate-pulse backdrop-blur-sm"><strong className="block text-red-200 mb-1"><AlertTriangle className="inline mr-1" size={14}/> Incomplete Couples!</strong>Wait for partners for IDs: {incompleteIds.join(', ')}</div>}
-              {total > 0 ? (
-                  <div className="bg-red-900/50 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 backdrop-blur-sm"><AlertTriangle className="inline mr-2" size={16}/>Complete setup for {total} questions to start.</div>
-              ) : (
-                  <button onClick={startGame} className="w-full max-w-sm bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">START GAME</button>
-              )}
+              
+              <div className="relative w-full max-w-sm">
+                  {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                  {total > 0 ? (
+                      <div className="bg-red-900/50 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 backdrop-blur-sm"><AlertTriangle className="inline mr-2" size={16}/>Complete setup for {total} questions to start.</div>
+                  ) : (
+                      <button onClick={startGame} className="w-full bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">START GAME</button>
+                  )}
+              </div>
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
             </div>
         );
@@ -788,8 +946,8 @@ export default function TruthAndDareApp() {
          return (
             <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
                 <CustomAlert />
-                {tutorialStep === 5 && <TutorialTooltip text="Select Mode" onClick={() => setTutorialStep(6)} className="top-1/3 right-10" />}
-                {tutorialStep === 6 && <TutorialTooltip text="Start Round!" onClick={() => setTutorialStep(7)} className="bottom-20 left-1/2 -translate-x-1/2" />}
+                
+                {tutorialStep === 5 && <TutorialTooltip text="Select Mode" onClick={() => setTutorialStep(6)} className="top-24 right-10" arrowPos="left" />}
                 
                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
                 {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
@@ -798,48 +956,60 @@ export default function TruthAndDareApp() {
                 <h2 className="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-8">SETUP ROUND</h2>
                 
                 <div className={`w-full max-w-md p-6 mb-4 ${glassPanel}`}>
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                        <div><div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div><div className={`font-black text-xl ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div></div>
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 relative">
+                        <div className="flex items-center gap-2 justify-center w-full">
+                             <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div>
+                             <InfoIcon text="Auto loops through Truth/Dare/Match. Manual lets you pick every turn." />
+                             <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
+                        </div>
                         <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
                     </div>
 
                     {isAutoSetup ? (
                         <div className="flex gap-3 animate-in fade-in">
-                            <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
+                            <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
+                                {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                <div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-pink-400 font-bold mb-1">Dare</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyDare} onChange={e=>setQtyDare(parseInt(e.target.value))}/></div>
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-emerald-400 font-bold mb-1">Match</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyMM} onChange={e=>setQtyMM(parseInt(e.target.value))}/></div>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
+                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-sm text-white/70">Risk Level</span>
-                                    <div className="relative">
-                                        <Info size={14} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
-                                        {showRiskInfo && <div className="absolute top-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level and game type any time.</div>}
-                                    </div>
+                                    <InfoIcon text="You can change the risk level any time." />
                                 </div>
+                                {tutorialStep === 52 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(53)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
                                 <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                             </div>
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5"><span className="font-bold text-sm text-white/70 pl-2">Game Type</span><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select></div>
+                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm text-white/70">Next Game Type</span>
+                                    <InfoIcon text="You can change the game type any time." />
+                                </div>
+                                {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
+                                <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
+                            </div>
                         </div>
                     )}
                     
                     {isAutoSetup && (
-                        <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
+                        <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-sm text-white/70">Risk Level</span>
-                                <div className="relative">
-                                    <Info size={14} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
-                                    {showRiskInfo && <div className="absolute top-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level any time.</div>}
-                                </div>
+                                <InfoIcon text="You can change the risk level any time." />
                             </div>
+                             {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
                             <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                         </div>
                     )}
                 </div>
                 
-                <button onClick={startRound} className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
+                <div className="relative w-full max-w-md">
+                    {tutorialStep === 6 && <TutorialTooltip text="Start Round!" onClick={() => setTutorialStep(7)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                    <button onClick={startRound} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
+                </div>
                 <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
                 <button onClick={handleRestart} className="w-full max-w-md bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
             </div>
@@ -862,7 +1032,7 @@ export default function TruthAndDareApp() {
 
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
-        {tutorialStep === 7 && <TutorialTooltip text="Join the game!" onClick={() => setTutorialStep(8)} className="top-14 left-4" />}
+        {tutorialStep === 7 && <TutorialTooltip text="Switch to Player View to play!" onClick={() => setTutorialStep(null)} className="top-14 left-4" arrowPos="top" />}
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
@@ -875,21 +1045,21 @@ export default function TruthAndDareApp() {
         </div>
         
         <div className={`w-full max-w-md p-4 mb-4 flex flex-col gap-4 ${glassPanel}`}>
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                 <div><div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div><div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div></div>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 relative">
+                 <div className="flex items-center gap-2 justify-center w-full">
+                    <div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div>
+                    <div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div>
+                 </div>
                  <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
             </div>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-white/50 font-bold uppercase">Risk Level</span>
-                    <div className="relative">
-                        <Info size={12} className="text-cyan-400 cursor-pointer" onClick={() => setShowRiskInfo(!showRiskInfo)}/>
-                        {showRiskInfo && <div className="absolute bottom-6 left-0 w-40 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10">You can change the risk level any time.</div>}
-                    </div>
+                    <InfoIcon text="You can change the risk level any time." />
                 </div>
                 <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
             </div>
-            {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Type</span><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div>)}
+            {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Game Type</span><div className="flex items-center gap-2"><InfoIcon text="You can change the game type any time." /><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div></div>)}
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
@@ -902,11 +1072,16 @@ export default function TruthAndDareApp() {
           </div>
 
           <div className={`w-full p-4 mb-4 ${glassPanel}`}>
-              <h4 className={`font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest ${pendingPlayers.length > 0 ? "text-cyan-400 animate-pulse" : "text-white/50"}`}><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Pending Action:</h4>
-              {pendingPlayers.length === 0 ? (<div className="text-emerald-400 font-bold text-center">Ready for next!</div>) : (<div className="text-sm text-white/70">Waiting for: <span className="font-bold text-white">{pendingPlayers.map(p => p.name).join(', ')}</span></div>)}
+              <h4 className={`font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest ${pendingPlayers.length > 0 ? "text-cyan-400 animate-pulse" : "text-white/50"}`}><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Waiting for answers:</h4>
+              {pendingPlayers.length === 0 ? (<div className="text-emerald-400 font-bold text-center">Ready for next!</div>) : (<div className="text-sm text-white/70 font-bold text-center">{pendingPlayers.map(p => p.name).join(', ')}</div>)}
           </div>
 
-          {gameState?.isAutoMode ? (<div className="text-center text-emerald-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center text-sm uppercase tracking-widest"><RefreshCw className="animate-spin" size={14}/> Auto-Advancing...</div>) : (<button onClick={nextTurn} className="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg shadow-indigo-900/50 transition-all">FORCE NEXT TURN</button>)}
+          {gameState?.isAutoMode ? (<div className="text-center text-emerald-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center text-sm uppercase tracking-widest"><RefreshCw className="animate-spin" size={14}/> Auto-Advancing...</div>) : (
+            <div className="w-full flex items-center gap-2">
+                <button onClick={nextTurn} className="flex-1 bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg shadow-indigo-900/50 transition-all">FORCE NEXT TURN</button>
+                <InfoIcon text="Use this to skip waiting if a player is stuck!" />
+            </div>
+          )}
           <div className="flex gap-4 w-full mt-4">
              <button onClick={handleEndGame} className="flex-1 bg-red-900/30 border border-red-500/30 p-3 rounded-xl font-bold text-red-400 hover:bg-red-900/50 text-xs">END GAME</button>
              <button onClick={handleRestart} className="flex-1 bg-white/5 border border-white/10 p-3 rounded-xl font-bold text-white/50 hover:bg-white/10 text-xs">RESET ALL</button>
@@ -1043,22 +1218,22 @@ export default function TruthAndDareApp() {
                     
                     {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
-                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
+                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
+                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
-                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
+                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
+                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='yn' && !playerAnswered && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
-                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
+                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
+                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
                         </div>
                     )}
                     
@@ -1082,7 +1257,7 @@ export default function TruthAndDareApp() {
                                 <span className="font-black text-3xl animate-pulse text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-[length:200%_auto]">{myPartnerName}</span>
                             </div>
 
-                            <div className="text-white/30 mt-6 text-[9px] font-mono tracking-widest">NEXT ROUND IN 3s...</div>
+                            <div className="text-white/30 mt-4 text-[9px] font-mono tracking-widest">NEXT ROUND IN 3s...</div>
                         </div>
                     )}
                     
