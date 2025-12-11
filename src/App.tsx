@@ -112,8 +112,8 @@ const TutorialTooltip = ({ text, onClick, className, arrowPos = 'bottom' }: { te
             {/* Flecha dinámica según posición */}
             {arrowPos === 'bottom' && <div className="absolute top-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-yellow-400"></div>}
             {arrowPos === 'top' && <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-yellow-400"></div>}
-            {arrowPos === 'left' && <div className="absolute top-1/2 right-full -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-yellow-400"></div>}
-            {arrowPos === 'right' && <div className="absolute top-1/2 left-full -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-yellow-400"></div>}
+            {arrowPos === 'left' && <div className="absolute top-1/2 right-full -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-yellow-400"></div>}
+            {arrowPos === 'right' && <div className="absolute top-1/2 left-full -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-yellow-400"></div>}
         </div>
     </div>
 );
@@ -122,7 +122,7 @@ const TutorialTooltip = ({ text, onClick, className, arrowPos = 'bottom' }: { te
 const InfoIcon = ({ text }: { text: string }) => {
     const [show, setShow] = useState(false);
     return (
-        <div className="relative inline-flex items-center ml-2">
+        <div className="relative inline-flex items-center ml-1">
             <Info size={14} className="text-cyan-400 cursor-pointer hover:text-white transition-colors" onClick={() => setShow(!show)} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}/>
             {show && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-48 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10 shadow-xl pointer-events-none text-center animate-in fade-in zoom-in-95">{text}</div>}
         </div>
@@ -148,22 +148,22 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
               {type === 'admin' ? (
                 <>
                   <section>
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Flame size={16} className="text-orange-500"/> Game Modes</h3>
+                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Flame size={16} className="text-orange-500"/> The Game Modes</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('truth')}>
                           <div className="flex justify-between items-center mb-1"><strong className="text-blue-400">1. Truth</strong>{expandedSection === 'truth' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                           <p className="text-xs text-slate-400">Verbal questions.</p>
-                          {expandedSection === 'truth' && (<div className="mt-2 text-xs text-white border-t border-blue-500/30 pt-2"><p>Player reads and answers honestly. Group votes.</p></div>)}
+                          {expandedSection === 'truth' && (<div className="mt-2 text-xs text-white border-t border-blue-500/30 pt-2"><p><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p><p><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p></div>)}
                         </div>
                         <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('dare')}>
                           <div className="flex justify-between items-center mb-1"><strong className="text-pink-400">2. Dare</strong>{expandedSection === 'dare' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                           <p className="text-xs text-slate-400">Physical actions.</p>
-                          {expandedSection === 'dare' && (<div className="mt-2 text-xs text-white border-t border-pink-500/30 pt-2"><p>Player performs action. Group judges completion.</p></div>)}
+                          {expandedSection === 'dare' && (<div className="mt-2 text-xs text-white border-t border-pink-500/30 pt-2"><p><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p><p><strong>Voting:</strong> The group acts as the judge.</p></div>)}
                         </div>
                         <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('match')}>
-                          <div className="flex justify-between items-center mb-1"><strong className="text-green-400">3. Match</strong>{expandedSection === 'match' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
+                          <div className="flex justify-between items-center mb-1"><strong className="text-green-400">3. Match/Mismatch</strong>{expandedSection === 'match' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                           <p className="text-xs text-slate-400">Compatibility.</p>
-                          {expandedSection === 'match' && (<div className="mt-2 text-xs text-white border-t border-green-500/30 pt-2"><p>Pair answers secretly. Goal is to match answers (Yes/No).</p></div>)}
+                          {expandedSection === 'match' && (<div className="mt-2 text-xs text-white border-t border-green-500/30 pt-2"><p><strong>How it works:</strong> The system secretly pairs two people. A statement appears. <strong>The Goal:</strong> Both answer YES or NO secretly. If they <strong>MATCH</strong>, they get points.</p></div>)}
                         </div>
                     </div>
                   </section>
@@ -242,34 +242,41 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
-  // --- TUTORIAL REACTIVO (NAGGING LOOP) ---
+  // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [codeTipShown, setCodeTipShown] = useState(false);
   const [resetTipShown, setResetTipShown] = useState(false);
   const [modeSwitchTipShown, setModeSwitchTipShown] = useState(false);
   const [viewSwitchTipShown, setViewSwitchTipShown] = useState(false);
   const [backToAdminTipShown, setBackToAdminTipShown] = useState(false);
+  const [startRoundTipShown, setStartRoundTipShown] = useState(false);
+  // Status to track sequence "Tell Code" -> "Wait Players"
+  const [lobbySequence, setLobbySequence] = useState<'none' | 'tellingCode' | 'waitingPlayers'>('none');
 
   useEffect(() => {
       // Cerebro del Tutorial
       if (isAdmin && !viewAsPlayer) {
           const checkTutorial = () => {
-              // LOBBY PHASE
               if (gameState?.mode === 'lobby') {
                   // 1. Falta Código (Obligatorio)
                   if (!gameState.code) {
                       setTutorialStep(1); return;
                   }
-                  // 1.5. "Tell Code" (3 segundos, una sola vez)
-                  if (gameState.code && !codeTipShown) {
-                      setTutorialStep(15);
-                      setTimeout(() => { setCodeTipShown(true); setTutorialStep(null); }, 3000);
-                      return;
+                  
+                  // 1.5. Sequence: Tell Code (4s)
+                  if (lobbySequence === 'tellingCode') {
+                      setTutorialStep(15); return;
                   }
-                  // 2. Faltan jugadores (Obligatorio)
-                  if (players.length < 3) {
-                      setTutorialStep(2); return;
+                  // 1.8. Sequence: Waiting Players (3s)
+                  if (lobbySequence === 'waitingPlayers') {
+                      setTutorialStep(18); return;
                   }
+
+                  // 2. Faltan jugadores (Obligatorio si no hay secuencia activa)
+                  if (players.length < 3 && lobbySequence === 'none') {
+                      setTutorialStep(null); return; // Just wait, no active nagging needed if code is set
+                  }
+                  
                   // 3. Reset Players (Una vez, 3s)
                   if (players.length >= 3 && !resetTipShown) {
                       setTutorialStep(3);
@@ -287,9 +294,8 @@ export default function TruthAndDareApp() {
                       setTutorialStep(4); return;
                   }
               }
-              // SETUP PHASE
               else if (gameState?.mode === 'admin_setup') {
-                   // 5. Switch Mode Tip (Una vez, 3s)
+                   // 5. Switch Mode Tip (Una vez, 3s) - Forced before inputs
                    if (!modeSwitchTipShown) {
                         setTutorialStep(5);
                         setTimeout(() => { setModeSwitchTipShown(true); setTutorialStep(null); }, 3000);
@@ -303,30 +309,40 @@ export default function TruthAndDareApp() {
                        if (!selectedLevel) { setTutorialStep(52); return; }
                        if (!selectedType) { setTutorialStep(53); return; }
                    }
+                   
+                   // 7. Start Round Tip (4s)
+                   if ((isAutoSetup && selectedLevel) || (!isAutoSetup && selectedLevel && selectedType)) {
+                       if (!startRoundTipShown) {
+                           setTutorialStep(6);
+                           setTimeout(() => { setStartRoundTipShown(true); setTutorialStep(null); }, 4000);
+                           return;
+                       }
+                   }
               }
-              // GAME PHASE
               else if (['question', 'dare', 'yn'].includes(gameState?.mode || '')) {
-                   // 7. View Switch Tip (Una vez, 4s)
+                   // 8. View Switch Tip (Una vez, 4s)
                    if (!viewSwitchTipShown) {
                        setTutorialStep(7);
                        setTimeout(() => { setViewSwitchTipShown(true); setTutorialStep(null); }, 4000);
                        return;
                    }
               }
+              
               setTutorialStep(null);
           };
 
           checkTutorial();
-          const timer = setInterval(checkTutorial, 5000); // Check every 5s for persistent nagging
+          const timer = setInterval(checkTutorial, 5000); 
           return () => clearInterval(timer);
       } else if (isAdmin && viewAsPlayer) {
-          // 8. Back to Admin Tip (Una vez, 4s)
+          // 9. Back to Admin Tip (Una vez, 4s)
           if (!backToAdminTipShown) {
               setTutorialStep(8);
               setTimeout(() => { setBackToAdminTipShown(true); setTutorialStep(null); }, 4000);
           }
       }
-  }, [isAdmin, viewAsPlayer, gameState?.mode, gameState?.code, players.length, codeTipShown, resetTipShown, modeSwitchTipShown, viewSwitchTipShown, backToAdminTipShown, selectedLevel, selectedType, isAutoSetup]);
+  }, [isAdmin, viewAsPlayer, gameState?.mode, gameState?.code, players.length, lobbySequence, resetTipShown, modeSwitchTipShown, startRoundTipShown, viewSwitchTipShown, backToAdminTipShown, selectedLevel, selectedType, isAutoSetup]);
+
 
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
@@ -467,7 +483,18 @@ export default function TruthAndDareApp() {
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { uid: user.uid, name: userName, gender, coupleNumber, relationshipStatus: status, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0 });
   };
   
-  const setGameCode = async () => { if (!code.trim()) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code.trim().toUpperCase() }); setIsSettingCode(false); };
+  const setGameCode = async () => { 
+      if (!code.trim()) return; 
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: code.trim().toUpperCase() }); 
+      setIsSettingCode(false);
+      // Trigger sequence
+      setLobbySequence('tellingCode');
+      setTimeout(() => {
+          setLobbySequence('waitingPlayers');
+          setTimeout(() => setLobbySequence('done'), 3000); // Wait 3s
+      }, 4000); // Tell code 4s
+  };
+
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
   const toggleAutoMode = async () => { const newMode = !gameState?.isAutoMode; let updates: any = { isAutoMode: newMode }; if (newMode && (!gameState?.sequence || gameState.sequence.length === 0)) { let sequence: string[] = []; for(let i=0; i<qtyTruth; i++) sequence.push('question'); for(let i=0; i<qtyDare; i++) sequence.push('dare'); for(let i=0; i<qtyMM; i++) sequence.push('yn'); updates.sequence = sequence; updates.sequenceIndex = 0; } await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); };
@@ -538,38 +565,10 @@ export default function TruthAndDareApp() {
   };
   const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
   const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
-  
-  const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { 
-      let currentLvl = parseInt(startLevel); 
-      let found = null; 
-      let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; 
-      
-      for(let i = 0; i < 10; i++) { 
-          let lvlString = (currentLvl + i).toString(); 
-          let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); 
-          let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); 
-          if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } 
-          const snapshot = await getDocs(q); 
-          let validDocs = snapshot.docs.filter(d => !d.data().paused); 
-          if (type !== 'YN') { 
-              validDocs = validDocs.filter(d => { 
-                  const data = d.data(); 
-                  const qSex = (data.gender || data.sexo || 'B').toUpperCase(); 
-                  if (qSex === 'B') return true; 
-                  if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } 
-              }); 
-          } 
-          if (validDocs.length > 0) { 
-              found = validDocs[Math.floor(Math.random() * validDocs.length)]; 
-              break; 
-          } 
-      } 
-      if(found) return { id: found.id, ...found.data() } as Challenge; 
-      return null; 
-  };
+  const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
   const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
-  // ... (Manager Logic)
+  // ... (Manager Logic: Same as before)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => { setIsDragging(true); const newSet = new Set(selectedIds); if (newSet.has(id)) { newSet.delete(id); selectionMode.current = 'remove'; } else { newSet.add(id); selectionMode.current = 'add'; } setSelectedIds(newSet); };
   const handleRowMouseEnter = (id: string) => { if (isDragging) { const newSet = new Set(selectedIds); if (selectionMode.current === 'add') newSet.add(id); else newSet.delete(id); setSelectedIds(newSet); } };
@@ -870,7 +869,7 @@ export default function TruthAndDareApp() {
               {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               {tutorialStep === 15 && <TutorialTooltip text="Tell code to players!" onClick={() => { setCodeTipShown(true); setTutorialStep(2); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               
-              {tutorialStep === 2 && players.length === 0 && <TutorialTooltip text="Wait for players here..." onClick={() => setTutorialStep(3)} className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" arrowPos="bottom" />}
+              {tutorialStep === 18 && players.length < 3 && <TutorialTooltip text="Waiting for players..." onClick={() => setTutorialStep(3)} className="left-full ml-4 top-1/2 -translate-y-1/2" arrowPos="left" />}
               
               {tutorialStep === 3 && players.length > 1 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="top-1/3 right-10" arrowPos="left" />}
               
@@ -887,7 +886,9 @@ export default function TruthAndDareApp() {
                  <h2 className="text-2xl font-black tracking-widest text-white">LOBBY ({players.length})</h2>
               </div>
               
-              <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10">
+              <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10 relative">
+                  {/* Wait for players tip anchor */}
+                  {tutorialStep === 18 && players.length === 0 && <div className="absolute right-0 top-0 w-1 h-full"></div>}
                   <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
                   <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
               </div>
@@ -1252,7 +1253,7 @@ export default function TruthAndDareApp() {
                                 </div>
                             )}
                             
-                            <div className="text-center">
+                            <div className="text-center flex flex-col items-center">
                                 <div className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Partner</div>
                                 <span className="font-black text-3xl animate-pulse text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-[length:200%_auto]">{myPartnerName}</span>
                             </div>
