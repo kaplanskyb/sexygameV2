@@ -314,7 +314,8 @@ export default function TruthAndDareApp() {
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
     if (shouldAdvance) {
-        const timer = setTimeout(() => { nextTurn(); }, 4000);
+        // FIX: Changed to 3000ms as requested
+        const timer = setTimeout(() => { nextTurn(); }, 3000);
         return () => clearTimeout(timer);
     }
   }, [gameState, isAdmin, players.length]);
@@ -981,25 +982,25 @@ export default function TruthAndDareApp() {
                     )}
                     
                     {gameState?.mode==='yn' && allYNAnswered && (
-                        <div className={`flex flex-row items-center justify-between p-4 rounded-2xl ${glassPanel} border-white/20 w-full`}>
-                            <div className="flex flex-col items-center justify-center w-1/2 border-r border-white/10 pr-2">
-                                {ynMatch === true ? (
-                                    <>
-                                        <Smile className="w-12 h-12 text-emerald-400 drop-shadow-glow mb-1"/>
-                                        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600 tracking-tighter">MATCH!</h3>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Frown className="w-12 h-12 text-red-500 drop-shadow-glow mb-1"/>
-                                        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter">MISMATCH</h3>
-                                    </>
-                                )}
-                            </div>
-                            <div className="flex flex-col items-end justify-center w-1/2 pl-2">
+                        <div className={`flex flex-col items-center justify-center p-6 rounded-2xl ${glassPanel} border-white/20 w-full animate-in zoom-in duration-300`}>
+                            {ynMatch === true ? (
+                                <div className="text-center mb-4">
+                                    <Smile className="w-16 h-16 text-emerald-400 mx-auto mb-2 animate-bounce drop-shadow-glow"/>
+                                    <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600 tracking-tighter">MATCH!</h3>
+                                </div>
+                            ) : (
+                                <div className="text-center mb-4">
+                                    <Frown className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse drop-shadow-glow"/>
+                                    <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter">MISMATCH</h3>
+                                </div>
+                            )}
+                            
+                            <div className="text-center">
                                 <div className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Partner</div>
-                                <span className="font-black text-yellow-400 text-xl leading-none text-right break-words line-clamp-2">{myPartnerName}</span>
-                                <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest animate-pulse">NEXT ROUND...</div>
+                                <span className="font-black text-3xl animate-pulse text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-[length:200%_auto]">{myPartnerName}</span>
                             </div>
+
+                            <div className="text-white/30 mt-6 text-[9px] font-mono tracking-widest">NEXT ROUND IN 3s...</div>
                         </div>
                     )}
                     
