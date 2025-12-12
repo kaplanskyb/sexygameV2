@@ -107,12 +107,15 @@ const glassInput = "bg-black/20 border border-white/10 rounded-lg p-2 text-white
 // Tutorial Tooltip: Posicionamiento inteligente con flecha
 const TutorialTooltip = ({ text, onClick, className, arrowPos = 'bottom' }: { text: string, onClick: () => void, className?: string, arrowPos?: 'top' | 'bottom' | 'left' | 'right' }) => (
     <div className={`absolute z-[200] cursor-pointer animate-bounce ${className}`} onClick={(e) => { e.stopPropagation(); onClick(); }}>
-        <div className="bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.8)] relative whitespace-nowrap border-2 border-white">
+        <div className="bg-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.8)] relative whitespace-nowrap border-2 border-white pointer-events-auto">
             {text}
-            {/* Flecha dinámica según posición */}
+            {/* Flecha Abajo (Apunta abajo) */}
             {arrowPos === 'bottom' && <div className="absolute top-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-yellow-400"></div>}
+            {/* Flecha Arriba (Apunta arriba) */}
             {arrowPos === 'top' && <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-yellow-400"></div>}
+            {/* Flecha Izquierda (Apunta izquierda) */}
             {arrowPos === 'left' && <div className="absolute top-1/2 right-full -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-yellow-400"></div>}
+            {/* Flecha Derecha (Apunta derecha) */}
             {arrowPos === 'right' && <div className="absolute top-1/2 left-full -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-yellow-400"></div>}
         </div>
     </div>
@@ -122,7 +125,7 @@ const TutorialTooltip = ({ text, onClick, className, arrowPos = 'bottom' }: { te
 const InfoIcon = ({ text }: { text: string }) => {
     const [show, setShow] = useState(false);
     return (
-        <div className="relative inline-flex items-center ml-1">
+        <div className="relative inline-flex items-center ml-1 z-40">
             <Info size={14} className="text-cyan-400 cursor-pointer hover:text-white transition-colors" onClick={() => setShow(!show)} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}/>
             {show && <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-48 bg-black/90 p-2 rounded text-[10px] text-white z-50 border border-white/10 shadow-xl pointer-events-none text-center animate-in fade-in zoom-in-95">{text}</div>}
         </div>
@@ -131,72 +134,189 @@ const InfoIcon = ({ text }: { text: string }) => {
 
 const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'player' }) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
-    const toggleSection = (section: string) => { setExpandedSection(expandedSection === section ? null : section); };
- 
+    const toggleSection = (section: string) => {
+        setExpandedSection(expandedSection === section ? null : section);
+    };
+
     return (
-      <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-2 overflow-y-auto backdrop-blur-sm" onClick={onClose}>
-        <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 ${glassPanel}`} onClick={e => e.stopPropagation()}>
-          <button onClick={onClose} className="absolute top-3 right-3 text-white/50 hover:text-white transition-colors"><X size={20} /></button>
-          <div className="p-6">
-            <h2 className="text-2xl font-black mb-6 text-white flex items-center gap-2 border-b border-white/10 pb-3">
-              {type === 'admin' ? <BookOpen size={24} className="text-cyan-400"/> : <HelpCircle size={24} className="text-cyan-400"/>}
-              <span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-                {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
-              </span>
-            </h2>
-            <div className="space-y-4 text-slate-300 text-sm">
-              {type === 'admin' ? (
-                <>
-                  <section>
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Flame size={16} className="text-orange-500"/> The Game Modes</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('truth')}>
-                          <div className="flex justify-between items-center mb-1"><strong className="text-blue-400">1. Truth</strong>{expandedSection === 'truth' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
-                          <p className="text-xs text-slate-400">Verbal questions.</p>
-                          {expandedSection === 'truth' && (<div className="mt-2 text-xs text-white border-t border-blue-500/30 pt-2"><p><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p><p><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p></div>)}
-                        </div>
-                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('dare')}>
-                          <div className="flex justify-between items-center mb-1"><strong className="text-pink-400">2. Dare</strong>{expandedSection === 'dare' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
-                          <p className="text-xs text-slate-400">Physical actions.</p>
-                          {expandedSection === 'dare' && (<div className="mt-2 text-xs text-white border-t border-pink-500/30 pt-2"><p><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p><p><strong>Voting:</strong> The group acts as the judge.</p></div>)}
-                        </div>
-                        <div className={`cursor-pointer border rounded-lg p-3 transition-all ${expandedSection === 'match' ? 'bg-green-900/40 border-green-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={() => toggleSection('match')}>
-                          <div className="flex justify-between items-center mb-1"><strong className="text-green-400">3. Match/Mismatch</strong>{expandedSection === 'match' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
-                          <p className="text-xs text-slate-400">Compatibility.</p>
-                          {expandedSection === 'match' && (<div className="mt-2 text-xs text-white border-t border-green-500/30 pt-2"><p><strong>How it works:</strong> The system secretly pairs two people. A statement appears. <strong>The Goal:</strong> Both answer YES or NO secretly. If they <strong>MATCH</strong>, they get points.</p></div>)}
-                        </div>
+        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm" onClick={onClose}>
+            <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 ${glassPanel}`} onClick={e => e.stopPropagation()}>
+                <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">
+                    <X size={24} />
+                </button>
+
+                <div className="p-8">
+                    <h2 className="text-3xl font-black mb-8 flex items-center gap-3 border-b border-white/10 pb-4">
+                        {type === 'admin' ? <BookOpen size={32} className="text-cyan-400" /> : <HelpCircle size={32} className="text-yellow-400" />}
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+                            {type === 'admin' ? 'Game Master Manual' : 'Player Instructions'}
+                        </span>
+                    </h2>
+
+                    <div className="space-y-8 text-slate-300">
+
+                        {/* --- MANUAL DE ADMIN --- */}
+                        {type === 'admin' && (
+                            <>
+                                <section>
+                                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Flame className="text-orange-500" /> The Game Modes (Click to expand)</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {/* TRUTH BOX */}
+                                        <div
+                                            className={`cursor-pointer border rounded-xl p-4 transition-all ${expandedSection === 'truth' ? 'bg-blue-900/40 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                                            onClick={() => toggleSection('truth')}
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <strong className="text-blue-400 text-lg">1. Truth</strong>
+                                                {expandedSection === 'truth' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </div>
+                                            <p className="text-sm text-slate-400">Verbal questions. The player reads aloud and answers.</p>
+                                            {expandedSection === 'truth' && (
+                                                <div className="mt-4 text-sm text-white border-t border-blue-500/30 pt-2 animate-in fade-in">
+                                                    <p className="mb-2"><strong>How it works:</strong> A question appears on the player's phone. You must read it to the group and answer honestly.</p>
+                                                    <p className="mb-2"><strong>Voting:</strong> The rest of the group votes "Good Answer" or "Nah..".</p>
+                                                    <em className="text-blue-300 block mt-2">Example: "Who in this room would you date if you were single?"</em>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* DARE BOX */}
+                                        <div
+                                            className={`cursor-pointer border rounded-xl p-4 transition-all ${expandedSection === 'dare' ? 'bg-pink-900/40 border-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.3)]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                                            onClick={() => toggleSection('dare')}
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <strong className="text-pink-400 text-lg">2. Dare</strong>
+                                                {expandedSection === 'dare' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </div>
+                                            <p className="text-sm text-slate-400">Physical actions.</p>
+                                            {expandedSection === 'dare' && (
+                                                <div className="mt-4 text-sm text-white border-t border-pink-500/30 pt-2 animate-in fade-in">
+                                                    <p className="mb-2"><strong>How it works:</strong> A challenge appears. The player must perform the action immediately.</p>
+                                                    <p className="mb-2"><strong>Voting:</strong> The group acts as the judge. They vote "Completed" or "Failed".</p>
+                                                    <em className="text-pink-300 block mt-2">Example: "Let the person to your right read your last DM."</em>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* MATCH BOX */}
+                                        <div
+                                            className={`cursor-pointer border rounded-xl p-4 transition-all ${expandedSection === 'match' ? 'bg-emerald-900/40 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                                            onClick={() => toggleSection('match')}
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <strong className="text-emerald-400 text-lg">3. Match/Mismatch</strong>
+                                                {expandedSection === 'match' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </div>
+                                            <p className="text-sm text-slate-400">Compatibility test. 2 players answer blindly.</p>
+                                            {expandedSection === 'match' && (
+                                                <div className="mt-4 text-sm text-white border-t border-emerald-500/30 pt-2 animate-in fade-in">
+                                                    <p className="mb-2"><strong>How it works:</strong> The system secretly pairs two people (e.g., John & Sarah). A statement appears (e.g., "I prefer lights off").</p>
+                                                    <p className="mb-2"><strong>The Goal:</strong> Both answer YES or NO secretly on their phones. If they <strong>MATCH</strong> (both Yes or both No), they get points.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Zap className="text-yellow-400" /> Game Control</h3>
+                                    <div className="space-y-4">
+                                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-purple-500">
+                                            <h4 className="text-purple-400 font-bold text-lg mb-2">MODE A: MANUAL (The DJ)</h4>
+                                            <p className="text-sm mb-2 text-slate-300">In this mode, <strong>YOU control everything</strong>. Before every single turn, you must select:</p>
+                                            <ul className="list-disc pl-5 text-sm space-y-1 text-slate-400">
+                                                <li><strong>Risk Level:</strong> How intense should the next question be?</li>
+                                                <li><strong>Game Type:</strong> Do you want a Truth, a Dare, or a Match round next?</li>
+                                            </ul>
+                                            <p className="text-sm mt-2 italic text-white/50">Use this when you want to read the room's vibe and adjust specifically.</p>
+                                        </div>
+
+                                        <div className="bg-white/5 p-5 rounded-xl border-l-4 border-emerald-500">
+                                            <h4 className="text-emerald-400 font-bold text-lg mb-2">MODE B: AUTOMATIC (Autopilot)</h4>
+                                            <p className="text-sm mb-2 text-slate-300">You set a "Loop Configuration" (e.g., 2 Truths, 2 Dares, 1 Match) and the game runs itself in that order endlessly.</p>
+                                            <p className="text-sm text-slate-300">You simply click "Next" (or let the timer do it) and the system automatically picks the type based on your sequence.</p>
+                                            <p className="text-sm mt-2 italic text-white/50">Perfect for when you want to play along and not worry about managing the game.</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2"><Settings className="text-gray-400" /> Admin Tools</h3>
+                                    <ul className="list-disc pl-5 space-y-4 text-sm text-slate-300">
+                                        <li>
+                                            <strong>1. Uploading Questions:</strong>
+                                            <div className="mt-2 space-y-3">
+                                                <div className="bg-black/40 p-3 rounded border border-blue-500/30">
+                                                    <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
+                                                    <span className="text-slate-400">Headers must be:</span> <code className="text-green-400 bg-white/10 px-1 rounded">text, level, gender</code>
+                                                    <br /><span className="text-xs text-slate-500 mt-1 block">Gender = <strong>M</strong> for Male, <strong>F</strong> for Female, <strong>B</strong> for Both.</span>
+                                                </div>
+                                                <div className="bg-black/40 p-3 rounded border border-emerald-500/30">
+                                                    <span className="text-emerald-300 font-bold block mb-1">Match Files:</span>
+                                                    <span className="text-slate-400">Headers must be:</span> <code className="text-green-400 bg-white/10 px-1 rounded">male, female, level</code>
+                                                </div>
+                                            </div>
+                                        </li>
+                                        <li><strong>Singles vs Couples:</strong> The system <strong>understands</strong> if players are Single or Couples. If Couples join, the game <strong>will not start</strong> until both partners (matching ID) are present.</li>
+                                        <li><strong>Bot System:</strong> If total players are odd, "Brad Pitt" (or "Scarlett Johansson") joins to ensure everyone has a partner in Match rounds.</li>
+                                    </ul>
+                                </section>
+                            </>
+                        )}
+
+                        {/* --- MANUAL DE JUGADOR --- */}
+                        {type === 'player' && (
+                            <>
+                                <section>
+                                    <h3 className="text-xl font-bold text-white mb-3">👋 How to Join</h3>
+                                    <ol className="list-decimal pl-5 space-y-3 text-slate-300">
+                                        <li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li>
+                                        <li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li>
+                                        <li><strong>Male's Last 4 Phone Digits:</strong>
+                                            <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm">
+                                                <li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li>
+                                                <li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
+                                    </ol>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xl font-bold text-white mb-3">🎮 How to Play</h3>
+                                    <div className="space-y-4">
+                                        <div className="bg-white/5 p-4 rounded-xl border-l-4 border-blue-500">
+                                            <strong className="text-blue-400 text-lg block mb-2">Truth Rounds</strong>
+                                            <p className="text-sm text-slate-300">When it's your turn, a question will appear. Read it aloud and answer honestly. The group will award points based on your answer.</p>
+                                        </div>
+
+                                        <div className="bg-white/5 p-4 rounded-xl border-l-4 border-pink-500">
+                                            <strong className="text-pink-400 text-lg block mb-2">Dare Rounds</strong>
+                                            <p className="text-sm text-slate-300">A challenge will appear. You must perform the action described to earn points.</p>
+                                        </div>
+
+                                        <div className="bg-white/5 p-4 rounded-xl border-l-4 border-emerald-500">
+                                            <strong className="text-emerald-400 text-lg block mb-2">Match/Mismatch Rounds</strong>
+                                            <p className="text-sm mb-2 text-slate-300">The system will secretly pair you with another player. A statement will appear on your screen.</p>
+                                            <p className="text-sm italic text-yellow-400 mb-2 font-mono bg-black/30 p-2 rounded text-center">"I prefer lights off"</p>
+                                            <p className="text-sm text-slate-300">You must answer <strong>YES</strong> or <strong>NO</strong> honestly. You only score points if your answer <strong>MATCHES</strong> your partner's answer!</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            </>
+                        )}
+
                     </div>
-                  </section>
-                  <section>
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Zap size={16} className="text-yellow-400"/> Game Flow</h3>
-                    <div className="bg-white/5 p-3 rounded border border-white/10 text-xs space-y-2">
-                        <div className="bg-white/5 p-2 rounded mb-2"><h4 className="text-purple-400 font-bold mb-1">MODE A: MANUAL</h4><p>You select Risk Level and Game Type before every turn.</p></div>
-                        <div className="bg-white/5 p-2 rounded mb-2"><h4 className="text-green-400 font-bold mb-1">MODE B: AUTOMATIC</h4><p>Loops T → D → M automatically.</p></div>
-                        <p><strong className="text-indigo-400">FORCE NEXT TURN:</strong> Skips waiting if a player is stuck.</p>
-                        <p><strong className="text-red-400">END GAME:</strong> Finishes game and shows scoreboard.</p>
-                        <p><strong className="text-white">RESET ALL:</strong> Danger! Wipes everything.</p>
+
+                    <div className="mt-8 text-center border-t border-white/10 pt-6">
+                        <button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 rounded-xl font-bold text-white hover:brightness-110 shadow-lg transition-transform active:scale-95 text-sm uppercase tracking-wider">
+                            Got it
+                        </button>
                     </div>
-                  </section>
-                  <section>
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Settings size={16} className="text-gray-400"/> Tools</h3>
-                    <ul className="list-disc pl-4 space-y-2 text-xs">
-                        <li><strong>Uploads:</strong> Use CSV files. Headers: <code>text,level,gender</code> (T/D) or <code>male,female,level</code> (Match).</li>
-                        <li><strong>Couples:</strong> Game enforces partners join before start.</li>
-                        <li><strong>Bots:</strong> Auto-added for odd player counts.</li>
-                    </ul>
-                  </section>
-                </>
-              ) : (
-                <>
-                    <section><h3 className="text-lg font-bold text-white mb-2">👋 Joining</h3><ol className="list-decimal pl-4 space-y-2"><li>Enter Name & Gender.</li><li>Choose Single/Couple status.</li><li><strong>Couples:</strong> Enter SAME 4-digit code to link.</li><li>Enter Game Code from Admin.</li></ol></section>
-                    <section><h3 className="text-lg font-bold text-white mb-2">🎮 Playing</h3><div className="grid gap-2"><div className="bg-white/5 p-3 rounded border-l-2 border-blue-500"><strong className="text-blue-400 block text-xs">Truth Rounds</strong><span className="text-xs">Read aloud. Answer honestly.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-pink-500"><strong className="text-pink-400 block text-xs">Dare Rounds</strong><span className="text-xs">Do the action. Don't fail.</span></div><div className="bg-white/5 p-3 rounded border-l-2 border-green-500"><strong className="text-green-400 block text-xs">Match</strong><span className="text-xs">Answer same as your partner to score.</span></div></div></section>
-                </>
-              )}
+                </div>
             </div>
-            <div className="mt-6 text-center border-t border-white/10 pt-4"><button onClick={onClose} className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-2 rounded-lg font-bold text-white shadow-lg active:scale-95 text-sm">Got it</button></div>
-          </div>
         </div>
-      </div>
     );
 };
 
@@ -274,11 +394,11 @@ export default function TruthAndDareApp() {
 
                   // 2. Faltan jugadores (Obligatorio si no hay secuencia activa)
                   if (players.length < 3 && lobbySequence === 'none') {
-                      setTutorialStep(null); return; // Just wait, no active nagging needed if code is set
+                      setTutorialStep(null); return; 
                   }
                   
                   // 3. Reset Players (Una vez, 3s)
-                  if (players.length >= 3 && !resetTipShown) {
+                  if (players.length > 2 && !resetTipShown) {
                       setTutorialStep(3);
                       setTimeout(() => { setResetTipShown(true); setTutorialStep(null); }, 3000);
                       return;
@@ -453,6 +573,7 @@ export default function TruthAndDareApp() {
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
     if (shouldAdvance) {
+        // FIX: Changed to 3000ms as requested
         const timer = setTimeout(() => { nextTurn(); }, 3000);
         return () => clearTimeout(timer);
     }
@@ -491,8 +612,8 @@ export default function TruthAndDareApp() {
       setLobbySequence('tellingCode');
       setTimeout(() => {
           setLobbySequence('waitingPlayers');
-          setTimeout(() => setLobbySequence('done'), 3000); // Wait 3s
-      }, 4000); // Tell code 4s
+          setTimeout(() => setLobbySequence('done'), 4000); // 4 seconds for Telling Code
+      }, 4000); 
   };
 
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
@@ -515,7 +636,26 @@ export default function TruthAndDareApp() {
     }
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [], isEnding: false });
   };
-  const computePairs = () => { const pairs: Record<string, string> = {}; const assigned = new Set<string>(); const realCouples = players.filter(p => p.relationshipStatus === 'couple'); realCouples.forEach(p1 => { if (assigned.has(p1.uid)) return; const p2 = realCouples.find(p => p.coupleNumber === p1.coupleNumber && p.uid !== p1.uid); if (p2 && !assigned.has(p2.uid)) { pairs[p1.uid] = p2.uid; pairs[p2.uid] = p1.uid; assigned.add(p1.uid); assigned.add(p2.uid); } }); const remaining = players.filter(p => !assigned.has(p.uid)); const males = remaining.filter(p => p.gender === 'male'); const females = remaining.filter(p => p.gender === 'female'); const shuffledMales = [...males].sort(() => Math.random() - 0.5); const shuffledFemales = [...females].sort(() => Math.random() - 0.5); const assignedFemales = new Set<string>(); shuffledMales.forEach(male => { let partner = shuffledFemales.find(f => !assignedFemales.has(f.uid)); if (partner) { pairs[male.uid] = partner.uid; pairs[partner.uid] = male.uid; assignedFemales.add(partner.uid); } }); return pairs; };
+  
+  // PAIR LOGIC
+  const computePairs = () => { 
+      const pairs: Record<string, string> = {}; 
+      const used = new Set<string>();
+      const males = players.filter(p => p.gender === 'male' && p.isActive).sort(() => Math.random() - 0.5);
+      const females = players.filter(p => p.gender === 'female' && p.isActive).sort(() => Math.random() - 0.5);
+      for (const male of males) {
+          const matchIndex = females.findIndex(f => !used.has(f.uid) && f.coupleNumber !== male.coupleNumber);
+          if (matchIndex !== -1) {
+              const female = females[matchIndex];
+              pairs[male.uid] = female.uid;
+              pairs[female.uid] = male.uid;
+              used.add(male.uid);
+              used.add(female.uid);
+          }
+      }
+      return pairs; 
+  };
+
   const startRound = async () => {
     if (isAutoSetup) { if (!selectedLevel) { showError("⚠️ Select a Level to start Auto Mode!"); return; } } else { if (!selectedLevel) { showError("⚠️ Select Risk Level!"); return; } if (!selectedType) { showError("⚠️ Select Game Type!"); return; } }
     let sequence: string[] = []; if (isAutoSetup) { for(let i=0; i<qtyTruth; i++) sequence.push('question'); for(let i=0; i<qtyDare; i++) sequence.push('dare'); for(let i=0; i<qtyMM; i++) sequence.push('yn'); }
@@ -523,7 +663,6 @@ export default function TruthAndDareApp() {
     let typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
     if (typeChar === 'YN' && players.length < 3) { showError("❌ You need at least 3 players to play Match/Mismatch!"); return; }
     const firstPlayerGender = players.length > 0 ? players[0].gender : 'male';
-    // Random Challenge Logic
     let currentLvl = parseInt(selectedLevel);
     let found = null;
     let collectionName = typeChar === 'YN' ? 'pairChallenges' : 'challenges';
@@ -568,7 +707,7 @@ export default function TruthAndDareApp() {
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
   const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
-  // ... (Manager Logic: Same as before)
+  // ... (Manager Logic)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => { setIsDragging(true); const newSet = new Set(selectedIds); if (newSet.has(id)) { newSet.delete(id); selectionMode.current = 'remove'; } else { newSet.add(id); selectionMode.current = 'add'; } setSelectedIds(newSet); };
   const handleRowMouseEnter = (id: string) => { if (isDragging) { const newSet = new Set(selectedIds); if (selectionMode.current === 'add') newSet.add(id); else newSet.delete(id); setSelectedIds(newSet); } };
@@ -672,7 +811,7 @@ export default function TruthAndDareApp() {
               </div>
           </div>
           
-          <input type="number" placeholder="Male's Phone (Last 4)" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)} />
+          <input type="number" placeholder="Male's Phone (Last 4 digits)" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)}/>
           
           {userName.toLowerCase() !== 'admin' && (
              <input type="text" placeholder="GAME CODE" className={`w-full mb-6 text-center tracking-widest uppercase font-bold ${glassInput}`} value={code} onChange={e=>setCode(e.target.value)} />
@@ -789,8 +928,8 @@ export default function TruthAndDareApp() {
             </div>
 
             <div className={`p-4 rounded-xl mb-4 flex flex-wrap gap-3 items-end text-sm ${glassPanel}`}>
-                <div className="flex flex-col"><label className="text-xs text-white/50 mb-1">Set Level</label><select className="bg-black/40 border border-white/20 p-2 rounded-lg text-white" value={bulkLevel} onChange={e=>setBulkLevel(e.target.value)}><option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-                {managerTab !== 'mm' && (<div className="flex flex-col"><label className="text-xs text-white/50 mb-1">Set Gender</label><select className="bg-black/40 border border-white/20 p-2 rounded-lg text-white" value={bulkGender} onChange={e=>setBulkGender(e.target.value)}><option value="">-</option><option value="F">Female</option><option value="B">Both</option></select></div>)}
+                <div className="flex flex-col"><label className="text-xs text-white/50 mb-1">Set Level</label><select className="bg-slate-900 border border-white/20 p-2 rounded-lg text-white" value={bulkLevel} onChange={e=>setBulkLevel(e.target.value)}><option value="">-</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                {managerTab !== 'mm' && (<div className="flex flex-col"><label className="text-xs text-white/50 mb-1">Set Gender</label><select className="bg-slate-900 border border-white/20 p-2 rounded-lg text-white" value={bulkGender} onChange={e=>setBulkGender(e.target.value)}><option value="">-</option><option value="F">Female</option><option value="B">Both</option></select></div>)}
                 <button onClick={applyBulkEdit} disabled={selectedIds.size === 0} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed">Apply ({selectedIds.size})</button>
                 
                 <div className="ml-auto flex gap-2">
@@ -867,11 +1006,12 @@ export default function TruthAndDareApp() {
               {/* TUTORIAL TOOLTIPS */}
               {tutorialStep === 0 && <TutorialTooltip text="Read the Manual first!" onClick={() => setTutorialStep(1)} className="top-14 right-4" arrowPos="top" />}
               {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-              {tutorialStep === 15 && <TutorialTooltip text="Tell code to players!" onClick={() => { setCodeTipShown(true); setTutorialStep(2); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               
-              {tutorialStep === 18 && players.length < 3 && <TutorialTooltip text="Waiting for players..." onClick={() => setTutorialStep(3)} className="left-full ml-4 top-1/2 -translate-y-1/2" arrowPos="left" />}
+              {/* Step 15: Tell code (Visible over button as fallback position) */}
+              {tutorialStep === 15 && <TutorialTooltip text="Tell the code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               
-              {tutorialStep === 3 && players.length > 1 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="top-1/3 right-10" arrowPos="left" />}
+              {/* Wait for players: Pointing to list */}
+              {tutorialStep === 18 && <TutorialTooltip text="Waiting for players..." onClick={() => setTutorialStep(3)} className="left-full ml-4 top-1/2 -translate-y-1/2" arrowPos="left" />}
               
               {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
 
@@ -887,15 +1027,15 @@ export default function TruthAndDareApp() {
               </div>
               
               <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10 relative">
-                  {/* Wait for players tip anchor */}
-                  {tutorialStep === 18 && players.length === 0 && <div className="absolute right-0 top-0 w-1 h-full"></div>}
+                  {/* Anchor for Waiting Players Tooltip */}
+                  {tutorialStep === 18 && <div className="absolute right-0 top-0 w-1 h-full"></div>}
                   <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
                   <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
               </div>
 
-              <div className={`w-full max-w-sm mb-4 max-h-[40vh] overflow-y-auto p-4 ${glassPanel}`}>
+              <div className={`w-full max-w-sm mb-4 max-h-[40vh] overflow-y-auto p-4 ${glassPanel} relative`}>
                 {players.length === 0 && <span className="text-white/30 text-sm text-center block">Waiting for players to join...</span>}
-                {sortedPlayers.map(p => {
+                {sortedPlayers.map((p, idx) => {
                     const isIncomplete = incompleteIds.includes(p.coupleNumber) && p.relationshipStatus === 'couple';
                     return (
                         <div key={p.uid} className={`flex justify-between items-center py-2 border-b border-white/5 last:border-0 ${p.isBot?'text-purple-400':''}`}>
@@ -903,7 +1043,10 @@ export default function TruthAndDareApp() {
                                 <span className={isIncomplete ? "text-orange-400 font-bold animate-pulse" : "font-bold"}>{p.name} {p.isBot && '(Bot)'}</span>
                                 {p.relationshipStatus === 'couple' && <span className={`text-[10px] ${isIncomplete ? "text-orange-300" : "text-pink-400"}`}>Couple #{p.coupleNumber} {isIncomplete ? "(Waiting partner)" : ""}</span>}
                             </div>
-                            <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500/70 hover:text-red-500 transition-colors" title="Reset Player"><UserX size={18}/></button>
+                            <div className="relative">
+                                {tutorialStep === 3 && idx === 0 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="right-8 top-1/2 -translate-y-1/2" arrowPos="right" />}
+                                <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500/70 hover:text-red-500 transition-colors" title="Reset Player"><UserX size={18}/></button>
+                            </div>
                         </div>
                     );
                 })}
@@ -913,13 +1056,14 @@ export default function TruthAndDareApp() {
                   <div className="relative w-full max-w-sm mb-4">
                       {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
                       <button onClick={() => setIsSettingCode(true)} className="w-full bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl font-bold text-blue-200 hover:bg-blue-800/50 transition flex items-center justify-center gap-2 text-sm backdrop-blur-sm"><Send size={16}/> Set Game Code</button>
+                      {/* Tell Code Tooltip appears here now */}
+                      {tutorialStep === 15 && <TutorialTooltip text="Tell the code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
                   </div>
               ) : (
                   <div className="relative w-full max-w-sm flex gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
                       <input type="text" placeholder="Enter Code..." className="bg-black/40 border border-white/20 rounded-xl p-3 text-white flex-1 outline-none focus:border-cyan-500" value={code} onChange={e=>setCode(e.target.value)} autoFocus />
                       <button onClick={setGameCode} className="bg-green-600 px-4 rounded-xl font-bold hover:bg-green-500">Save</button>
                       <button onClick={() => setIsSettingCode(false)} className="bg-red-600 px-4 rounded-xl hover:bg-red-500">X</button>
-                      {tutorialStep === 15 && <TutorialTooltip text="Tell code to players!" onClick={() => setCodeTipShown(true)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
                   </div>
               )}
               
@@ -948,7 +1092,7 @@ export default function TruthAndDareApp() {
             <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
                 <CustomAlert />
                 
-                {tutorialStep === 5 && <TutorialTooltip text="Select Mode" onClick={() => setTutorialStep(6)} className="top-24 right-10" arrowPos="left" />}
+                {tutorialStep === 5 && <TutorialTooltip text="Switch Mode Anytime!" onClick={() => setTutorialStep(6)} className="top-1/2 right-full mr-4 -translate-y-1/2" arrowPos="right" />}
                 
                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
                 {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
@@ -960,17 +1104,19 @@ export default function TruthAndDareApp() {
                     <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 relative">
                         <div className="flex items-center gap-2 justify-center w-full">
                              <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div>
-                             <InfoIcon text="Auto loops through Truth/Dare/Match. Manual lets you pick every turn." />
+                             <InfoIcon text="Auto: loops through Truth/Dare/Match. Manual: lets you pick every turn." />
                              <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
                         </div>
+                        <div className="relative">
                         <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
-                    </div>
+                        {tutorialStep === 5 && <TutorialTooltip text="Switch Manual/Auto Mode Anytime!" onClick={() => setTutorialStep(6)} className="right-full mr-3 top-1/2 -translate-y-1/2" arrowPos="right" />}
+                        </div>     
+                        </div>
 
                     {isAutoSetup ? (
                         <div className="flex gap-3 animate-in fade-in">
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
-                                {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                                <div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
+                            <div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-pink-400 font-bold mb-1">Dare</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyDare} onChange={e=>setQtyDare(parseInt(e.target.value))}/></div>
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-emerald-400 font-bold mb-1">Match</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyMM} onChange={e=>setQtyMM(parseInt(e.target.value))}/></div>
                         </div>
@@ -981,16 +1127,20 @@ export default function TruthAndDareApp() {
                                     <span className="font-bold text-sm text-white/70">Risk Level</span>
                                     <InfoIcon text="You can change the risk level any time." />
                                 </div>
-                                {tutorialStep === 52 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(53)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
-                                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                                <div className="relative">
+                                    {tutorialStep === 52 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(53)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                    <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                                </div>
                             </div>
                             <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-sm text-white/70">Next Game Type</span>
                                     <InfoIcon text="You can change the game type any time." />
                                 </div>
-                                {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
-                                <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
+                                <div className="relative">
+                                    {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                    <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1001,14 +1151,14 @@ export default function TruthAndDareApp() {
                                 <span className="font-bold text-sm text-white/70">Risk Level</span>
                                 <InfoIcon text="You can change the risk level any time." />
                             </div>
-                             {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="right-full mr-2 top-1/2 -translate-y-1/2" arrowPos="right" />}
-                            <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/40 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                             {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                            <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
                         </div>
                     )}
                 </div>
                 
                 <div className="relative w-full max-w-md">
-                    {tutorialStep === 6 && <TutorialTooltip text="Start Round!" onClick={() => setTutorialStep(7)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                    {tutorialStep === 6 && <TutorialTooltip text="Click to Start!" onClick={() => setTutorialStep(7)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
                     <button onClick={startRound} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
                 </div>
                 <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
@@ -1033,7 +1183,7 @@ export default function TruthAndDareApp() {
 
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
-        {tutorialStep === 7 && <TutorialTooltip text="Switch to Player View to play!" onClick={() => setTutorialStep(null)} className="top-14 left-4" arrowPos="top" />}
+        {tutorialStep === 7 && <TutorialTooltip text="Switch between admin and player!" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
@@ -1093,11 +1243,11 @@ export default function TruthAndDareApp() {
   }
 
   // --- VISTA JUGADOR ---
-  // (Estados de Lobby, Jugador en Espera, etc.)
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white relative overflow-hidden">
             <CustomAlert/>
+            {tutorialStep === 8 && <TutorialTooltip text="Switch between player and admin" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
             {isAdmin && (
                 <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
             )}
@@ -1105,9 +1255,16 @@ export default function TruthAndDareApp() {
             <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
             
             <div className="text-center py-2 border-b border-white/10 mb-4 w-full flex items-center justify-center gap-2 relative flex-col mt-8">
-                <div className="flex items-center gap-3">
-                    {isEditingName ? (<div className="flex gap-2"><input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} /><button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button><button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button></div>) : (<><h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 drop-shadow-sm">{userName.toUpperCase()}</h1><button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-white/30 hover:text-white transition-colors"><Edit2 size={18}/></button></>)}
-                </div>
+                {gameState?.mode === 'admin_setup' && isAdmin && viewAsPlayer ? (
+                   <div className="mb-4 bg-cyan-900/40 border border-cyan-500/50 p-4 rounded-xl animate-pulse">
+                      <h3 className="text-xl font-black text-cyan-400 mb-1">HOST IS SETTING UP ROUND...</h3>
+                      <p className="text-xs text-cyan-200">Wait for the host to start the game.</p>
+                   </div>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        {isEditingName ? (<div className="flex gap-2"><input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} /><button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button><button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button></div>) : (<><h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 drop-shadow-sm">{userName.toUpperCase()}</h1><button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-white/30 hover:text-white transition-colors"><Edit2 size={18}/></button></>)}
+                    </div>
+                )}
                 {relationshipStatus === 'couple' && (<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-300 text-xs font-mono mt-2"><Users size={12}/> COUPLE ID: {coupleNumber}</div>)}
             </div>
             
@@ -1115,8 +1272,11 @@ export default function TruthAndDareApp() {
             <div className="w-full max-w-md"><MyMatchHistory /></div>
             
             <div className="text-center mt-8 mb-4">
-                <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR NEXT ROUND</div>
-                <div className="text-white/40 text-sm font-mono tracking-widest">{gameState?.mode === 'lobby' ? "LOBBY STATUS: OPEN" : "GAME STARTING..."}</div>
+                {gameState?.mode === 'lobby' ? (
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">LOBBY STATUS: OPEN</div>
+                ) : (
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
+                )}
             </div>
             
             <div className="mt-auto w-full flex justify-center pb-8"><button onClick={handleSelfLeave} className="text-red-500/50 hover:text-red-500 flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><LogOut size={14}/> Reset Player</button></div>
@@ -1124,6 +1284,7 @@ export default function TruthAndDareApp() {
       );
   }
 
+  // ... (Keep existing game ended logic and card logic)
   if (gameState.mode === 'ended') {
       return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
   }
@@ -1219,22 +1380,22 @@ export default function TruthAndDareApp() {
                     
                     {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
-                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
+                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
+                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
-                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
+                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
+                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
                         </div>
                     )}
                     
                     {gameState?.mode==='yn' && !playerAnswered && (
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-3 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
-                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-3 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
+                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
+                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
                         </div>
                     )}
                     
