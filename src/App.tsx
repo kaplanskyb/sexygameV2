@@ -798,13 +798,13 @@ export default function TruthAndDareApp() {
           
           <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="relative">
-                  <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-black pr-8 ${glassInput}`}>
+                  <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
                       <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
               </div>
               <div className="relative">
-                  <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-black pr-8 ${glassInput}`}>
+                  <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
                       <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
@@ -925,6 +925,16 @@ export default function TruthAndDareApp() {
                       </label>
                   )}
                   {uploading && <div className="text-sm text-yellow-400 text-center font-bold animate-pulse">Processing file...</div>}
+
+                  {/* RESTORED EXPORT BUTTONS */}
+                  <div className="grid grid-cols-2 gap-3 mt-2 pt-4 border-t border-white/10">
+                      <button onClick={() => handleExportCSV(true)} className="bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 transition-colors">
+                          <FileSpreadsheet size={16} /> Download Template
+                      </button>
+                      <button onClick={() => handleExportCSV(false)} className="bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 transition-colors">
+                          <Download size={16} /> Export All Data
+                      </button>
+                  </div>
             </div>
 
             <div className={`p-4 rounded-xl mb-4 flex flex-wrap gap-3 items-end text-sm ${glassPanel}`}>
