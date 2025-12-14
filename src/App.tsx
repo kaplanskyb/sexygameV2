@@ -2,10 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from "react-qr-code";
 import { QrReader } from "react-qr-reader";
 import { initializeApp } from 'firebase/app';
-import {
-  getFirestore, collection, doc, setDoc, onSnapshot,
-  query, serverTimestamp, updateDoc, getDocs, deleteDoc, where, writeBatch, increment, getDoc
-} from 'firebase/firestore';
+import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    updateDoc, 
+    onSnapshot, // <--- Importante
+    collection, // <--- Importante
+    query,      // <--- Importante
+    where,      // <--- Importante
+    serverTimestamp 
+  } from 'firebase/firestore';
 import {
   getAuth, signInAnonymously, onAuthStateChanged
 } from 'firebase/auth';
