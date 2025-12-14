@@ -329,6 +329,7 @@ const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCo
     // Lógica automática: Si es Mujer -> Host (QR), Si es Hombre -> Scan
     const [mode, setMode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [generatedCode, setGeneratedCode] = useState(value);
+    const [cameraError, setCameraError] = useState<string | null>(null);
 
     // Generar código único si soy Host y no tengo uno aún
     useEffect(() => {
@@ -339,18 +340,24 @@ const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCo
         }
     }, [mode, generatedCode]);
 
-    const handleScan = (result: any) => {
+    const handleScan = (result: any, error: any) => {
         if (result) {
-            // Compatibilidad con distintas versiones de la librería
-            const text = result?.text || result; 
+            const text = result?.text || result;
             if (typeof text === 'string' && text.startsWith('CPL-')) {
                 onCodeObtained(text);
             }
+        }
+        if (error) {
+            // Ignoramos errores de "no qr found" que la librería lanza constantemente
+            if (error?.message?.includes("No QR code found")) return;
+            // Solo mostramos errores reales de hardware/permisos
+            console.warn(error);
         }
     };
 
     const toggleMode = () => {
         setMode(prev => prev === 'host' ? 'scan' : 'host');
+        setCameraError(null);
     };
 
     return (
@@ -376,16 +383,26 @@ const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCo
                     <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden rounded-lg bg-black">
                         {!value ? (
                             <>
-                                <div className="absolute z-10 border-2 border-cyan-400 w-32 h-32 rounded-lg opacity-50 animate-pulse"></div>
-                                <QrReader
-                                    onResult={handleScan}
-                                    constraints={{ facingMode: 'environment' }}
-                                    containerStyle={{ width: '150%', height: '150%', margin: '-25%' }} // Zoom fix visual
-                                    videoStyle={{ objectFit: 'cover' }}
-                                />
-                                <div className="absolute bottom-2 bg-black/60 px-3 py-1 rounded text-xs text-cyan-400 font-bold backdrop-blur-sm">
-                                    Scan Partner's QR
-                                </div>
+                                {cameraError ? (
+                                    <div className="text-red-400 text-center p-2 text-xs">
+                                        <p className="font-bold mb-1">Camera Error</p>
+                                        {cameraError}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="absolute z-10 border-2 border-cyan-400 w-32 h-32 rounded-lg opacity-50 animate-pulse pointer-events-none"></div>
+                                        <QrReader
+                                            onResult={handleScan}
+                                            constraints={{ facingMode: 'environment' }} // Intenta trasera
+                                            className="w-full h-full object-cover"
+                                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                                            containerStyle={{ width: '100%', height: '100%' }}
+                                        />
+                                        <div className="absolute bottom-2 bg-black/60 px-3 py-1 rounded text-xs text-cyan-400 font-bold backdrop-blur-sm pointer-events-none">
+                                            Scan Partner's QR
+                                        </div>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full text-emerald-400">
