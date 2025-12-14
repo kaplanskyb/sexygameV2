@@ -13,6 +13,9 @@ import {
     query,      // <--- Importante
     where,      // <--- Importante
     serverTimestamp 
+    deleteDoc,
+    getDocs,
+    collection
   } from 'firebase/firestore';
 import {
   getAuth, signInAnonymously, onAuthStateChanged
