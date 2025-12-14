@@ -356,61 +356,62 @@ const CouplePairing = ({
     onCodeObtained, 
     value, 
     onBack,
-    db,           // Nuevo: Necesitamos la BD para escuchar
-    currentUserUid, // Nuevo: Para saber quién soy
-    onAutoJoin    // Nuevo: Para entrar automáticamente
+    db,
+    currentUserUid,
+    onAutoJoin 
 }: any) => {
     
-    const [mode, setMode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
-    const [generatedCode, setGeneratedCode] = useState(value);
+    // 1. GENERACIÓN INSTANTÁNEA (Sin esperar useEffect)
+    // Si ya viene un valor (value), lo usamos. Si no, creamos uno nuevo AHORA MISMO.
+    const [localCode] = useState(() => {
+        if (value) return value;
+        return Math.floor(10000 + Math.random() * 90000).toString();
+    });
+
+    const [mode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [isLinked, setIsLinked] = useState(false);
 
-    // 1. LÓGICA MUJER: Generar código y escuchar si el hombre entra
+    // 2. Sincronizar el código generado con el padre inmediatamente
     useEffect(() => {
-        if (mode === 'host') {
-            // A) Generar código si no existe
-            if (!generatedCode) {
-                const newCode = (Math.floor(Math.random() * 90000) + 10000).toString(); // 5 dígitos simples
-                setGeneratedCode(newCode);
-                onCodeObtained(newCode);
-            }
-
-            // B) Escuchar la base de datos: ¿Alguien usó mi código?
-            if (generatedCode && db) {
-                const q = query(
-                    collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
-                    where('coupleNumber', '==', generatedCode)
-                );
-
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    // Buscamos si hay alguien que NO soy yo con mi código
-                    const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
-                    if (partner) {
-                        // ¡ENCONTRADO!
-                        setIsLinked(true);
-                        setTimeout(() => {
-                            onAutoJoin(); // <-- AUTO ENTRAR MUJER
-                        }, 1500); 
-                    }
-                });
-
-                return () => unsubscribe();
-            }
+        if (mode === 'host' && !value) {
+            onCodeObtained(localCode);
         }
-    }, [mode, generatedCode, db, currentUserUid]);
+    }, []); // Se ejecuta solo una vez al inicio
 
-    // 2. LÓGICA HOMBRE: Escanear y entrar
+    // 3. LÓGICA MUJER (ESCUCHAR BD)
+    useEffect(() => {
+        if (mode === 'host' && db && localCode) {
+            // Escuchamos si alguien entra con este código
+            const q = query(
+                collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
+                where('coupleNumber', '==', localCode)
+            );
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                // Buscamos a alguien que NO sea yo
+                const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
+                
+                if (partner) {
+                    setIsLinked(true);
+                    setTimeout(() => {
+                        onAutoJoin(); // <-- ENTRA SOLA AL JUEGO
+                    }, 1000); 
+                }
+            });
+            return () => unsubscribe();
+        }
+    }, [mode, localCode, db, currentUserUid]);
+
+    // 4. LÓGICA HOMBRE (ESCANEAR)
     const handleScan = (result: any) => {
         if (result && !isLinked) {
             const text = result?.text || result;
             if (text) {
-                onCodeObtained(text); // Guardamos el código
-                setIsLinked(true);    // Mostramos check verde
-                
-                // AUTO ENTRAR HOMBRE (Espera 1.5s para ver la animación y entra)
+                onCodeObtained(text);
+                setIsLinked(true);
                 setTimeout(() => {
-                    onAutoJoin(); 
-                }, 1500);
+                    onAutoJoin(); // <-- ENTRA SOLO AL JUEGO
+                }, 1000);
             }
         }
     };
@@ -418,69 +419,65 @@ const CouplePairing = ({
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 animate-in fade-in slide-in-from-bottom-10">
             
-            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mb-6 uppercase tracking-widest">
-                {isLinked ? 'PAIRING SUCCESS!' : (mode === 'host' ? 'Show this QR' : 'Scan Partner')}
+            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mb-6 uppercase tracking-widest text-center">
+                {isLinked ? 'PAIRING SUCCESS!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
             </h3>
 
-            <div className="relative w-full max-w-sm aspect-square bg-slate-900 rounded-2xl border-2 border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
+            {/* CONTENEDOR PRINCIPAL */}
+            <div className="relative w-full max-w-sm aspect-square bg-white rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
                 
                 {/* MODO MUJER (QR) */}
                 {mode === 'host' && !isLinked && (
-                    <div className="flex flex-col items-center gap-4 p-6 bg-white w-full h-full justify-center">
-                        {/* SOLUCIÓN AL QR INVISIBLE: Usamos una API de imagen directa */}
-                        {generatedCode ? (
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedCode}`} 
-                                alt="QR Code" 
-                                className="w-full h-full object-contain"
-                            />
-                        ) : (
-                            <div className="animate-pulse text-black">Generating...</div>
-                        )}
-                        <p className="text-black font-mono font-bold text-2xl tracking-widest">{generatedCode}</p>
+                    <div className="flex flex-col items-center justify-center w-full h-full p-4 bg-white">
+                        {/* IMAGEN DEL QR */}
+                        <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff`} 
+                            alt={`QR Code: ${localCode}`} 
+                            className="w-full h-full object-contain"
+                            style={{ minHeight: '200px', minWidth: '200px' }} 
+                        />
+                        {/* CÓDIGO EN TEXTO GRANDE ABAJO */}
+                        <p className="absolute bottom-2 bg-white/90 px-4 py-1 rounded-full text-black font-mono font-black text-3xl tracking-widest border-2 border-black">
+                            {localCode}
+                        </p>
                     </div>
                 )}
 
                 {/* MODO HOMBRE (CÁMARA) */}
                 {mode === 'scan' && !isLinked && (
-                    <div className="w-full h-full relative">
+                    <div className="w-full h-full relative bg-black">
                         <QrReader
                             onResult={handleScan}
                             constraints={{ facingMode: 'environment' }}
                             className="w-full h-full"
                             videoContainerStyle={{ paddingTop: 0, height: '100%' }}
-                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%', position: 'absolute' }}
+                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
                         />
-                        {/* Overlay visual */}
                         <div className="absolute inset-0 border-[40px] border-black/60 z-10 pointer-events-none">
                             <div className="w-full h-full border-2 border-cyan-400 opacity-50 relative animate-pulse"></div>
                         </div>
                     </div>
                 )}
 
-                {/* ANIMACIÓN DE ÉXITO (PARA AMBOS) */}
+                {/* PANTALLA DE ÉXITO (LINKED) */}
                 {isLinked && (
-                    <div className="absolute inset-0 z-20 bg-emerald-900 flex flex-col items-center justify-center animate-in zoom-in duration-300">
-                        <div className="bg-emerald-500 p-4 rounded-full mb-4 shadow-[0_0_50px_rgba(16,185,129,0.6)] animate-bounce">
-                            <Check size={48} className="text-white" />
-                        </div>
-                        <span className="text-white font-black text-3xl tracking-widest">LINKED!</span>
-                        <span className="text-emerald-200 text-sm mt-2 animate-pulse">Entering game...</span>
+                    <div className="absolute inset-0 z-30 bg-emerald-500 flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                        <Check size={64} className="text-white mb-4 animate-bounce" />
+                        <span className="text-white font-black text-4xl tracking-widest drop-shadow-md">LINKED!</span>
                     </div>
                 )}
             </div>
 
-            <p className="mt-6 text-sm text-slate-400 text-center px-8">
+            <p className="mt-8 text-sm text-slate-400 text-center px-8 max-w-xs mx-auto leading-relaxed">
                 {isLinked 
-                    ? "Connecting to party..." 
-                    : (mode === 'host' ? "Ask him to scan this. Game will start automatically." : "Point camera at her QR.")}
+                    ? "Starting game..." 
+                    : (mode === 'host' ? "Ask him to scan this code. The game will start automatically once connected." : "Align the QR code within the frame.")}
             </p>
 
-            {/* Solo mostramos botón de cancelar si NO se han vinculado aun */}
             {!isLinked && (
                 <button 
                     onClick={onBack}
-                    className="mt-8 py-3 px-12 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all"
+                    className="mt-8 py-3 px-12 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all uppercase tracking-wider text-sm"
                 >
                     Cancel
                 </button>
