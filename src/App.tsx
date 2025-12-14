@@ -363,8 +363,7 @@ const CouplePairing = ({
     onAutoJoin 
 }: any) => {
     
-    // 1. GENERACIÓN INSTANTÁNEA (Sin esperar useEffect)
-    // Si ya viene un valor (value), lo usamos. Si no, creamos uno nuevo AHORA MISMO.
+    // Generar código de pareja instantáneamente
     const [localCode] = useState(() => {
         if (value) return value;
         return Math.floor(10000 + Math.random() * 90000).toString();
@@ -373,114 +372,89 @@ const CouplePairing = ({
     const [mode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [isLinked, setIsLinked] = useState(false);
 
-    // 2. Sincronizar el código generado con el padre inmediatamente
+    // Sincronizar
     useEffect(() => {
-        if (mode === 'host' && !value) {
-            onCodeObtained(localCode);
-        }
-    }, []); // Se ejecuta solo una vez al inicio
+        if (mode === 'host' && !value) onCodeObtained(localCode);
+    }, []);
 
-    // 3. LÓGICA MUJER (ESCUCHAR BD)
+    // Escuchar si entra el hombre (Solo mujer)
     useEffect(() => {
         if (mode === 'host' && db && localCode) {
-            // Escuchamos si alguien entra con este código
             const q = query(
                 collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
                 where('coupleNumber', '==', localCode)
             );
-
             const unsubscribe = onSnapshot(q, (snapshot) => {
-                // Buscamos a alguien que NO sea yo
                 const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
-                
                 if (partner) {
                     setIsLinked(true);
-                    setTimeout(() => {
-                        onAutoJoin(); // <-- ENTRA SOLA AL JUEGO
-                    }, 1000); 
+                    setTimeout(() => onAutoJoin(), 1500); 
                 }
             });
             return () => unsubscribe();
         }
     }, [mode, localCode, db, currentUserUid]);
 
-    // 4. LÓGICA HOMBRE (ESCANEAR)
+    // Escáner (Solo hombre)
     const handleScan = (result: any) => {
         if (result && !isLinked) {
             const text = result?.text || result;
             if (text) {
                 onCodeObtained(text);
                 setIsLinked(true);
-                setTimeout(() => {
-                    onAutoJoin(); // <-- ENTRA SOLO AL JUEGO
-                }, 1000);
+                setTimeout(() => onAutoJoin(), 1500);
             }
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 animate-in fade-in slide-in-from-bottom-10">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
             
-            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mb-6 uppercase tracking-widest text-center">
-                {isLinked ? 'PAIRING SUCCESS!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
+            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center animate-pulse">
+                {isLinked ? 'PAIRED!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
             </h3>
 
-            {/* CONTENEDOR PRINCIPAL */}
-            <div className="relative w-full max-w-sm aspect-square bg-white rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
+            {/* CONTENEDOR DEL QR / CAMARA */}
+            <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl border-4 border-white" style={{ width: '300px', height: '300px' }}>
                 
-                {/* MODO MUJER (QR) */}
+                {/* MODO MUJER: QR IMPRESO SOBRE FONDO BLANCO */}
                 {mode === 'host' && !isLinked && (
-                    <div className="flex flex-col items-center justify-center w-full h-full p-4 bg-white">
-                        {/* IMAGEN DEL QR */}
+                    <div className="w-full h-full flex items-center justify-center bg-white">
                         <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff`} 
-                            alt={`QR Code: ${localCode}`} 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff&color=000000&margin=10`} 
+                            alt="QR Code"
                             className="w-full h-full object-contain"
-                            style={{ minHeight: '200px', minWidth: '200px' }} 
                         />
-                        {/* CÓDIGO EN TEXTO GRANDE ABAJO */}
-                        <p className="absolute bottom-2 bg-white/90 px-4 py-1 rounded-full text-black font-mono font-black text-3xl tracking-widest border-2 border-black">
-                            {localCode}
-                        </p>
                     </div>
                 )}
 
-                {/* MODO HOMBRE (CÁMARA) */}
+                {/* MODO HOMBRE: CAMARA */}
                 {mode === 'scan' && !isLinked && (
-                    <div className="w-full h-full relative bg-black">
-                        <QrReader
-                            onResult={handleScan}
-                            constraints={{ facingMode: 'environment' }}
-                            className="w-full h-full"
-                            videoContainerStyle={{ paddingTop: 0, height: '100%' }}
-                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                        />
-                        <div className="absolute inset-0 border-[40px] border-black/60 z-10 pointer-events-none">
-                            <div className="w-full h-full border-2 border-cyan-400 opacity-50 relative animate-pulse"></div>
-                        </div>
-                    </div>
+                    <QrReader
+                        onResult={handleScan}
+                        constraints={{ facingMode: 'environment' }}
+                        className="w-full h-full object-cover"
+                        videoContainerStyle={{ paddingTop: 0, height: '100%' }}
+                        videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    />
                 )}
 
-                {/* PANTALLA DE ÉXITO (LINKED) */}
+                {/* EXITO */}
                 {isLinked && (
-                    <div className="absolute inset-0 z-30 bg-emerald-500 flex flex-col items-center justify-center animate-in zoom-in duration-300">
-                        <Check size={64} className="text-white mb-4 animate-bounce" />
-                        <span className="text-white font-black text-4xl tracking-widest drop-shadow-md">LINKED!</span>
+                    <div className="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center z-50">
+                        <Check size={80} className="text-white animate-bounce" />
+                        <span className="text-white font-black text-2xl mt-4">CONNECTED</span>
                     </div>
                 )}
             </div>
 
-            <p className="mt-8 text-sm text-slate-400 text-center px-8 max-w-xs mx-auto leading-relaxed">
-                {isLinked 
-                    ? "Starting game..." 
-                    : (mode === 'host' ? "Ask him to scan this code. The game will start automatically once connected." : "Align the QR code within the frame.")}
-            </p>
+            {/* Código en texto por si acaso */}
+            {mode === 'host' && !isLinked && (
+                 <p className="mt-6 text-white text-4xl font-mono font-black tracking-[0.5em]">{localCode}</p>
+            )}
 
             {!isLinked && (
-                <button 
-                    onClick={onBack}
-                    className="mt-8 py-3 px-12 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all uppercase tracking-wider text-sm"
-                >
+                <button onClick={onBack} className="mt-10 text-white/50 hover:text-white uppercase tracking-widest text-sm border-b border-transparent hover:border-white transition-all">
                     Cancel
                 </button>
             )}
@@ -780,21 +754,24 @@ useEffect(() => {
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
-    const createGame = async () => {
+  const createGame = async () => {
     if (!userName.trim() || !user) return;
+    
+    // GENERAR CÓDIGO AQUÍ (No en el input)
+    const newGameCode = Math.floor(10000 + Math.random() * 90000).toString();
+    setCode(newGameCode); // Actualizar estado local para que lo vea en el Lobby
+
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // 1. HEMOS BORRADO LA GENERACIÓN DE CÓDIGO DE AQUÍ
-    // (Ya lo hizo el useEffect automáticamente)
-
-    // 2. Usamos la variable 'code' del estado directamente
+    // Guardar en DB
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: code, // <--- AQUÍ ESTÁ EL CAMBIO (antes decía autoCode)
+      code: newGameCode, // <--- Usamos el nuevo código generado
       mode: 'lobby',
       currentTurn: null,
       adminUid: user.uid,
       createdAt: serverTimestamp(),
+      // ... resto de configs ...
       riskLevel: 1,
       autoLoop: false,
       loopConfig: { truth: 1, dare: 1, match: 1 },
@@ -802,18 +779,12 @@ useEffect(() => {
       loopSequence: []
     });
     
-    // 5. Agregar al Admin como el primer jugador (automáticamente)
+    // Crear jugador Admin
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
-      uid: user.uid, 
-      name: userName, 
-      gender: gender || 'male', // Usa el género seleccionado o male por defecto
-      coupleNumber: 'ADMIN', // El admin tiene un ID especial
-      relationshipStatus: 'single', // Inicialmente soltero (luego puede vincularse)
-      joinedAt: serverTimestamp(), 
-      isActive: true, 
-      isBot: false,
-      matches: 0, 
-      mismatches: 0
+      uid: user.uid, name: userName, gender: 'admin',
+      coupleNumber: 'ADMIN', relationshipStatus: 'single',
+      joinedAt: serverTimestamp(), isActive: true, isBot: false,
+      matches: 0, mismatches: 0
     });
   };
 
@@ -885,51 +856,33 @@ useEffect(() => {
   
 // --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
 const resetGame = async () => {
-    if (!window.confirm("⚠️ ¿REINICIAR TODO? Se borrarán todos los jugadores y el progreso.")) return;
+    if (!window.confirm("⚠️ ¿RESET TOTAL? Esto expulsará a TODOS los jugadores (incluido tú) y reiniciará el código.")) return;
 
     try {
-      // 1. Referencia a la colección de jugadores
+      // 1. Borrar jugadores uno por uno
       const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
-      
-      // 2. Obtener la lista actual
       const snapshot = await getDocs(playersRef);
-
-      // 3. Borrar jugador por jugador (Firestore no borra carpetas automáticamente)
       const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
       await Promise.all(deletePromises);
 
-      // 4. Generar nuevo código y reiniciar estado
+      // 2. Generar nuevo código y reiniciar juego
       const newCode = Math.floor(10000 + Math.random() * 90000).toString();
-      setCode(newCode); 
-
+      
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
         code: newCode,
         mode: 'lobby',
         currentTurn: null,
         loopSequence: [],
-        loopIndex: 0,
-        lastAction: 'RESET_ALL'
+        lastAction: 'RESET_ALL' // Esto avisará a los clientes que se reinicien
       });
 
-      // 5. Volver a guardar al Admin (para que no te expulse)
-      if (user) {
-         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
-            uid: user.uid, 
-            name: userName || 'Admin', 
-            gender: 'admin',
-            coupleNumber: 'ADMIN', 
-            relationshipStatus: 'single',
-            joinedAt: serverTimestamp(), 
-            isActive: true, 
-            isBot: false,
-            matches: 0, 
-            mismatches: 0
-         });
-      }
+      // 3. Forzar salida local del Admin (para que vea la pantalla de inicio)
+      setIsJoined(false);
+      setUserName('');
+      // Opcional: window.location.reload(); para asegurar limpieza total
 
     } catch (error) {
-      console.error("Error al resetear:", error);
-      alert("Error. Revisa la consola (F12).");
+      console.error("Error reset:", error);
     }
   };
 
@@ -1144,16 +1097,10 @@ if (!isJoined) {
                 {/* 3. ZONA DE CÓDIGO (DIFERENTE PARA ADMIN Y JUGADOR) */}
                 
                 {/* CASO ADMIN: Muestra el código en grande automáticamente */}
-                {userName.toLowerCase().trim() === 'admin' ? (
-                   <div className="mb-8 p-6 bg-white/5 rounded-2xl border border-white/10 animate-pulse">
-                      <p className="text-pink-400 text-xs uppercase tracking-[0.3em] mb-2">Party Code</p>
-                      <div className="text-6xl font-black text-white tracking-widest font-mono shadow-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">
-                        {code || '...'}
-                      </div>
-                      <p className="text-slate-400 text-xs mt-2">Tell this number to your friends</p>
-                   </div>
-                ) : (
-                   /* CASO JUGADOR: Input para escribir el código */
+                {/* ... Inputs de Nombre y Género arriba ... */}
+
+                {/* ZONA DE CÓDIGO: Oculta para Admin, Visible para Jugadores */}
+                {userName.toLowerCase().trim() !== 'admin' && (
                    <div className="relative mb-8">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
                       <input 
@@ -1166,20 +1113,16 @@ if (!isJoined) {
                    </div>
                 )}
                 
-                {/* 4. BOTÓN FINAL */}
+                {/* BOTÓN FINAL */}
                 {userName.toLowerCase().trim() === 'admin' ? (
                     <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
                         START PARTY NOW
                     </button>
                 ) : (
+                    // ... Botones de Scan / Join para jugadores normales ...
                     relationshipStatus === 'couple' && !coupleNumber ? (
-                        <button 
-                            onClick={() => setShowScanner(true)}
-                            disabled={!gender || !userName || !code}
-                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 ${!gender || !userName || !code ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
-                        >
-                            <QrCode size={24} />
-                            {gender === 'female' ? 'Generate My QR' : 'Scan Partner'}
+                        <button onClick={() => setShowScanner(true)} /* ... */ >
+                             <QrCode size={24} /> {gender === 'female' ? 'Generate QR' : 'Scan Partner'}
                         </button>
                     ) : (
                         <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>
