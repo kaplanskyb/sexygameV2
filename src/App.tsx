@@ -350,116 +350,141 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
     );
 };
 
-const CouplePairing = ({ gender, onCodeObtained, value, onBack }: { gender: string, onCodeObtained: (code: string) => void, value: string, onBack: () => void }) => {
-    // Lógica automática: Mujer -> QR, Hombre -> Cámara
+// Componente de Emparejamiento Inteligente
+const CouplePairing = ({ 
+    gender, 
+    onCodeObtained, 
+    value, 
+    onBack,
+    db,           // Nuevo: Necesitamos la BD para escuchar
+    currentUserUid, // Nuevo: Para saber quién soy
+    onAutoJoin    // Nuevo: Para entrar automáticamente
+}: any) => {
+    
     const [mode, setMode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [generatedCode, setGeneratedCode] = useState(value);
-    
-    // Generar código único para la mujer
-    useEffect(() => {
-        if (mode === 'host' && !generatedCode) {
-            const newCode = 'CPL-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.random().toString(36).substr(2, 3).toUpperCase();
-            setGeneratedCode(newCode);
-            onCodeObtained(newCode);
-        }
-    }, [mode, generatedCode]);
+    const [isLinked, setIsLinked] = useState(false);
 
-    const handleScan = (result: any, error: any) => {
-        if (result) {
-            const text = result?.text || result;
-            if (typeof text === 'string' && text.startsWith('CPL-')) {
-                onCodeObtained(text);
+    // 1. LÓGICA MUJER: Generar código y escuchar si el hombre entra
+    useEffect(() => {
+        if (mode === 'host') {
+            // A) Generar código si no existe
+            if (!generatedCode) {
+                const newCode = (Math.floor(Math.random() * 90000) + 10000).toString(); // 5 dígitos simples
+                setGeneratedCode(newCode);
+                onCodeObtained(newCode);
+            }
+
+            // B) Escuchar la base de datos: ¿Alguien usó mi código?
+            if (generatedCode && db) {
+                const q = query(
+                    collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
+                    where('coupleNumber', '==', generatedCode)
+                );
+
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    // Buscamos si hay alguien que NO soy yo con mi código
+                    const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
+                    if (partner) {
+                        // ¡ENCONTRADO!
+                        setIsLinked(true);
+                        setTimeout(() => {
+                            onAutoJoin(); // <-- AUTO ENTRAR MUJER
+                        }, 1500); 
+                    }
+                });
+
+                return () => unsubscribe();
             }
         }
-        // Ignoramos errores de consola de la librería para mantener limpia la UI
+    }, [mode, generatedCode, db, currentUserUid]);
+
+    // 2. LÓGICA HOMBRE: Escanear y entrar
+    const handleScan = (result: any) => {
+        if (result && !isLinked) {
+            const text = result?.text || result;
+            if (text) {
+                onCodeObtained(text); // Guardamos el código
+                setIsLinked(true);    // Mostramos check verde
+                
+                // AUTO ENTRAR HOMBRE (Espera 1.5s para ver la animación y entra)
+                setTimeout(() => {
+                    onAutoJoin(); 
+                }, 1500);
+            }
+        }
     };
 
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 animate-in fade-in slide-in-from-bottom-10">
             
-            {/* Título */}
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mb-6 uppercase tracking-widest">
-                {mode === 'host' ? 'Show this QR' : 'Scan Partner'}
+                {isLinked ? 'PAIRING SUCCESS!' : (mode === 'host' ? 'Show this QR' : 'Scan Partner')}
             </h3>
 
-            {/* CONTENEDOR PRINCIPAL */}
             <div className="relative w-full max-w-sm aspect-square bg-slate-900 rounded-2xl border-2 border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
                 
-                {/* MODO ANFITRION (Mujer - QR) */}
-                {mode === 'host' && (
+                {/* MODO MUJER (QR) */}
+                {mode === 'host' && !isLinked && (
                     <div className="flex flex-col items-center gap-4 p-6 bg-white w-full h-full justify-center">
-                        <QRCode value={generatedCode || 'LOADING'} size={200} />
-                        <p className="text-black font-mono font-bold text-lg tracking-widest">{generatedCode}</p>
+                        {/* SOLUCIÓN AL QR INVISIBLE: Usamos una API de imagen directa */}
+                        {generatedCode ? (
+                            <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedCode}`} 
+                                alt="QR Code" 
+                                className="w-full h-full object-contain"
+                            />
+                        ) : (
+                            <div className="animate-pulse text-black">Generating...</div>
+                        )}
+                        <p className="text-black font-mono font-bold text-2xl tracking-widest">{generatedCode}</p>
                     </div>
                 )}
 
-                {/* MODO ESCANER (Hombre - Cámara) */}
-                {mode === 'scan' && (
-                    <>
-                        {!value ? (
-                            <div className="w-full h-full relative">
-                                {/* EL FIX DE LA PANTALLA NEGRA ESTÁ AQUÍ EN LOS ESTILOS */}
-                                <QrReader
-                                    onResult={handleScan}
-                                    constraints={{ facingMode: 'environment' }}
-                                    className="w-full h-full"
-                                    videoContainerStyle={{ paddingTop: 0, height: '100%' }}
-                                    videoStyle={{ objectFit: 'cover', width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-                                />
-                                {/* Marco visual de enfoque */}
-                                <div className="absolute inset-0 border-[30px] border-black/50 z-10 pointer-events-none">
-                                    <div className="w-full h-full border-2 border-cyan-400 opacity-50 relative">
-                                        <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-cyan-400"></div>
-                                        <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-cyan-400"></div>
-                                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-cyan-400"></div>
-                                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-cyan-400"></div>
-                                    </div>
-                                </div>
-                                <div className="absolute bottom-4 w-full text-center z-20">
-                                    <span className="bg-black/60 text-cyan-400 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md">
-                                        Point camera at her QR
-                                    </span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-900/20 animate-in zoom-in">
-                                <CheckCircle size={64} className="text-emerald-400 mb-4 animate-bounce" />
-                                <span className="text-emerald-400 font-black text-2xl tracking-widest">LINKED!</span>
-                                <span className="text-white/50 font-mono text-sm mt-2">ID: {value}</span>
-                            </div>
-                        )}
-                    </>
+                {/* MODO HOMBRE (CÁMARA) */}
+                {mode === 'scan' && !isLinked && (
+                    <div className="w-full h-full relative">
+                        <QrReader
+                            onResult={handleScan}
+                            constraints={{ facingMode: 'environment' }}
+                            className="w-full h-full"
+                            videoContainerStyle={{ paddingTop: 0, height: '100%' }}
+                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%', position: 'absolute' }}
+                        />
+                        {/* Overlay visual */}
+                        <div className="absolute inset-0 border-[40px] border-black/60 z-10 pointer-events-none">
+                            <div className="w-full h-full border-2 border-cyan-400 opacity-50 relative animate-pulse"></div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ANIMACIÓN DE ÉXITO (PARA AMBOS) */}
+                {isLinked && (
+                    <div className="absolute inset-0 z-20 bg-emerald-900 flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                        <div className="bg-emerald-500 p-4 rounded-full mb-4 shadow-[0_0_50px_rgba(16,185,129,0.6)] animate-bounce">
+                            <Check size={48} className="text-white" />
+                        </div>
+                        <span className="text-white font-black text-3xl tracking-widest">LINKED!</span>
+                        <span className="text-emerald-200 text-sm mt-2 animate-pulse">Entering game...</span>
+                    </div>
                 )}
             </div>
 
-            {/* Instrucción inferior */}
             <p className="mt-6 text-sm text-slate-400 text-center px-8">
-                {mode === 'host' 
-                    ? "Ask your partner to scan this code with their phone." 
-                    : value 
-                        ? "Success! You can now close this and join the game."
-                        : "Align the QR code within the frame."}
+                {isLinked 
+                    ? "Connecting to party..." 
+                    : (mode === 'host' ? "Ask him to scan this. Game will start automatically." : "Point camera at her QR.")}
             </p>
 
-            {/* BOTONES DE ACCIÓN */}
-            <div className="flex gap-4 mt-8 w-full max-w-xs">
+            {/* Solo mostramos botón de cancelar si NO se han vinculado aun */}
+            {!isLinked && (
                 <button 
                     onClick={onBack}
-                    className="flex-1 py-3 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all"
+                    className="mt-8 py-3 px-12 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all"
                 >
                     Cancel
                 </button>
-                
-                {/* Si ya está escaneado, mostramos botón de Confirmar */}
-                {value && (
-                    <button 
-                        onClick={onBack} // Usamos onBack para cerrar el modal, el valor ya está guardado en el padre
-                        className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-bold hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all animate-pulse"
-                    >
-                        Confirm
-                    </button>
-                )}
-            </div>
+            )}
         </div>
     );
 };
@@ -1013,12 +1038,24 @@ useEffect(() => {
           
           {/* LÓGICA DEL ESCÁNER VS FORMULARIO */}
           {showScanner && relationshipStatus === 'couple' ? (
-             <CouplePairing 
-                gender={gender} 
-                onCodeObtained={(c) => setCoupleNumber(c)} 
-                value={coupleNumber} 
-                onBack={() => setShowScanner(false)}
-             />
+             {/* A) SI ESTAMOS ESCANEANDO */}
+             {showScanner && relationshipStatus === 'couple' ? (
+                <CouplePairing 
+                    gender={gender}
+                    onCodeObtained={(c) => setCoupleNumber(c)}
+                    value={coupleNumber}
+                    onBack={() => setShowScanner(false)}
+                    
+                    // --- PROPS NUEVOS PARA AUTOMATIZAR ---
+                    db={db}                   // Pasamos la BD para escuchar
+                    currentUserUid={user?.uid} // Pasamos mi ID para saber quien soy
+                    onAutoJoin={() => {        // Esta funcion se ejecuta cuando se vinculan
+                        setShowScanner(false); // Cierra el scanner visualmente
+                        joinGame();            // Entra al juego directamente
+                    }}
+                />
+            ) : (
+                // ... el resto del formulario sigue igual ...
           ) : (
              <>
                 {/* CABECERA */}
