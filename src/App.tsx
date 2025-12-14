@@ -884,6 +884,56 @@ useEffect(() => {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [], isEnding: false });
   };
   
+// --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
+const resetGame = async () => {
+    if (!window.confirm("⚠️ ¿REINICIAR TODO? Se borrarán todos los jugadores y el progreso.")) return;
+
+    try {
+      // 1. Referencia a la colección de jugadores
+      const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+      
+      // 2. Obtener la lista actual
+      const snapshot = await getDocs(playersRef);
+
+      // 3. Borrar jugador por jugador (Firestore no borra carpetas automáticamente)
+      const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      // 4. Generar nuevo código y reiniciar estado
+      const newCode = Math.floor(10000 + Math.random() * 90000).toString();
+      setCode(newCode); 
+
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
+        code: newCode,
+        mode: 'lobby',
+        currentTurn: null,
+        loopSequence: [],
+        loopIndex: 0,
+        lastAction: 'RESET_ALL'
+      });
+
+      // 5. Volver a guardar al Admin (para que no te expulse)
+      if (user) {
+         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
+            uid: user.uid, 
+            name: userName || 'Admin', 
+            gender: 'admin',
+            coupleNumber: 'ADMIN', 
+            relationshipStatus: 'single',
+            joinedAt: serverTimestamp(), 
+            isActive: true, 
+            isBot: false,
+            matches: 0, 
+            mismatches: 0
+         });
+      }
+
+    } catch (error) {
+      console.error("Error al resetear:", error);
+      alert("Error. Revisa la consola (F12).");
+    }
+  };
+
   // PAIR LOGIC
   const computePairs = () => { 
       const pairs: Record<string, string> = {}; 
