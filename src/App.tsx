@@ -16,7 +16,22 @@ import {
     ChevronDown, 
     QrCode, 
     Flame, 
-    HelpCircle 
+    HelpCircle,
+    Gamepad2,
+    Trophy,
+    Users,
+    UserX,
+    Play,
+    Trash2,
+    RefreshCw,
+    Settings,
+    Send,           // <--- EL QUE TE DIO ERROR AHORA
+    Shuffle,        // <--- Probablemente lo uses para mezclar cartas
+    SkipForward,    // <--- Para saltar turnos
+    Power,          // <--- Para apagar/resetear el juego
+    AlertTriangle,  // <--- Para advertencias
+    Check,          // <--- Para confirmaciones
+    X               // <--- Para cerrar modales
   } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
