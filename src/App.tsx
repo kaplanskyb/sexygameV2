@@ -1037,25 +1037,24 @@ useEffect(() => {
         <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel} animate-in fade-in zoom-in duration-500`}>
           
           {/* LÓGICA DEL ESCÁNER VS FORMULARIO */}
+          {/* A) SI ESTAMOS ESCANEANDO */}
           {showScanner && relationshipStatus === 'couple' ? (
-             {/* A) SI ESTAMOS ESCANEANDO */}
-             {showScanner && relationshipStatus === 'couple' ? (
-                <CouplePairing 
-                    gender={gender}
-                    onCodeObtained={(c) => setCoupleNumber(c)}
-                    value={coupleNumber}
-                    onBack={() => setShowScanner(false)}
-                    
-                    // --- PROPS NUEVOS PARA AUTOMATIZAR ---
-                    db={db}                   // Pasamos la BD para escuchar
-                    currentUserUid={user?.uid} // Pasamos mi ID para saber quien soy
-                    onAutoJoin={() => {        // Esta funcion se ejecuta cuando se vinculan
-                        setShowScanner(false); // Cierra el scanner visualmente
-                        joinGame();            // Entra al juego directamente
-                    }}
-                />
-            ) : (
-                // ... el resto del formulario sigue igual ...
+                    <CouplePairing 
+                        gender={gender}
+                        onCodeObtained={(c) => setCoupleNumber(c)}
+                        value={coupleNumber}
+                        onBack={() => setShowScanner(false)}
+                        
+                        // --- PROPS NUEVOS PARA AUTOMATIZAR ---
+                        db={db}                   // Pasamos la BD para escuchar
+                        currentUserUid={user?.uid} // Pasamos mi ID para saber quien soy
+                        onAutoJoin={() => {        // Esta funcion se ejecuta cuando se vinculan
+                            setShowScanner(false); // Cierra el scanner visualmente
+                            joinGame();            // Entra al juego directamente
+                        }}
+                    />
+                ) : (
+                    // ... el resto del formulario sigue igual ...
           ) : (
              <>
                 {/* CABECERA */}
