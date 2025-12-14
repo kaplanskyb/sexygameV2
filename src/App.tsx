@@ -1022,22 +1022,7 @@ useEffect(() => {
   if (loading) return <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mb-4"></div><span className="animate-pulse">Loading System...</span></div>;
 
   // --- PANTALLA DE INGRESO (LOBBY) ---
-  if (!isJoined) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-2 relative overflow-hidden bg-black text-white">
-        
-        {/* Background blobs (Mantenemos tu estilo original) */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-900/30 blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-900/30 blur-[100px] pointer-events-none"></div>
-        
-        <CustomAlert/>
-        {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
-        <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
-        
-        <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel} animate-in fade-in zoom-in duration-500`}>
-          
-          {/* LÓGICA DEL ESCÁNER VS FORMULARIO */}
-          // --- PANTALLA DE INGRESO (LOBBY) ---
+  // --- PANTALLA DE INGRESO (LOBBY) ---
   if (!isJoined) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-2 relative overflow-hidden bg-black text-white">
@@ -1066,89 +1051,6 @@ useEffect(() => {
                     joinGame();
                 }}
              />
-          ) : (
-             <>
-                {/* CABECERA */}
-                <div className="mb-4 relative inline-block">
-                   <div className="absolute inset-0 bg-pink-500 blur-xl opacity-20 rounded-full"></div>
-                   <Flame className="w-12 h-12 text-pink-500 relative z-10 mx-auto" />
-                </div>
-                <h1 className="text-3xl font-black mb-6 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">SEXY GAME</h1>
-                
-                {/* INPUT NOMBRE */}
-                <div className="relative mb-4">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18}/>
-                    <input 
-                        type="text" 
-                        placeholder="YOUR NAME" 
-                        className={`w-full pl-10 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} 
-                        value={userName} 
-                        onChange={e=>setUserName(e.target.value)} 
-                        maxLength={12}
-                    />
-                </div>
-                
-                {/* SELECTORES */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="relative">
-                        <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
-                            <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
-                        </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
-                    </div>
-                    <div className="relative">
-                        <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
-                            <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
-                        </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
-                    </div>
-                </div>
-                
-                {/* INPUT CÓDIGO (Solo si NO es Admin) */}
-                {userName.toLowerCase() !== 'admin' && (
-                   <div className="relative mb-6">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18}/>
-                      <input 
-                          type="number" inputMode="numeric" pattern="[0-9]*"
-                          placeholder="GAME CODE" 
-                          className={`w-full pl-10 text-center tracking-widest font-mono uppercase font-bold text-lg ${glassInput}`} 
-                          value={code} 
-                          onChange={e=>setCode(e.target.value)} 
-                      />
-                   </div>
-                )}
-                
-                {/* BOTONES DE ACCIÓN */}
-                {userName.toLowerCase() === 'admin' ? (
-                    <button onClick={createGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
-                        Create Party
-                    </button>
-                ) : (
-                    relationshipStatus === 'couple' && !coupleNumber ? (
-                        <button 
-                            onClick={() => setShowScanner(true)}
-                            disabled={!gender || !userName || !code}
-                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${!gender || !userName || !code ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
-                        >
-                            <QrCode size={20} />
-                            {gender === 'female' ? 'Show QR' : 'Scan Partner'}
-                        </button>
-                    ) : (
-                        <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>
-                            {coupleNumber ? 'Enter Party (Linked)' : 'Join Party'}
-                        </button>
-                    )
-                )}
-
-                <div className="mt-6 flex justify-center gap-4 text-xs text-white/30">
-                    <span>v2.1 Beta</span>
-                </div>
-             </>
-          )}
-        </div>
-      </div>
-    );
-  }
           ) : (
              <>
                 {/* CABECERA */}
