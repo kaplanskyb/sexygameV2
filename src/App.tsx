@@ -10,12 +10,14 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import {
-  Flame, Zap, Trophy, Upload, ThumbsUp, ThumbsDown, Smile, Frown,
-  Settings, CheckSquare, Square, Filter, ArrowUpDown, AlertTriangle,
-  Trash2, PlayCircle, PauseCircle, Download, FileSpreadsheet, XCircle,
-  MessageCircle, RefreshCw, HelpCircle, X, Edit2, UserX, BookOpen, Send, Search, Users, User as UserIcon, LogOut, ChevronDown, ChevronUp, CheckCircle, Share2, Gamepad2, Info
-} from 'lucide-react';
+import { 
+    User as UserIcon, 
+    Lock, 
+    ChevronDown, 
+    QrCode, 
+    Flame, 
+    HelpCircle 
+  } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
@@ -325,13 +327,12 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
     );
 };
 
-const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCodeObtained: (code: string) => void, value: string }) => {
-    // Lógica automática: Si es Mujer -> Host (QR), Si es Hombre -> Scan
+const CouplePairing = ({ gender, onCodeObtained, value, onBack }: { gender: string, onCodeObtained: (code: string) => void, value: string, onBack: () => void }) => {
+    // Lógica automática: Mujer -> QR, Hombre -> Cámara
     const [mode, setMode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [generatedCode, setGeneratedCode] = useState(value);
-    const [cameraError, setCameraError] = useState<string | null>(null);
-
-    // Generar código único si soy Host y no tengo uno aún
+    
+    // Generar código único para la mujer
     useEffect(() => {
         if (mode === 'host' && !generatedCode) {
             const newCode = 'CPL-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.random().toString(36).substr(2, 3).toUpperCase();
@@ -347,82 +348,95 @@ const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCo
                 onCodeObtained(text);
             }
         }
-        if (error) {
-            // Ignoramos errores de "no qr found" que la librería lanza constantemente
-            if (error?.message?.includes("No QR code found")) return;
-            // Solo mostramos errores reales de hardware/permisos
-            console.warn(error);
-        }
-    };
-
-    const toggleMode = () => {
-        setMode(prev => prev === 'host' ? 'scan' : 'host');
-        setCameraError(null);
+        // Ignoramos errores de consola de la librería para mantener limpia la UI
     };
 
     return (
-        <div className="w-full mb-4 flex flex-col items-center animate-in fade-in zoom-in duration-300">
-            <div className={`p-4 rounded-xl border border-white/20 bg-black/40 w-full max-w-[300px] flex flex-col items-center gap-3 shadow-lg ${mode === 'scan' ? 'aspect-square' : ''}`}>
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 animate-in fade-in slide-in-from-bottom-10">
+            
+            {/* Título */}
+            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mb-6 uppercase tracking-widest">
+                {mode === 'host' ? 'Show this QR' : 'Scan Partner'}
+            </h3>
+
+            {/* CONTENEDOR PRINCIPAL */}
+            <div className="relative w-full max-w-sm aspect-square bg-slate-900 rounded-2xl border-2 border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
                 
-                {/* MODO ANFITRION (Mostrar QR) */}
+                {/* MODO ANFITRION (Mujer - QR) */}
                 {mode === 'host' && (
-                    <>
-                        <div className="text-xs text-pink-400 font-bold uppercase tracking-widest mb-1">Your Partner Code</div>
-                        <div className="bg-white p-2 rounded-lg">
-                            <QRCode value={generatedCode || 'LOADING'} size={140} />
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[10px] text-white/50">If scan fails, type this code:</p>
-                            <p className="font-mono text-xl font-black text-yellow-400 tracking-wider select-all">{generatedCode}</p>
-                        </div>
-                    </>
+                    <div className="flex flex-col items-center gap-4 p-6 bg-white w-full h-full justify-center">
+                        <QRCode value={generatedCode || 'LOADING'} size={200} />
+                        <p className="text-black font-mono font-bold text-lg tracking-widest">{generatedCode}</p>
+                    </div>
                 )}
 
-                {/* MODO ESCANER (Camara) */}
+                {/* MODO ESCANER (Hombre - Cámara) */}
                 {mode === 'scan' && (
-                    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden rounded-lg bg-black">
+                    <>
                         {!value ? (
-                            <>
-                                {cameraError ? (
-                                    <div className="text-red-400 text-center p-2 text-xs">
-                                        <p className="font-bold mb-1">Camera Error</p>
-                                        {cameraError}
+                            <div className="w-full h-full relative">
+                                {/* EL FIX DE LA PANTALLA NEGRA ESTÁ AQUÍ EN LOS ESTILOS */}
+                                <QrReader
+                                    onResult={handleScan}
+                                    constraints={{ facingMode: 'environment' }}
+                                    className="w-full h-full"
+                                    videoContainerStyle={{ paddingTop: 0, height: '100%' }}
+                                    videoStyle={{ objectFit: 'cover', width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+                                />
+                                {/* Marco visual de enfoque */}
+                                <div className="absolute inset-0 border-[30px] border-black/50 z-10 pointer-events-none">
+                                    <div className="w-full h-full border-2 border-cyan-400 opacity-50 relative">
+                                        <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-cyan-400"></div>
+                                        <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-cyan-400"></div>
+                                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-cyan-400"></div>
+                                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-cyan-400"></div>
                                     </div>
-                                ) : (
-                                    <>
-                                        <div className="absolute z-10 border-2 border-cyan-400 w-32 h-32 rounded-lg opacity-50 animate-pulse pointer-events-none"></div>
-                                        <QrReader
-                                            onResult={handleScan}
-                                            constraints={{ facingMode: 'environment' }} // Intenta trasera
-                                            className="w-full h-full object-cover"
-                                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                                            containerStyle={{ width: '100%', height: '100%' }}
-                                        />
-                                        <div className="absolute bottom-2 bg-black/60 px-3 py-1 rounded text-xs text-cyan-400 font-bold backdrop-blur-sm pointer-events-none">
-                                            Scan Partner's QR
-                                        </div>
-                                    </>
-                                )}
-                            </>
+                                </div>
+                                <div className="absolute bottom-4 w-full text-center z-20">
+                                    <span className="bg-black/60 text-cyan-400 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md">
+                                        Point camera at her QR
+                                    </span>
+                                </div>
+                            </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-emerald-400">
-                                <CheckCircle size={48} className="mb-2" />
-                                <span className="font-bold">PAIRED!</span>
-                                <span className="text-xs font-mono text-white/70">{value}</span>
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-900/20 animate-in zoom-in">
+                                <CheckCircle size={64} className="text-emerald-400 mb-4 animate-bounce" />
+                                <span className="text-emerald-400 font-black text-2xl tracking-widest">LINKED!</span>
+                                <span className="text-white/50 font-mono text-sm mt-2">ID: {value}</span>
                             </div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
 
-            {/* BOTÓN PARA INVERTIR ROLES (Edge Cases) */}
-            <button 
-                onClick={toggleMode} 
-                className="mt-3 text-xs text-white/30 hover:text-white underline decoration-white/30 underline-offset-4 transition-colors flex items-center gap-1"
-            >
-                <RefreshCw size={10} />
-                {mode === 'host' ? "I need to scan instead" : "I need to show QR instead"}
-            </button>
+            {/* Instrucción inferior */}
+            <p className="mt-6 text-sm text-slate-400 text-center px-8">
+                {mode === 'host' 
+                    ? "Ask your partner to scan this code with their phone." 
+                    : value 
+                        ? "Success! You can now close this and join the game."
+                        : "Align the QR code within the frame."}
+            </p>
+
+            {/* BOTONES DE ACCIÓN */}
+            <div className="flex gap-4 mt-8 w-full max-w-xs">
+                <button 
+                    onClick={onBack}
+                    className="flex-1 py-3 rounded-xl border border-white/20 text-white/70 hover:bg-white/10 font-bold transition-all"
+                >
+                    Cancel
+                </button>
+                
+                {/* Si ya está escaneado, mostramos botón de Confirmar */}
+                {value && (
+                    <button 
+                        onClick={onBack} // Usamos onBack para cerrar el modal, el valor ya está guardado en el padre
+                        className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-bold hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all animate-pulse"
+                    >
+                        Confirm
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
@@ -431,6 +445,8 @@ export default function TruthAndDareApp() {
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('');
   const [gender, setGender] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const gradientBtn = "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-900/30 active:scale-95 transition-all hover:brightness-110";
   const [coupleNumber, setCoupleNumber] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState<'single'|'couple'|''>('');
   const [code, setCode] = useState('');
@@ -470,7 +486,7 @@ export default function TruthAndDareApp() {
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
   const isJoined = players.some(p => p.uid === user?.uid);
-  
+
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
 useEffect(() => {
     // Si cambio de Pareja a Soltero, borro el código QR guardado
@@ -709,6 +725,49 @@ useEffect(() => {
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
+  const createGame = async () => {
+    // 1. Validaciones básicas
+    if (!userName.trim() || !user) return;
+    
+    // 2. Configuración local
+    setIsAdmin(true);
+    localStorage.setItem('td_username', userName);
+
+    // 3. GENERACIÓN AUTOMÁTICA DEL CÓDIGO 
+    // Usamos los últimos 5 dígitos del tiempo actual.
+    // Ej: Si son las 10:00:00 -> genera "48291" (cambia cada milisegundo)
+    const autoCode = Date.now().toString().slice(-5);
+    setCode(autoCode); // Lo guardamos en el estado para mostrarlo en pantalla
+
+    // 4. Crear el estado inicial del juego en la Base de Datos
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
+      code: autoCode, // Aquí se guarda el código oficial
+      mode: 'lobby',
+      currentTurn: null,
+      adminUid: user.uid,
+      createdAt: serverTimestamp(),
+      riskLevel: 1,
+      autoLoop: false,
+      loopConfig: { truth: 1, dare: 1, match: 1 },
+      loopIndex: 0,
+      loopSequence: []
+    });
+    
+    // 5. Agregar al Admin como el primer jugador (automáticamente)
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
+      uid: user.uid, 
+      name: userName, 
+      gender: gender || 'male', // Usa el género seleccionado o male por defecto
+      coupleNumber: 'ADMIN', // El admin tiene un ID especial
+      relationshipStatus: 'single', // Inicialmente soltero (luego puede vincularse)
+      joinedAt: serverTimestamp(), 
+      isActive: true, 
+      isBot: false,
+      matches: 0, 
+      mismatches: 0
+    });
+  };
+
   const joinGame = async () => {
     if (!userName.trim() || !user) return;
     if (!gender) { showError("Please select a gender."); return; }
@@ -914,10 +973,12 @@ useEffect(() => {
   // --- RENDER ---
   if (loading) return <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mb-4"></div><span className="animate-pulse">Loading System...</span></div>;
 
+  // --- PANTALLA DE INGRESO (LOBBY) ---
   if (!isJoined) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-2 relative overflow-hidden">
-        {/* Background blobs */}
+      <div className="min-h-screen flex flex-col items-center justify-center p-2 relative overflow-hidden bg-black text-white">
+        
+        {/* Background blobs (Mantenemos tu estilo original) */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-900/30 blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-900/30 blur-[100px] pointer-events-none"></div>
         
@@ -925,43 +986,95 @@ useEffect(() => {
         {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
         <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
         
-        <div className={`w-full max-w-md p-6 text-center relative z-10 ${glassPanel}`}>
-          <div className="mb-4 relative inline-block">
-             <div className="absolute inset-0 bg-pink-500 blur-xl opacity-20 rounded-full"></div>
-             <Flame className="w-12 h-12 text-pink-500 relative z-10 mx-auto" />
-          </div>
-          <h1 className="text-3xl font-black mb-6 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">SEXY GAME</h1>
+        <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel} animate-in fade-in zoom-in duration-500`}>
           
-          <input type="text" placeholder="YOUR NAME" className={`w-full mb-4 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} value={userName} onChange={e=>setUserName(e.target.value)} />
-          
-          <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="relative">
-                  <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
-                      <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
-              </div>
-              <div className="relative">
-                  <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
-                      <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
-              </div>
-          </div>
-          
-          {relationshipStatus === 'couple' && (
-              <CouplePairing 
-                  gender={gender} 
-                  onCodeObtained={(c) => setCoupleNumber(c)} 
-                  value={coupleNumber} 
-              />
+          {/* LÓGICA DEL ESCÁNER VS FORMULARIO */}
+          {showScanner && relationshipStatus === 'couple' ? (
+             <CouplePairing 
+                gender={gender} 
+                onCodeObtained={(c) => setCoupleNumber(c)} 
+                value={coupleNumber} 
+                onBack={() => setShowScanner(false)}
+             />
+          ) : (
+             <>
+                {/* CABECERA */}
+                <div className="mb-4 relative inline-block">
+                   <div className="absolute inset-0 bg-pink-500 blur-xl opacity-20 rounded-full"></div>
+                   <Flame className="w-12 h-12 text-pink-500 relative z-10 mx-auto" />
+                </div>
+                <h1 className="text-3xl font-black mb-6 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">SEXY GAME</h1>
+                
+                {/* INPUT NOMBRE */}
+                <div className="relative mb-4">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18}/>
+                    <input 
+                        type="text" 
+                        placeholder="YOUR NAME" 
+                        className={`w-full pl-10 font-black tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 ${glassInput}`} 
+                        value={userName} 
+                        onChange={e=>setUserName(e.target.value)} 
+                        maxLength={12}
+                    />
+                </div>
+                
+                {/* SELECTORES */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="relative">
+                        <select value={gender} onChange={e=>setGender(e.target.value)} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
+                            <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
+                    </div>
+                    <div className="relative">
+                        <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className={`w-full appearance-none bg-slate-900 pr-8 ${glassInput}`}>
+                            <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
+                    </div>
+                </div>
+                
+                {/* INPUT CÓDIGO (Solo si NO es Admin) */}
+                {userName.toLowerCase() !== 'admin' && (
+                   <div className="relative mb-6">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18}/>
+                      <input 
+                          type="number" inputMode="numeric" pattern="[0-9]*"
+                          placeholder="GAME CODE" 
+                          className={`w-full pl-10 text-center tracking-widest font-mono uppercase font-bold text-lg ${glassInput}`} 
+                          value={code} 
+                          onChange={e=>setCode(e.target.value)} 
+                      />
+                   </div>
+                )}
+                
+                {/* BOTONES DE ACCIÓN */}
+                {userName.toLowerCase() === 'admin' ? (
+                    <button onClick={createGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
+                        Create Party
+                    </button>
+                ) : (
+                    relationshipStatus === 'couple' && !coupleNumber ? (
+                        <button 
+                            onClick={() => setShowScanner(true)}
+                            disabled={!gender || !userName || !code}
+                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${!gender || !userName || !code ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
+                        >
+                            <QrCode size={20} />
+                            {gender === 'female' ? 'Show QR' : 'Scan Partner'}
+                        </button>
+                    ) : (
+                        <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>
+                            {coupleNumber ? 'Enter Party (Linked)' : 'Join Party'}
+                        </button>
+                    )
+                )}
+
+                <div className="mt-6 flex justify-center gap-4 text-xs text-white/30">
+                    <span>v2.1 Beta</span>
+                </div>
+             </>
           )}
-          
-          {userName.toLowerCase() !== 'admin' && (
-             <input type="text" placeholder="GAME CODE" className={`w-full mb-6 text-center tracking-widest uppercase font-bold ${glassInput}`} value={code} onChange={e=>setCode(e.target.value)} />
-          )}
-          
-          <button onClick={joinGame} disabled={!userName.trim()} className="w-full bg-gradient-to-r from-pink-600 to-purple-600 p-4 rounded-xl font-bold shadow-lg shadow-purple-900/30 active:scale-95 transition-all hover:brightness-110 uppercase tracking-wider text-sm">Enter The Party</button>
         </div>
       </div>
     );
