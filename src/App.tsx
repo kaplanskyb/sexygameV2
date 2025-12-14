@@ -8,14 +8,13 @@ import {
     setDoc, 
     getDoc, 
     updateDoc, 
-    onSnapshot, // <--- Importante
-    collection, // <--- Importante
-    query,      // <--- Importante
-    where,      // <--- Importante
-    serverTimestamp 
-    deleteDoc,
-    getDocs,
-    collection
+    onSnapshot, 
+    collection, 
+    query,      
+    where,      
+    serverTimestamp, // <--- AQUÍ FALTABA LA COMA
+    deleteDoc,       // <--- Ahora sí funcionará
+    getDocs
   } from 'firebase/firestore';
 import {
   getAuth, signInAnonymously, onAuthStateChanged
