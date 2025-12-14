@@ -469,6 +469,20 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
+  const isJoined = players.some(p => p.uid === user?.uid);
+  
+  // --- PEGAR AQUÍ EL NUEVO EFECTO ---
+useEffect(() => {
+    // Si cambio de Pareja a Soltero, borro el código QR guardado
+    if (relationshipStatus === 'single') {
+        setCoupleNumber('');
+    }
+    // Si el juego se resetea a Lobby (Admin dio Reset All), limpiamos datos locales
+    if (gameState?.mode === 'lobby' && !isJoined) {
+        setCoupleNumber('');
+    }
+}, [relationshipStatus, gameState?.mode, isJoined]);
+
   // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [codeTipShown, setCodeTipShown] = useState(false);
@@ -699,16 +713,33 @@ export default function TruthAndDareApp() {
     if (!userName.trim() || !user) return;
     if (!gender) { showError("Please select a gender."); return; }
     if (!relationshipStatus) { showError("Please select a status (Single or Couple)."); return; }
+    
     localStorage.setItem('td_username', userName);
     const isUserAdmin = userName.toLowerCase() === 'admin';
     if (isUserAdmin) { setIsAdmin(true); }
     if (!isUserAdmin && !code) { return; } 
-    if (!coupleNumber) return;
+
+    // LOGICA NUEVA: Solteros no necesitan código manual
+    let finalCoupleNumber = coupleNumber;
+    if (relationshipStatus === 'single') {
+        // Generamos un ID único interno para el soltero
+        finalCoupleNumber = 'SGL_' + user.uid.slice(-6); 
+    } else {
+        // Si es pareja, SÍ validamos que tenga el código del QR
+        if (!finalCoupleNumber) return;
+    }
+
     if (!isUserAdmin) { if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { showError('Invalid code'); return; } }
-    const existingPartner = players.find(p => p.coupleNumber === coupleNumber && p.gender === gender && p.uid !== user.uid);
-    if (existingPartner) { if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${coupleNumber} (${gender}). Do you want to RESET this slot and join?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', existingPartner.uid)); } else { return; } }
+    
+    // Usamos finalCoupleNumber en lugar de coupleNumber para la validación de duplicados
+    const existingPartner = players.find(p => p.coupleNumber === finalCoupleNumber && p.gender === gender && p.uid !== user.uid);
+    if (existingPartner) { if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${finalCoupleNumber} (${gender}). Do you want to RESET this slot and join?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', existingPartner.uid)); } else { return; } }
+    
     const status = relationshipStatus as 'single' | 'couple';
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { uid: user.uid, name: userName, gender, coupleNumber, relationshipStatus: status, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0 });
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { uid: user.uid, name: userName, gender, coupleNumber: finalCoupleNumber, relationshipStatus: status, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0 });
+    
+    // Limpiamos el código local al entrar para que si sale no quede "pegado"
+    setCoupleNumber('');
   };
   
   const setGameCode = async () => { 
@@ -834,7 +865,7 @@ export default function TruthAndDareApp() {
   const currentPlayer = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex] : null;
   const currentCard = () => { if (!gameState || !gameState?.currentChallengeId) return undefined; if (gameState.mode === 'yn') return pairChallenges.find(c => c.id === gameState?.currentChallengeId); return challenges.find(c => c.id === gameState?.currentChallengeId); };
   const getCardText = (c: Challenge | undefined) => { if (!c) return 'Loading...'; if (gameState?.mode === 'yn') { if (isAdmin) return `M: ${c.male} / F: ${c.female}`; const myPlayer = players.find(p => p.uid === user?.uid); if (!myPlayer) return 'Waiting...'; return myPlayer.gender === 'female' ? c.female : c.male; } return c.text || 'No text found'; };
-  const isJoined = players.some(p => p.uid === user?.uid);
+  
   const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
 
   // --- COMPONENTS ---
@@ -918,19 +949,11 @@ export default function TruthAndDareApp() {
               </div>
           </div>
           
-          {relationshipStatus === 'couple' ? (
+          {relationshipStatus === 'couple' && (
               <CouplePairing 
                   gender={gender} 
                   onCodeObtained={(c) => setCoupleNumber(c)} 
                   value={coupleNumber} 
-              />
-          ) : (
-              <input 
-                  type="number" 
-                  placeholder="Your Phone (Last 4 digits)" 
-                  className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} 
-                  value={coupleNumber} 
-                  onChange={e=>setCoupleNumber(e.target.value)} 
               />
           )}
           
