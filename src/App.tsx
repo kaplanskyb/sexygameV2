@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import QRCode from "react-qr-code";
+import { QrReader } from "react-qr-reader";
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore, collection, doc, setDoc, onSnapshot,
@@ -246,6 +248,9 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                                     <ul className="list-disc pl-5 space-y-4 text-sm text-slate-300">
                                         <li>
                                             <strong>1. Uploading Questions:</strong>
+                                            {/* Nueva linea agregada */}
+                                            <p className="text-xs text-cyan-400 mb-2 mt-1 font-bold">💡 Tip: Use the "Download Template" button in the manager to get an empty file with correct headers.</p>
+                                            
                                             <div className="mt-2 space-y-3">
                                                 <div className="bg-black/40 p-3 rounded border border-blue-500/30">
                                                     <span className="text-blue-300 font-bold block mb-1">Truth & Dare Files (Use separate buttons):</span>
@@ -316,6 +321,91 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+const CouplePairing = ({ gender, onCodeObtained, value }: { gender: string, onCodeObtained: (code: string) => void, value: string }) => {
+    // Lógica automática: Si es Mujer -> Host (QR), Si es Hombre -> Scan
+    const [mode, setMode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
+    const [generatedCode, setGeneratedCode] = useState(value);
+
+    // Generar código único si soy Host y no tengo uno aún
+    useEffect(() => {
+        if (mode === 'host' && !generatedCode) {
+            const newCode = 'CPL-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.random().toString(36).substr(2, 3).toUpperCase();
+            setGeneratedCode(newCode);
+            onCodeObtained(newCode);
+        }
+    }, [mode, generatedCode]);
+
+    const handleScan = (result: any) => {
+        if (result) {
+            // Compatibilidad con distintas versiones de la librería
+            const text = result?.text || result; 
+            if (typeof text === 'string' && text.startsWith('CPL-')) {
+                onCodeObtained(text);
+            }
+        }
+    };
+
+    const toggleMode = () => {
+        setMode(prev => prev === 'host' ? 'scan' : 'host');
+    };
+
+    return (
+        <div className="w-full mb-4 flex flex-col items-center animate-in fade-in zoom-in duration-300">
+            <div className={`p-4 rounded-xl border border-white/20 bg-black/40 w-full max-w-[300px] flex flex-col items-center gap-3 shadow-lg ${mode === 'scan' ? 'aspect-square' : ''}`}>
+                
+                {/* MODO ANFITRION (Mostrar QR) */}
+                {mode === 'host' && (
+                    <>
+                        <div className="text-xs text-pink-400 font-bold uppercase tracking-widest mb-1">Your Partner Code</div>
+                        <div className="bg-white p-2 rounded-lg">
+                            <QRCode value={generatedCode || 'LOADING'} size={140} />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[10px] text-white/50">If scan fails, type this code:</p>
+                            <p className="font-mono text-xl font-black text-yellow-400 tracking-wider select-all">{generatedCode}</p>
+                        </div>
+                    </>
+                )}
+
+                {/* MODO ESCANER (Camara) */}
+                {mode === 'scan' && (
+                    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden rounded-lg bg-black">
+                        {!value ? (
+                            <>
+                                <div className="absolute z-10 border-2 border-cyan-400 w-32 h-32 rounded-lg opacity-50 animate-pulse"></div>
+                                <QrReader
+                                    onResult={handleScan}
+                                    constraints={{ facingMode: 'environment' }}
+                                    containerStyle={{ width: '150%', height: '150%', margin: '-25%' }} // Zoom fix visual
+                                    videoStyle={{ objectFit: 'cover' }}
+                                />
+                                <div className="absolute bottom-2 bg-black/60 px-3 py-1 rounded text-xs text-cyan-400 font-bold backdrop-blur-sm">
+                                    Scan Partner's QR
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-emerald-400">
+                                <CheckCircle size={48} className="mb-2" />
+                                <span className="font-bold">PAIRED!</span>
+                                <span className="text-xs font-mono text-white/70">{value}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* BOTÓN PARA INVERTIR ROLES (Edge Cases) */}
+            <button 
+                onClick={toggleMode} 
+                className="mt-3 text-xs text-white/30 hover:text-white underline decoration-white/30 underline-offset-4 transition-colors flex items-center gap-1"
+            >
+                <RefreshCw size={10} />
+                {mode === 'host' ? "I need to scan instead" : "I need to show QR instead"}
+            </button>
         </div>
     );
 };
@@ -811,7 +901,21 @@ export default function TruthAndDareApp() {
               </div>
           </div>
           
-          <input type="number" placeholder="Male's Phone (Last 4 digits)" className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} value={coupleNumber} onChange={e=>setCoupleNumber(e.target.value)}/>
+          {relationshipStatus === 'couple' ? (
+              <CouplePairing 
+                  gender={gender} 
+                  onCodeObtained={(c) => setCoupleNumber(c)} 
+                  value={coupleNumber} 
+              />
+          ) : (
+              <input 
+                  type="number" 
+                  placeholder="Your Phone (Last 4 digits)" 
+                  className={`w-full mb-4 text-center tracking-widest font-mono placeholder:text-xs ${glassInput}`} 
+                  value={coupleNumber} 
+                  onChange={e=>setCoupleNumber(e.target.value)} 
+              />
+          )}
           
           {userName.toLowerCase() !== 'admin' && (
              <input type="text" placeholder="GAME CODE" className={`w-full mb-6 text-center tracking-widest uppercase font-bold ${glassInput}`} value={code} onChange={e=>setCode(e.target.value)} />
