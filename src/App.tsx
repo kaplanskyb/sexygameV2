@@ -62,6 +62,46 @@ import {
     LogOut,          // <--- Faltaba (Player Leave)
     MessageCircle    // <--- Faltaba (Cards)
   } from 'lucide-react';
+// --- CORRECCIÓN DE IMPORTS DE FIREBASE (AGREGA ESTO A TU LISTA DE IMPORTS) ---
+import { 
+    writeBatch, 
+    increment,
+    // ... mantén los que ya tenías (getFirestore, doc, etc.)
+} from 'firebase/firestore';
+
+// --- COMPONENTE ADMIN PANEL (TE FALTABA ESTO) ---
+const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKick }: any) => {
+    return (
+        <div className="bg-slate-800 p-4 rounded-xl border border-white/10 animate-in slide-in-from-right">
+            <h3 className="text-xl font-bold text-pink-500 mb-4 border-b border-white/10 pb-2">Admin Control Panel</h3>
+            
+            <div className="space-y-4">
+                <div className="bg-black/40 p-3 rounded-lg">
+                    <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Game Actions</p>
+                    <div className="grid grid-cols-2 gap-2">
+                         <button onClick={onStartGame} className="bg-emerald-600 hover:bg-emerald-500 p-2 rounded text-xs font-bold">Start Game</button>
+                         <button onClick={onNextTurn} className="bg-blue-600 hover:bg-blue-500 p-2 rounded text-xs font-bold">Force Next</button>
+                    </div>
+                </div>
+
+                <div className="bg-black/40 p-3 rounded-lg">
+                    <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Danger Zone</p>
+                    <button onClick={onReset} className="w-full bg-red-900/50 hover:bg-red-800 border border-red-500/50 p-2 rounded text-xs font-bold text-red-200">Reset Entire Game</button>
+                </div>
+
+                <div className="bg-black/40 p-3 rounded-lg">
+                     <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Manage Players</p>
+                     {players.map((p: any) => (
+                         <div key={p.uid} className="flex justify-between items-center text-xs py-1 border-b border-white/5 last:border-0">
+                             <span>{p.name}</span>
+                             <button onClick={() => onKick(p.uid, p.name)} className="text-red-400 hover:text-red-200">Kick</button>
+                         </div>
+                     ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
