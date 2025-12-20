@@ -450,6 +450,7 @@ const CouplePairing = ({
 };
 
 export default function TruthAndDareApp() {
+    const [isJoined, setIsJoined] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('');
   const [gender, setGender] = useState('');
@@ -493,7 +494,13 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
-  const isJoined = players.some(p => p.uid === user?.uid);
+  // Sincronizar el estado isJoined con la lista de jugadores
+  useEffect(() => {
+    if (user && players) {
+      const isPlayerInGame = players.some(p => p.uid === user.uid);
+      setIsJoined(isPlayerInGame);
+    }
+  }, [players, user]);
   useEffect(() => {
     if (userName.toLowerCase().trim() === 'admin') {
       const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
