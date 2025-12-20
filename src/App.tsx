@@ -790,64 +790,41 @@ useEffect(() => {
 
   // CAMBIO 1: Aceptamos un argumento opcional (codeOverride)
   const joinGame = async (codeOverride?: any) => {
+    // 1. CERRAR MODAL INMEDIATAMENTE (Esto arregla que se quede colgada)
+    setShowScanner(false);
+
     if (!userName.trim() || !user) return;
-    if (!gender) { showError("Please select a gender."); return; }
-    if (!relationshipStatus) { showError("Please select a status (Single or Couple)."); return; }
     
-    localStorage.setItem('td_username', userName);
+    // Si no es admin y no hay código de sala, error
     const isUserAdmin = userName.toLowerCase() === 'admin';
-    if (isUserAdmin) { setIsAdmin(true); }
-    
-    // Validación del Código de Sala (Game Code)
-    if (!isUserAdmin && !code) { return; } 
+    if (!isUserAdmin && !code) { 
+        alert("Please enter the Game Code first."); 
+        return; 
+    }
 
-    // --- LOGICA CORREGIDA ---
-    
-    // CAMBIO 2: Decidimos qué numero de pareja usar. 
-    // Si viene del modal (codeOverride) usamos ese. Si no, usamos el estado (coupleNumber).
+    // 2. DETERMINAR CÓDIGO DE PAREJA
+    // Usamos el que viene del modal (codeOverride) o el del estado
     const actualCoupleInput = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : coupleNumber;
-
     let finalCoupleNumber = actualCoupleInput;
 
     if (relationshipStatus === 'single') {
-        // Generamos un ID único interno para el soltero
         finalCoupleNumber = 'SGL_' + user.uid.slice(-6); 
     } else {
-        // Si es pareja, validamos que FINALMENTE tengamos un número
+        // Si es pareja, DEBE tener número
         if (!finalCoupleNumber) {
-            showError("Please link with your partner first!"); 
+            alert("Please link with your partner first!"); 
             return;
         }
     }
 
-    // Validar código de sala (Game Code) contra el gameState
-    if (!isUserAdmin) { 
-        if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { 
-            showError('Invalid Game Code'); 
-            return; 
-        } 
-    }
-    
-    // Validación de duplicados (Usando finalCoupleNumber)
-    const existingPartner = players.find(p => p.coupleNumber === finalCoupleNumber && p.gender === gender && p.uid !== user.uid);
-    if (existingPartner) { 
-        if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${finalCoupleNumber} (${gender}). Do you want to RESET this slot and join?`)) { 
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', existingPartner.uid)); 
-        } else { 
-            return; 
-        } 
-    }
-    
-    const status = relationshipStatus as 'single' | 'couple';
-    
-    // CAMBIO 3: Guardamos en la BD y forzamos la entrada visual
     try {
+        // 3. GUARDAR EN FIREBASE
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { 
             uid: user.uid, 
             name: userName, 
-            gender, 
+            gender: gender || 'unknown', 
             coupleNumber: finalCoupleNumber, 
-            relationshipStatus: status, 
+            relationshipStatus: relationshipStatus, 
             joinedAt: serverTimestamp(), 
             isActive: true, 
             isBot: false, 
@@ -855,16 +832,15 @@ useEffect(() => {
             mismatches: 0 
         });
         
-        // ¡IMPORTANTE! Esto faltaba para quitar la pantalla de login
+        // 4. FORZAR CAMBIO DE PANTALLA
         setIsJoined(true); 
+        localStorage.setItem('td_username', userName);
 
     } catch (error) {
         console.error("Error al unirse:", error);
+        alert("Error joining. See console.");
     }
-    
-    // Limpieza final
-    setCoupleNumber('');
-  };
+  };    
   
   const setGameCode = async () => { 
       if (!code.trim()) return; 
@@ -1073,45 +1049,31 @@ const resetGame = async () => {
   // --- PANTALLA DE INGRESO (LOBBY) ---
   // --- PANTALLA DE INGRESO (LOBBY) ---
 // --- PANTALLA DE INGRESO (LOBBY) ---
-if (!isJoined) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white overflow-hidden">
-        
-        {/* Fondos decorativos */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-900/30 blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-900/30 blur-[100px] pointer-events-none"></div>
-        
-        <CustomAlert/>
-        
-        {/* CONTENEDOR PRINCIPAL */}
-        <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel} animate-in fade-in zoom-in duration-500`}>
-          
-         {/* A) PANTALLA DE EMPAREJAMIENTO (MODAL) */}
-         {showScanner && relationshipStatus === 'couple' ? (
-             <CouplePairing 
-                gender={gender} 
-                onCodeObtained={(c: string) => setCoupleNumber(c)} 
-                value={coupleNumber} 
-                onBack={() => setShowScanner(false)}
-                // CORRECCIÓN 1: Si soy admin uso createGame, si no joinGame
-                onAutoJoin={userName.toLowerCase().trim() === 'admin' ? createGame : joinGame}
-                db={db}
-                currentUserUid={user?.uid}
-                // CORRECCIÓN 2: Pasamos el ID de la app para sincronizar la escucha
-                appId={appId}
-             />
-          ) : (
-             /* B) FORMULARIO DE INGRESO (SOLUCIÓN FINAL) */
-             <>
+// =================================================================
+    // BLOQUE DE LOGIN (SI VES "SET GAME CODE" ES QUE NO PEGÁSTE ESTO)
+    // =================================================================
+    if (!isJoined) return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            
+            {/* FONDO ANIMADO */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
+            </div>
+
+            <div className="w-full max-w-md relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-500">
+                
+                {/* CABECERA */}
                 <div className="mb-6 relative inline-block"><Flame className="w-16 h-16 text-pink-500 relative z-10 mx-auto drop-shadow-lg" /></div>
                 <h1 className="text-4xl font-black mb-8 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500">SEXY GAME</h1>
                 
-                {/* 1. INPUTS */}
-                <div className="relative mb-4">
+                {/* 1. INPUT NOMBRE */}
+                <div className="relative mb-4 w-full">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
                     <input type="text" placeholder="YOUR NICKNAME" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} maxLength={12}/>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                
+                {/* 2. SELECTORES */}
+                <div className="grid grid-cols-2 gap-4 mb-6 w-full">
                     <div className="relative">
                         <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl text-white p-4 focus:outline-none text-center"><option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option></select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
@@ -1122,62 +1084,71 @@ if (!isJoined) {
                     </div>
                 </div>
                 
-                {/* 2. ZONA DE CÓDIGO (SIN BOTONES PARA ADMIN) */}
+                {/* 3. CÓDIGO (AQUÍ ESTÁ EL ARREGLO VISUAL) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   <div className="mb-8 relative group animate-in zoom-in">
+                   /* ---> SI SOY ADMIN: VEO MI CÓDIGO GIGANTE (NO INPUT) <--- */
+                   <div className="mb-8 w-full relative group animate-in zoom-in">
                       <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                       <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
                           <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
-                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{code || '...'}</span>
+                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                            {code || '...'}
+                          </span>
                       </div>
                    </div>
                 ) : (
-                   <div className="relative mb-8">
+                   /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
+                   <div className="relative mb-8 w-full">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                      <input type="number" inputMode="numeric" pattern="[0-9]*" placeholder="GAME CODE" className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold" value={code} onChange={e=>setCode(e.target.value)} />
+                      <input 
+                          type="number" inputMode="numeric" pattern="[0-9]*" placeholder="GAME CODE" 
+                          className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold"
+                          value={code} 
+                          onChange={e=>setCode(e.target.value)} 
+                      />
                    </div>
                 )}
                 
-                {/* 3. BOTONES DE ACCIÓN */}
-                {relationshipStatus === 'couple' && !coupleNumber ? (
-                    <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                        <HeartHandshake size={24} /> {gender === 'female' ? 'Get Couple Code' : 'Enter Couple Code'}
-                    </button>
-                ) : (
-                    userName.toLowerCase().trim() === 'admin' ? (
-                        <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>START PARTY NOW</button>
+                {/* 4. BOTONES */}
+                <div className="w-full">
+                    {relationshipStatus === 'couple' && !coupleNumber ? (
+                        <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
+                            <HeartHandshake size={24} /> {gender === 'female' ? 'Get Couple Code' : 'Enter Couple Code'}
+                        </button>
                     ) : (
-                        <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>{coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}</button>
-                    )
-                )}
+                        userName.toLowerCase().trim() === 'admin' ? (
+                            <button onClick={() => createGame()} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>START PARTY NOW</button>
+                        ) : (
+                            <button onClick={() => joinGame()} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>{coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}</button>
+                        )
+                    )}
+                </div>
 
-                {/* 4. COMPONENTE MODAL (CON LÓGICA CONECTADA) */}
-                {showScanner && (
-                    <CouplePairing 
-                        gender={gender} 
-                        onCodeObtained={(c: string) => setCoupleNumber(c)} 
-                        value={coupleNumber} 
-                        onBack={() => setShowScanner(false)}
-                        // AQUÍ ENVIAMOS EL CÓDIGO MANUALMENTE A LA FUNCIÓN
-                        onAutoJoin={(manualCode: string) => {
-                            setShowScanner(false);
-                            if (userName.toLowerCase().trim() === 'admin') {
-                                createGame(manualCode); // <--- Admin usa el código manual
-                            } else {
-                                joinGame(manualCode);   // <--- Jugador también
-                            }
-                        }}
-                        db={db}
-                        currentUserUid={user?.uid}
-                        appId={appId}
-                    />
-                )}
-                
-                <div className="mt-8 text-xs text-white/20 tracking-widest">SECURE CONNECTION • v3.1</div>
-             </>
-          )}
+                <div className="mt-8 text-xs text-white/20 tracking-widest">SECURE CONNECTION • v5.0 FIXED</div>
+            </div>
+
+            {/* MODAL DE EMPAREJAMIENTO */}
+            {showScanner && (
+                <CouplePairing 
+                    gender={gender} 
+                    onCodeObtained={(c: string) => setCoupleNumber(c)} 
+                    value={coupleNumber} 
+                    onBack={() => setShowScanner(false)}
+                    // ESTO CIERRA EL MODAL Y ENTRA
+                    onAutoJoin={(manualCode: string) => {
+                        setShowScanner(false);
+                        if (userName.toLowerCase().trim() === 'admin') {
+                            createGame(manualCode);
+                        } else {
+                            joinGame(manualCode);
+                        }
+                    }}
+                    db={db}
+                    currentUserUid={user?.uid}
+                    appId={appId}
+                />
+            )}
         </div>
-      </div>
     ); 
   }
 
