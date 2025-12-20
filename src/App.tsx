@@ -366,9 +366,10 @@ const CouplePairing = ({
     onCodeObtained, 
     value, 
     onBack,
-    onAutoJoin, // Esta función es la que hace entrar al juego
+    onAutoJoin,
     db,
-    currentUserUid
+    currentUserUid,
+    appId // <--- NUEVO: Recibimos el ID de la app para no perdernos
 }: any) => {
     
     // Generar código de 4 dígitos (Solo mujer/Host)
@@ -380,53 +381,58 @@ const CouplePairing = ({
     const [inputCode, setInputCode] = useState('');
     const [isLinked, setIsLinked] = useState(false);
     const isFemale = gender === 'female';
+    
+    // Usamos el appId que viene de las props o el default
+    const currentAppId = appId || 'sexy_game_v2';
 
-    // 1. LÓGICA MUJER: Escuchar la BD (Esto está bien, ella espera pasivamente)
+    // 1. LÓGICA MUJER: Escuchar la BD
     useEffect(() => {
         if (isFemale && db && localCode) {
+            // Escuchar cambios en la base de datos
             const q = query(
-                collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
+                collection(db, 'artifacts', currentAppId, 'public', 'data', 'players'),
                 where('coupleNumber', '==', localCode)
             );
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
+                // Verificar si apareció mi pareja (alguien con mi código que NO soy yo)
                 const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
+                
                 if (partner) {
                     setIsLinked(true);
                     onCodeObtained(localCode);
-                    // Esperamos 2 segundos para que ella vea el cartel de éxito
+                    // Esperar 2 segundos y entrar
                     setTimeout(() => { onAutoJoin(); }, 2000); 
                 }
             });
             return () => unsubscribe();
         }
-    }, [isFemale, localCode, db, currentUserUid]);
+    }, [isFemale, localCode, db, currentUserUid, currentAppId]);
 
-    // 2. LÓGICA HOMBRE/ADMIN: Enviar código y ENTRAR
+    // 2. LÓGICA HOMBRE: Enviar código
     const handleManSubmit = () => {
         if (inputCode.length !== 4) return;
         
-        // A) Guardamos el código en el estado del padre
-        onCodeObtained(inputCode);
+        // Guardar estado visualmente
         setIsLinked(true);
+        onCodeObtained(inputCode);
 
-        // B) IMPORTANTE: Ejecutamos la entrada casi de inmediato
-        // Al ejecutar onAutoJoin(), el Admin creará su usuario en la BD.
-        // EN ESE MOMENTO la mujer detectará el cambio y entrará ella también.
+        // Disparar la creación del usuario/juego casi de inmediato
+        // Esto escribirá en la BD y la mujer lo detectará
         setTimeout(() => { 
             onAutoJoin(); 
-        }, 1500);
+        }, 1000);
     };
 
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-            
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
                 {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER HER CODE')}
             </h3>
 
             <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative">
                 
+                {/* Pantalla de Éxito */}
                 {isLinked && (
                     <div className="absolute inset-0 z-20 bg-emerald-500 rounded-3xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
                         <HeartHandshake size={64} className="text-white mb-4 animate-bounce" />
@@ -1066,19 +1072,19 @@ if (!isJoined) {
         {/* CONTENEDOR PRINCIPAL */}
         <div className={`w-full max-w-md p-8 text-center relative z-10 ${glassPanel} animate-in fade-in zoom-in duration-500`}>
           
-          {/* A) PANTALLA DE EMPAREJAMIENTO (QR / CAMARA) */}
-          {showScanner && relationshipStatus === 'couple' ? (
+         {/* A) PANTALLA DE EMPAREJAMIENTO (MODAL) */}
+         {showScanner && relationshipStatus === 'couple' ? (
              <CouplePairing 
                 gender={gender} 
-                onCodeObtained={(c) => setCoupleNumber(c)} 
+                onCodeObtained={(c: string) => setCoupleNumber(c)} 
                 value={coupleNumber} 
                 onBack={() => setShowScanner(false)}
+                // CORRECCIÓN 1: Si soy admin uso createGame, si no joinGame
+                onAutoJoin={userName.toLowerCase().trim() === 'admin' ? createGame : joinGame}
                 db={db}
                 currentUserUid={user?.uid}
-                onAutoJoin={() => {
-                    setShowScanner(false);
-                    joinGame();
-                }}
+                // CORRECCIÓN 2: Pasamos el ID de la app para sincronizar la escucha
+                appId={appId}
              />
           ) : (
              /* B) FORMULARIO DE INGRESO (SOLUCIÓN DEFINITIVA) */
@@ -1119,9 +1125,9 @@ if (!isJoined) {
                     </div>
                 </div>
                 
-                {/* 3. ZONA DE CÓDIGO (AQUÍ ESTÁ EL CAMBIO VISUAL) */}
+                {/* 3. ZONA DE CÓDIGO (VISUALIZACIÓN O INPUT) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   /* CASO ADMIN: SOLO MUESTRA EL NÚMERO, NADA DE BOTONES "SET CODE" */
+                   /* CASO ADMIN: CARTEL INFORMATIVO FIJO (SIN BOTÓN) */
                    <div className="mb-8 relative group animate-in zoom-in">
                       <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                       <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
@@ -1132,7 +1138,7 @@ if (!isJoined) {
                       </div>
                    </div>
                 ) : (
-                   /* CASO JUGADOR: INPUT */
+                   /* CASO JUGADOR: INPUT MANUAL */
                    <div className="relative mb-8">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
                       <input 
