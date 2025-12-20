@@ -365,142 +365,127 @@ const CouplePairing = ({
     onCodeObtained, 
     value, 
     onBack,
-    db,
-    currentUserUid,
-    onAutoJoin 
+    onAutoJoin,
+    db,              // Necesario para escuchar la BD
+    currentUserUid   // Necesario para no confundirse con uno mismo
 }: any) => {
     
-    // Generar código interno
+    // 1. Generar código de 4 dígitos (Solo mujer/Host)
     const [localCode] = useState(() => {
         if (value) return value;
-        return Math.floor(10000 + Math.random() * 90000).toString();
+        return Math.floor(1000 + Math.random() * 9000).toString();
     });
 
-    const [mode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
+    const [inputCode, setInputCode] = useState('');
     const [isLinked, setIsLinked] = useState(false);
-    const [scanError, setScanError] = useState('');
+    const isFemale = gender === 'female';
 
-    // 1. Sincronizar
+    // 2. LÓGICA MUJER: Escuchar la BD esperando al hombre
     useEffect(() => {
-        if (mode === 'host' && !value) onCodeObtained(localCode);
-    }, []);
-
-    // 2. Lógica Mujer: Escuchar BD
-    useEffect(() => {
-        if (mode === 'host' && db && localCode) {
+        if (isFemale && db && localCode) {
+            // Escuchamos la colección de jugadores buscando este código
             const q = query(
                 collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
                 where('coupleNumber', '==', localCode)
             );
+
             const unsubscribe = onSnapshot(q, (snapshot) => {
+                // Buscamos a alguien que tenga este código y NO sea yo
                 const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
+                
                 if (partner) {
+                    // ¡PAREJA ENCONTRADA!
                     setIsLinked(true);
-                    setTimeout(() => onAutoJoin(), 1500); 
+                    onCodeObtained(localCode); // Guardamos el código en el estado
+                    
+                    // Esperamos 1.5s para que vea el éxito y cerramos
+                    setTimeout(() => {
+                        onAutoJoin(); 
+                    }, 1500); 
                 }
             });
+
             return () => unsubscribe();
         }
-    }, [mode, localCode, db, currentUserUid]);
+    }, [isFemale, localCode, db, currentUserUid]);
 
-    // 3. Lógica Hombre: Escáner
-    const handleScan = (result: any, error: any) => {
-        if (result && !isLinked) {
-            const text = result?.text || result;
-            if (text) {
-                onCodeObtained(text);
-                setIsLinked(true);
-                setTimeout(() => onAutoJoin(), 1500);
-            }
-        }
-        if (error) {
-            // Solo logueamos errores críticos, ignoramos los de "no QR found" continuos
-            if (error?.message?.includes('Permission')) {
-                setScanError('Camera permission denied');
-            }
-        }
+    // 3. LÓGICA HOMBRE: Enviar código manualmente
+    const handleManSubmit = () => {
+        if (!inputCode) return;
+        
+        // Al hombre le damos feedback inmediato
+        setIsLinked(true);
+        onCodeObtained(inputCode);
+        
+        // Al ejecutar onAutoJoin, el padre llamará a joinGame(), 
+        // lo que escribirá en la BD y disparará el listener de la mujer.
+        setTimeout(() => {
+            onAutoJoin();
+        }, 1500);
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
             
-            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center animate-pulse">
-                {isLinked ? 'PAIRED SUCCESSFULLY!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
+            {/* Título de estado */}
+            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
+                {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER HER CODE')}
             </h3>
 
-            {/* CAJA PRINCIPAL CON FONDO BLANCO PURO */}
-            <div className="relative bg-white rounded-xl overflow-hidden shadow-2xl border-4 border-white w-[320px] h-[320px] flex items-center justify-center">
+            <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative overflow-hidden">
                 
-                {/* --- A) MODO MUJER: QR --- */}
-                {mode === 'host' && !isLinked && (
-                    <div className="w-full h-full p-2 bg-white flex flex-col items-center justify-center">
-                        {/* IMAGEN FORZADA A TAMAÑO COMPLETO */}
-                        <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff&color=000000&margin=10`} 
-                            alt="QR Code"
-                            style={{ width: '280px', height: '280px', display: 'block' }}
-                        />
-                    </div>
-                )}
-
-                {/* --- B) MODO HOMBRE: CÁMARA --- */}
-                {mode === 'scan' && !isLinked && (
-                    <div className="w-full h-full bg-black relative">
-                        {scanError ? (
-                            <div className="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
-                                <X size={40} className="mb-2"/>
-                                <p className="font-bold">Camera Error</p>
-                                <p className="text-xs">{scanError}</p>
-                                <p className="text-xs mt-2 text-white">Check browser permissions.</p>
-                            </div>
-                        ) : (
-                            <>
-                                <QrReader
-                                    onResult={handleScan}
-                                    constraints={{ facingMode: 'environment' }}
-                                    className="w-full h-full object-cover"
-                                    videoContainerStyle={{ paddingTop: 0, height: '100%', width: '100%' }}
-                                    videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                                />
-                                {/* Marco visual de guía */}
-                                <div className="absolute inset-0 border-[30px] border-black/50 z-10 pointer-events-none">
-                                    <div className="w-full h-full border-2 border-red-500 opacity-60 animate-pulse"></div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* --- C) ÉXITO --- */}
+                {/* Pantalla de Éxito superpuesta */}
                 {isLinked && (
-                    <div className="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center z-50 animate-in zoom-in">
-                        <Check size={80} className="text-white animate-bounce" />
-                        <span className="text-white font-black text-2xl mt-4">LINKED!</span>
+                    <div className="absolute inset-0 z-20 bg-emerald-500 flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                        <HeartHandshake size={64} className="text-white mb-4 animate-bounce" />
+                        <span className="text-white font-black text-3xl tracking-widest">CONNECTED</span>
                     </div>
                 )}
-            </div>
 
-            {/* TEXTO DE AYUDA / CÓDIGO */}
-            <div className="mt-8 text-center">
-                {mode === 'host' && !isLinked && (
+                {isFemale ? (
                     <>
-                        <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Backup Code</p>
-                        <p className="text-white text-5xl font-mono font-black tracking-widest">{localCode}</p>
+                        {/* MODO MUJER: Muestra código y espera */}
+                        <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-6 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                            {localCode}
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-400 text-sm uppercase tracking-wide animate-pulse">
+                            <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                            Waiting for him to enter code...
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* MODO HOMBRE: Ingresa código */}
+                        <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">
+                            Ask her for the 4-digit code
+                        </p>
+                        <input 
+                            type="number" 
+                            inputMode="numeric" 
+                            pattern="[0-9]*"
+                            maxLength={4}
+                            placeholder="0000"
+                            className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700"
+                            value={inputCode}
+                            onChange={(e) => setInputCode(e.target.value.slice(0, 4))}
+                        />
+                        <button 
+                            onClick={handleManSubmit}
+                            disabled={inputCode.length < 4}
+                            className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                        >
+                            LINK NOW
+                        </button>
                     </>
                 )}
-                
-                {mode === 'scan' && !isLinked && !scanError && (
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto">
-                        Point your camera at her screen. Ensure good lighting.
-                    </p>
-                )}
+
             </div>
 
-            {/* BOTÓN CANCELAR */}
+            {/* Botón Cancelar (Solo si no están vinculados aun) */}
             {!isLinked && (
                 <button 
-                    onClick={onBack} 
-                    className="mt-8 px-10 py-3 bg-white/10 text-white rounded-full font-bold uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10"
+                    onClick={onBack}
+                    className="mt-8 text-slate-500 hover:text-white text-sm font-bold uppercase tracking-widest transition-colors"
                 >
                     Cancel
                 </button>
