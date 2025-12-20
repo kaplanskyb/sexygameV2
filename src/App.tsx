@@ -1150,7 +1150,7 @@ const resetGame = async () => {
             )}
         </div>
     ); 
-  }
+  
 
   // --- GAME ENDED SCREEN ---
   if (gameState?.mode === 'ended') {
