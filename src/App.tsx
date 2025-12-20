@@ -352,7 +352,10 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
     );
 };
 
-// Componente de Emparejamiento Inteligente
+// Asegúrate de tener estos imports arriba:
+// import { QrReader } from 'react-qr-reader';
+// import { Check, X } from 'lucide-react';
+
 const CouplePairing = ({ 
     gender, 
     onCodeObtained, 
@@ -363,30 +366,22 @@ const CouplePairing = ({
     onAutoJoin 
 }: any) => {
     
-    // Generar código de pareja instantáneamente
+    // Generar código interno solo si no existe
     const [localCode] = useState(() => {
         if (value) return value;
         return Math.floor(10000 + Math.random() * 90000).toString();
     });
 
+    // Definir modo: Mujer = Muestra QR (host), Hombre = Escanea (scan)
     const [mode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [isLinked, setIsLinked] = useState(false);
 
-    // Sincronizar
+    // 1. Sincronizar código generado con el padre
     useEffect(() => {
         if (mode === 'host' && !value) onCodeObtained(localCode);
     }, []);
-// Auto-generar Game Code si soy Admin
-    useEffect(() => {
-    if (userName.toLowerCase().trim() === 'admin') {
-      // Si ya hay código, no lo sobrescribimos para evitar parpadeos
-      if (!code) {
-         const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
-         setCode(autoCode);
-      }
-    }
-  }, [userName, code]);
-    // Escuchar si entra el hombre (Solo mujer)
+
+    // 2. Lógica Mujer: Escuchar BD
     useEffect(() => {
         if (mode === 'host' && db && localCode) {
             const q = query(
@@ -404,7 +399,7 @@ const CouplePairing = ({
         }
     }, [mode, localCode, db, currentUserUid]);
 
-    // Escáner (Solo hombre)
+    // 3. Lógica Hombre: Escáner
     const handleScan = (result: any) => {
         if (result && !isLinked) {
             const text = result?.text || result;
@@ -417,18 +412,18 @@ const CouplePairing = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
             
-            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center animate-pulse">
-                {isLinked ? 'PAIRED!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
+            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center">
+                {isLinked ? 'PAIRED SUCCESSFULLY!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
             </h3>
 
-            {/* CONTENEDOR DEL QR / CAMARA */}
-            <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl border-4 border-white" style={{ width: '300px', height: '300px' }}>
+            {/* CONTENEDOR VISUAL */}
+            <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl border-4 border-white w-[300px] h-[300px]">
                 
-                {/* MODO MUJER: QR IMPRESO SOBRE FONDO BLANCO */}
+                {/* A) MUJER: QR */}
                 {mode === 'host' && !isLinked && (
-                    <div className="w-full h-full flex items-center justify-center bg-white">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-white">
                         <img 
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff&color=000000&margin=10`} 
                             alt="QR Code"
@@ -437,34 +432,42 @@ const CouplePairing = ({
                     </div>
                 )}
 
-                {/* MODO HOMBRE: CAMARA */}
+                {/* B) HOMBRE: CÁMARA */}
                 {mode === 'scan' && !isLinked && (
-                    <QrReader
-                        onResult={handleScan}
-                        constraints={{ facingMode: 'environment' }}
-                        className="w-full h-full object-cover"
-                        videoContainerStyle={{ paddingTop: 0, height: '100%' }}
-                        videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                    />
+                    <div className="w-full h-full bg-black relative">
+                         <QrReader
+                            onResult={handleScan}
+                            constraints={{ facingMode: 'environment' }}
+                            className="w-full h-full"
+                            videoContainerStyle={{ paddingTop: 0, height: '100%' }}
+                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                        />
+                        {/* Guía visual */}
+                        <div className="absolute inset-0 border-4 border-cyan-400 opacity-50 animate-pulse"></div>
+                    </div>
                 )}
 
-                {/* EXITO */}
+                {/* C) ÉXITO */}
                 {isLinked && (
-                    <div className="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center z-50">
+                    <div className="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center z-50 animate-in zoom-in">
                         <Check size={80} className="text-white animate-bounce" />
-                        <span className="text-white font-black text-2xl mt-4">CONNECTED</span>
+                        <span className="text-white font-black text-2xl mt-4">LINKED!</span>
                     </div>
                 )}
             </div>
 
-            {/* Código en texto por si acaso */}
+            {/* Código en texto (Solo mujer) */}
             {mode === 'host' && !isLinked && (
                  <p className="mt-6 text-white text-4xl font-mono font-black tracking-[0.5em]">{localCode}</p>
             )}
 
+            {/* Botón Cancelar */}
             {!isLinked && (
-                <button onClick={onBack} className="mt-10 text-white/50 hover:text-white uppercase tracking-widest text-sm border-b border-transparent hover:border-white transition-all">
-                    Cancel
+                <button 
+                    onClick={onBack} 
+                    className="mt-10 px-8 py-3 bg-slate-800 text-white rounded-full font-bold uppercase tracking-widest hover:bg-slate-700 transition-all"
+                >
+                    Cancel / Back
                 </button>
             )}
         </div>
@@ -1114,34 +1117,35 @@ if (!isJoined) {
                     </div>
                 </div>
                 
-                {/* 3. ZONA DE CÓDIGO (VISUALIZACIÓN O INPUT) */}
+                {/* 3. ZONA DE CÓDIGO (DIFERENTE PARA ADMIN Y PLAYER) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   /* CASO ADMIN: CARTEL INFORMATIVO FIJO */
+                   /* ADMIN: Ve su propio código generado */
                    <div className="mb-8 relative group">
                       <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                       <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
-                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Party Code (Auto)</span>
+                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
                           <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
                             {code}
                           </span>
                       </div>
                    </div>
                 ) : (
-                   /* CASO JUGADOR: INPUT MANUAL */
+                   /* PLAYER: Debe escribir el código del Admin */
                    <div className="relative mb-8">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
                       <input 
                           type="number" inputMode="numeric" pattern="[0-9]*"
-                          placeholder="ENTER GAME CODE" 
-                          className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white"
+                          placeholder="ADMIN'S CODE" 
+                          className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white/20 placeholder:text-sm placeholder:tracking-normal"
                           value={code} 
                           onChange={e=>setCode(e.target.value)} 
                       />
                    </div>
                 )}
                 
-                {/* 4. BOTONES DE ACCIÓN (LÓGICA UNIFICADA) */}
-                {/* Si es PAREJA y NO está vinculado aún (Sea Admin o Jugador) -> MOSTRAR QR */}
+                {/* 4. BOTONES (LÓGICA UNIFICADA) */}
+                
+                {/* PRIMERO: Si es PAREJA y no está vinculado -> MUESTRA QR */}
                 {relationshipStatus === 'couple' && !coupleNumber ? (
                     <button 
                         onClick={() => setShowScanner(true)}
@@ -1152,14 +1156,12 @@ if (!isJoined) {
                         {gender === 'female' ? 'Link Partner (QR)' : 'Scan Partner'}
                     </button>
                 ) : (
-                    /* SI YA ESTÁ LISTO (O ES SINGLE) */
+                    /* SEGUNDO: Si es Single o ya está vinculado -> ENTRAR */
                     userName.toLowerCase().trim() === 'admin' ? (
-                        /* BOTÓN DE ADMIN */
                         <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
                             START PARTY NOW
                         </button>
                     ) : (
-                        /* BOTÓN DE JUGADOR */
                         <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>
                             {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
                         </button>
@@ -1167,7 +1169,7 @@ if (!isJoined) {
                 )}
 
                 <div className="mt-8 text-xs text-white/20 tracking-widest">
-                    SECURE CONNECTION • v2.3
+                    SECURE CONNECTION • v2.4
                 </div>
              </>
           )}
