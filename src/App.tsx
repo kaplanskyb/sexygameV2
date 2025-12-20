@@ -356,6 +356,10 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
 // import { QrReader } from 'react-qr-reader';
 // import { Check, X } from 'lucide-react';
 
+// Asegúrate de que estos imports estén arriba en tu archivo:
+// import { QrReader } from 'react-qr-reader';
+// import { Check, X, Camera } from 'lucide-react';
+
 const CouplePairing = ({ 
     gender, 
     onCodeObtained, 
@@ -366,17 +370,17 @@ const CouplePairing = ({
     onAutoJoin 
 }: any) => {
     
-    // Generar código interno solo si no existe
+    // Generar código interno
     const [localCode] = useState(() => {
         if (value) return value;
         return Math.floor(10000 + Math.random() * 90000).toString();
     });
 
-    // Definir modo: Mujer = Muestra QR (host), Hombre = Escanea (scan)
     const [mode] = useState<'host' | 'scan'>(gender === 'female' ? 'host' : 'scan');
     const [isLinked, setIsLinked] = useState(false);
+    const [scanError, setScanError] = useState('');
 
-    // 1. Sincronizar código generado con el padre
+    // 1. Sincronizar
     useEffect(() => {
         if (mode === 'host' && !value) onCodeObtained(localCode);
     }, []);
@@ -400,7 +404,7 @@ const CouplePairing = ({
     }, [mode, localCode, db, currentUserUid]);
 
     // 3. Lógica Hombre: Escáner
-    const handleScan = (result: any) => {
+    const handleScan = (result: any, error: any) => {
         if (result && !isLinked) {
             const text = result?.text || result;
             if (text) {
@@ -409,45 +413,65 @@ const CouplePairing = ({
                 setTimeout(() => onAutoJoin(), 1500);
             }
         }
+        if (error) {
+            // Solo logueamos errores críticos, ignoramos los de "no QR found" continuos
+            if (error?.message?.includes('Permission')) {
+                setScanError('Camera permission denied');
+            }
+        }
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
             
-            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center">
+            <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-widest text-center animate-pulse">
                 {isLinked ? 'PAIRED SUCCESSFULLY!' : (mode === 'host' ? 'SHOW THIS QR' : 'SCAN PARTNER')}
             </h3>
 
-            {/* CONTENEDOR VISUAL */}
-            <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl border-4 border-white w-[300px] h-[300px]">
+            {/* CAJA PRINCIPAL CON FONDO BLANCO PURO */}
+            <div className="relative bg-white rounded-xl overflow-hidden shadow-2xl border-4 border-white w-[320px] h-[320px] flex items-center justify-center">
                 
-                {/* A) MUJER: QR */}
+                {/* --- A) MODO MUJER: QR --- */}
                 {mode === 'host' && !isLinked && (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-white">
+                    <div className="w-full h-full p-2 bg-white flex flex-col items-center justify-center">
+                        {/* IMAGEN FORZADA A TAMAÑO COMPLETO */}
                         <img 
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${localCode}&bgcolor=ffffff&color=000000&margin=10`} 
                             alt="QR Code"
-                            className="w-full h-full object-contain"
+                            style={{ width: '280px', height: '280px', display: 'block' }}
                         />
                     </div>
                 )}
 
-                {/* B) HOMBRE: CÁMARA */}
+                {/* --- B) MODO HOMBRE: CÁMARA --- */}
                 {mode === 'scan' && !isLinked && (
                     <div className="w-full h-full bg-black relative">
-                         <QrReader
-                            onResult={handleScan}
-                            constraints={{ facingMode: 'environment' }}
-                            className="w-full h-full"
-                            videoContainerStyle={{ paddingTop: 0, height: '100%' }}
-                            videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                        />
-                        {/* Guía visual */}
-                        <div className="absolute inset-0 border-4 border-cyan-400 opacity-50 animate-pulse"></div>
+                        {scanError ? (
+                            <div className="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
+                                <X size={40} className="mb-2"/>
+                                <p className="font-bold">Camera Error</p>
+                                <p className="text-xs">{scanError}</p>
+                                <p className="text-xs mt-2 text-white">Check browser permissions.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <QrReader
+                                    onResult={handleScan}
+                                    constraints={{ facingMode: 'environment' }}
+                                    className="w-full h-full object-cover"
+                                    videoContainerStyle={{ paddingTop: 0, height: '100%', width: '100%' }}
+                                    videoStyle={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                                />
+                                {/* Marco visual de guía */}
+                                <div className="absolute inset-0 border-[30px] border-black/50 z-10 pointer-events-none">
+                                    <div className="w-full h-full border-2 border-red-500 opacity-60 animate-pulse"></div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
-                {/* C) ÉXITO */}
+                {/* --- C) ÉXITO --- */}
                 {isLinked && (
                     <div className="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center z-50 animate-in zoom-in">
                         <Check size={80} className="text-white animate-bounce" />
@@ -456,18 +480,29 @@ const CouplePairing = ({
                 )}
             </div>
 
-            {/* Código en texto (Solo mujer) */}
-            {mode === 'host' && !isLinked && (
-                 <p className="mt-6 text-white text-4xl font-mono font-black tracking-[0.5em]">{localCode}</p>
-            )}
+            {/* TEXTO DE AYUDA / CÓDIGO */}
+            <div className="mt-8 text-center">
+                {mode === 'host' && !isLinked && (
+                    <>
+                        <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Backup Code</p>
+                        <p className="text-white text-5xl font-mono font-black tracking-widest">{localCode}</p>
+                    </>
+                )}
+                
+                {mode === 'scan' && !isLinked && !scanError && (
+                    <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                        Point your camera at her screen. Ensure good lighting.
+                    </p>
+                )}
+            </div>
 
-            {/* Botón Cancelar */}
+            {/* BOTÓN CANCELAR */}
             {!isLinked && (
                 <button 
                     onClick={onBack} 
-                    className="mt-10 px-8 py-3 bg-slate-800 text-white rounded-full font-bold uppercase tracking-widest hover:bg-slate-700 transition-all"
+                    className="mt-8 px-10 py-3 bg-white/10 text-white rounded-full font-bold uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10"
                 >
-                    Cancel / Back
+                    Cancel
                 </button>
             )}
         </div>
