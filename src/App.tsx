@@ -788,7 +788,8 @@ useEffect(() => {
     });
   };
 
-  const joinGame = async () => {
+  // CAMBIO 1: Aceptamos un argumento opcional (codeOverride)
+  const joinGame = async (codeOverride?: any) => {
     if (!userName.trim() || !user) return;
     if (!gender) { showError("Please select a gender."); return; }
     if (!relationshipStatus) { showError("Please select a status (Single or Couple)."); return; }
@@ -796,28 +797,72 @@ useEffect(() => {
     localStorage.setItem('td_username', userName);
     const isUserAdmin = userName.toLowerCase() === 'admin';
     if (isUserAdmin) { setIsAdmin(true); }
+    
+    // Validación del Código de Sala (Game Code)
     if (!isUserAdmin && !code) { return; } 
 
-    // LOGICA NUEVA: Solteros no necesitan código manual
-    let finalCoupleNumber = coupleNumber;
+    // --- LOGICA CORREGIDA ---
+    
+    // CAMBIO 2: Decidimos qué numero de pareja usar. 
+    // Si viene del modal (codeOverride) usamos ese. Si no, usamos el estado (coupleNumber).
+    const actualCoupleInput = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : coupleNumber;
+
+    let finalCoupleNumber = actualCoupleInput;
+
     if (relationshipStatus === 'single') {
         // Generamos un ID único interno para el soltero
         finalCoupleNumber = 'SGL_' + user.uid.slice(-6); 
     } else {
-        // Si es pareja, SÍ validamos que tenga el código del QR
-        if (!finalCoupleNumber) return;
+        // Si es pareja, validamos que FINALMENTE tengamos un número
+        if (!finalCoupleNumber) {
+            showError("Please link with your partner first!"); 
+            return;
+        }
     }
 
-    if (!isUserAdmin) { if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { showError('Invalid code'); return; } }
+    // Validar código de sala (Game Code) contra el gameState
+    if (!isUserAdmin) { 
+        if (code.trim().toUpperCase() !== gameState?.code.toUpperCase()) { 
+            showError('Invalid Game Code'); 
+            return; 
+        } 
+    }
     
-    // Usamos finalCoupleNumber en lugar de coupleNumber para la validación de duplicados
+    // Validación de duplicados (Usando finalCoupleNumber)
     const existingPartner = players.find(p => p.coupleNumber === finalCoupleNumber && p.gender === gender && p.uid !== user.uid);
-    if (existingPartner) { if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${finalCoupleNumber} (${gender}). Do you want to RESET this slot and join?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', existingPartner.uid)); } else { return; } }
+    if (existingPartner) { 
+        if (confirm(`User ${existingPartner.name} is already registered with Couple ID ${finalCoupleNumber} (${gender}). Do you want to RESET this slot and join?`)) { 
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', existingPartner.uid)); 
+        } else { 
+            return; 
+        } 
+    }
     
     const status = relationshipStatus as 'single' | 'couple';
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { uid: user.uid, name: userName, gender, coupleNumber: finalCoupleNumber, relationshipStatus: status, joinedAt: serverTimestamp(), isActive: true, isBot: false, matches: 0, mismatches: 0 });
     
-    // Limpiamos el código local al entrar para que si sale no quede "pegado"
+    // CAMBIO 3: Guardamos en la BD y forzamos la entrada visual
+    try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { 
+            uid: user.uid, 
+            name: userName, 
+            gender, 
+            coupleNumber: finalCoupleNumber, 
+            relationshipStatus: status, 
+            joinedAt: serverTimestamp(), 
+            isActive: true, 
+            isBot: false, 
+            matches: 0, 
+            mismatches: 0 
+        });
+        
+        // ¡IMPORTANTE! Esto faltaba para quitar la pantalla de login
+        setIsJoined(true); 
+
+    } catch (error) {
+        console.error("Error al unirse:", error);
+    }
+    
+    // Limpieza final
     setCoupleNumber('');
   };
   
