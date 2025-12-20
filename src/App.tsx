@@ -580,16 +580,14 @@ useEffect(() => {
     }
 }, [relationshipStatus, gameState?.mode, isJoined]);
 
-  // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
-  // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
-  useEffect(() => {
+// --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
+useEffect(() => {
     // Si no ha entrado al juego, no hacemos nada
     if (!isJoined) return;
 
     const nagInterval = setInterval(() => {
       // 1. Si es Admin y el juego no ha empezado -> Recordar iniciar
       if (userName === 'admin' && gameState?.mode === 'lobby') {
-        // Aquí podrías disparar una animación en el botón "Start Game"
         const startBtn = document.getElementById('btn-start-game');
         startBtn?.classList.add('animate-bounce');
         setTimeout(() => startBtn?.classList.remove('animate-bounce'), 1000);
@@ -597,24 +595,24 @@ useEffect(() => {
 
       // 2. Si es Jugador, ya entró, pero FALTA GÉNERO o STATUS -> Vibrar form
       if (userName !== 'admin' && (!gender || !relationshipStatus)) {
-        // Vibración del dispositivo (si es compatible)
         if (navigator.vibrate) navigator.vibrate(200);
-        // Animación visual del contenedor del formulario
         const formContainer = document.getElementById('profile-form-container');
-        formContainer?.classList.add('animate-shake'); // Asegúrate de tener esta clase en CSS
+        formContainer?.classList.add('animate-shake'); 
         setTimeout(() => formContainer?.classList.remove('animate-shake'), 500);
       }
 
-      // 3. Si es Mujer y falta Linkearse -> Animar input de código
-      if (gender === 'female' && !isLinked && relationshipStatus) {
+      // 3. CORRECCIÓN AQUÍ: Usamos !coupleNumber en lugar de !isLinked
+      // Si es Mujer, está en Pareja y NO tiene número de pareja -> Animar input
+      if (gender === 'female' && relationshipStatus === 'couple' && !coupleNumber) {
          const codeInput = document.getElementById('input-couple-code');
-         codeInput?.focus(); // Poner el foco en el input para insistir
+         codeInput?.focus(); 
       }
 
-    }, 5000); // Se ejecuta cada 5 segundos
+    }, 5000); 
 
-    return () => clearInterval(nagInterval); // Limpieza al desmontar
-  }, [isJoined, userName, gameState?.mode, gender, relationshipStatus, isLinked]);
+    return () => clearInterval(nagInterval); 
+    // CORRECCIÓN AQUÍ TAMBIÉN: Quitamos isLinked de la lista de dependencias
+  }, [isJoined, userName, gameState?.mode, gender, relationshipStatus, coupleNumber]);
 
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [codeTipShown, setCodeTipShown] = useState(false);
