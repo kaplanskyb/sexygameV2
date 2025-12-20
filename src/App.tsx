@@ -830,30 +830,27 @@ useEffect(() => {
     });
   };
 
-  // CAMBIO 1: Aceptamos un argumento opcional (codeOverride)
+  // --- FUNCIÓN CORREGIDA ---
   const joinGame = async (codeOverride?: any) => {
-    const joinGame = async () => {
-        // 🔒 VALIDACIÓN ESTRICTA: Nadie pasa sin llenar todo
-        if (!userName.trim() || !gender || !relationshipStatus) {
-          alert("⛔ ERROR: Por favor completa TODOS los campos:\n1. Nombre\n2. Género\n3. Estado Civil");
-          return; // Detiene la ejecución aquí
-        }
-    
-        try {
-          // ... (aquí sigue el resto de tu código existente: const playerRef = doc...)
-    // 1. CERRAR MODAL INMEDIATAMENTE (Esto arregla que se quede colgada)
+    // 1. VALIDACIÓN INICIAL DE CAMPOS
+    if (!userName.trim() || !gender || !relationshipStatus) {
+      alert("⛔ ERROR: Por favor completa TODOS los campos:\n1. Nombre\n2. Género\n3. Estado Civil");
+      return; 
+    }
+
+    // 2. CERRAR MODAL INMEDIATAMENTE
     setShowScanner(false);
 
-    if (!userName.trim() || !user) return;
-    
-    // Si no es admin y no hay código de sala, error
+    if (!user) return;
+
+    // 3. VALIDACIÓN DE CÓDIGO DE SALA (Si no es Admin)
     const isUserAdmin = userName.toLowerCase() === 'admin';
     if (!isUserAdmin && !code) { 
         alert("Please enter the Game Code first."); 
         return; 
     }
 
-    // 2. DETERMINAR CÓDIGO DE PAREJA
+    // 4. DETERMINAR CÓDIGO DE PAREJA
     // Usamos el que viene del modal (codeOverride) o el del estado
     const actualCoupleInput = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : coupleNumber;
     let finalCoupleNumber = actualCoupleInput;
@@ -869,7 +866,7 @@ useEffect(() => {
     }
 
     try {
-        // 3. GUARDAR EN FIREBASE
+        // 5. GUARDAR EN FIREBASE
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { 
             uid: user.uid, 
             name: userName, 
@@ -883,7 +880,7 @@ useEffect(() => {
             mismatches: 0 
         });
         
-        // 4. FORZAR CAMBIO DE PANTALLA
+        // 6. ENTRAR AL JUEGO
         setIsJoined(true); 
         localStorage.setItem('td_username', userName);
 
