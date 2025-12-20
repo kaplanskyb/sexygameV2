@@ -366,11 +366,11 @@ const CouplePairing = ({
     value, 
     onBack,
     onAutoJoin,
-    db,              // Necesario para escuchar la BD
-    currentUserUid   // Necesario para no confundirse con uno mismo
+    db,
+    currentUserUid
 }: any) => {
     
-    // 1. Generar código de 4 dígitos (Solo mujer/Host)
+    // Generar código de 4 dígitos (Solo mujer/Host)
     const [localCode] = useState(() => {
         if (value) return value;
         return Math.floor(1000 + Math.random() * 9000).toString();
@@ -380,63 +380,48 @@ const CouplePairing = ({
     const [isLinked, setIsLinked] = useState(false);
     const isFemale = gender === 'female';
 
-    // 2. LÓGICA MUJER: Escuchar la BD esperando al hombre
+    // LÓGICA MUJER: Escuchar la BD
     useEffect(() => {
         if (isFemale && db && localCode) {
-            // Escuchamos la colección de jugadores buscando este código
             const q = query(
                 collection(db, 'artifacts', 'sexy_game_v2', 'public', 'data', 'players'),
                 where('coupleNumber', '==', localCode)
             );
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
-                // Buscamos a alguien que tenga este código y NO sea yo
+                // Busca si alguien que NO soy yo usó el código
                 const partner = snapshot.docs.find(d => d.data().uid !== currentUserUid);
-                
                 if (partner) {
-                    // ¡PAREJA ENCONTRADA!
                     setIsLinked(true);
-                    onCodeObtained(localCode); // Guardamos el código en el estado
-                    
-                    // Esperamos 1.5s para que vea el éxito y cerramos
-                    setTimeout(() => {
-                        onAutoJoin(); 
-                    }, 1500); 
+                    onCodeObtained(localCode);
+                    setTimeout(() => { onAutoJoin(); }, 1500); 
                 }
             });
-
             return () => unsubscribe();
         }
     }, [isFemale, localCode, db, currentUserUid]);
 
-    // 3. LÓGICA HOMBRE: Enviar código manualmente
+    // LÓGICA HOMBRE: Enviar código
     const handleManSubmit = () => {
-        if (!inputCode) return;
-        
-        // Al hombre le damos feedback inmediato
+        if (inputCode.length !== 4) return;
         setIsLinked(true);
         onCodeObtained(inputCode);
-        
-        // Al ejecutar onAutoJoin, el padre llamará a joinGame(), 
-        // lo que escribirá en la BD y disparará el listener de la mujer.
-        setTimeout(() => {
-            onAutoJoin();
-        }, 1500);
+        setTimeout(() => { onAutoJoin(); }, 1500);
     };
 
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
             
-            {/* Título de estado */}
+            {/* Título */}
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
                 {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER HER CODE')}
             </h3>
 
-            <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative overflow-hidden">
+            <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative">
                 
-                {/* Pantalla de Éxito superpuesta */}
+                {/* Pantalla de Éxito */}
                 {isLinked && (
-                    <div className="absolute inset-0 z-20 bg-emerald-500 flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                    <div className="absolute inset-0 z-20 bg-emerald-500 rounded-3xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
                         <HeartHandshake size={64} className="text-white mb-4 animate-bounce" />
                         <span className="text-white font-black text-3xl tracking-widest">CONNECTED</span>
                     </div>
@@ -444,8 +429,9 @@ const CouplePairing = ({
 
                 {isFemale ? (
                     <>
-                        {/* MODO MUJER: Muestra código y espera */}
-                        <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-6 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                        {/* MODO MUJER: Muestra código (CSS CORREGIDO) */}
+                        {/* Se añadió py-8 y leading-none para evitar cortes */}
+                        <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">
                             {localCode}
                         </div>
                         <div className="flex items-center gap-3 text-slate-400 text-sm uppercase tracking-wide animate-pulse">
@@ -460,11 +446,7 @@ const CouplePairing = ({
                             Ask her for the 4-digit code
                         </p>
                         <input 
-                            type="number" 
-                            inputMode="numeric" 
-                            pattern="[0-9]*"
-                            maxLength={4}
-                            placeholder="0000"
+                            type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000"
                             className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700"
                             value={inputCode}
                             onChange={(e) => setInputCode(e.target.value.slice(0, 4))}
@@ -481,12 +463,9 @@ const CouplePairing = ({
 
             </div>
 
-            {/* Botón Cancelar (Solo si no están vinculados aun) */}
+            {/* Botón Cancelar */}
             {!isLinked && (
-                <button 
-                    onClick={onBack}
-                    className="mt-8 text-slate-500 hover:text-white text-sm font-bold uppercase tracking-widest transition-colors"
-                >
+                <button onClick={onBack} className="mt-8 text-slate-500 hover:text-white text-sm font-bold uppercase tracking-widest transition-colors">
                     Cancel
                 </button>
             )}
@@ -1101,82 +1080,54 @@ if (!isJoined) {
           ) : (
              /* B) FORMULARIO DE INGRESO */
              <>
-                <div className="mb-6 relative inline-block">
-                   <Flame className="w-16 h-16 text-pink-500 relative z-10 mx-auto drop-shadow-lg" />
-                </div>
-                <h1 className="text-4xl font-black mb-8 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500">
-                    SEXY GAME
-                </h1>
+                {/* CABECERA (Igual que antes) */}
+                <div className="mb-6 relative inline-block"><Flame className="w-16 h-16 text-pink-500 relative z-10 mx-auto drop-shadow-lg" /></div>
+                <h1 className="text-4xl font-black mb-8 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500">SEXY GAME</h1>
                 
-                {/* 1. NOMBRE */}
+                {/* 1. NOMBRE & 2. SELECTORES (Igual que antes) */}
                 <div className="relative mb-4">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                    <input 
-                        type="text" 
-                        placeholder="YOUR NICKNAME" 
-                        className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all"
-                        value={userName} 
-                        onChange={e=>setUserName(e.target.value)} 
-                        maxLength={12}
-                    />
+                    <input type="text" placeholder="YOUR NICKNAME" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} maxLength={12}/>
                 </div>
-                
-                {/* 2. SELECTORES */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="relative">
-                        <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl text-white p-4 focus:outline-none text-center">
-                            <option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option>
-                        </select>
+                        <select value={gender} onChange={e=>setGender(e.target.value)} className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl text-white p-4 focus:outline-none text-center"><option value="" disabled>Gender</option><option value="male">Male</option><option value="female">Female</option></select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
                     </div>
                     <div className="relative">
-                        <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl text-white p-4 focus:outline-none text-center">
-                            <option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option>
-                        </select>
+                        <select value={relationshipStatus} onChange={e=>setRelationshipStatus(e.target.value as 'single'|'couple')} className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl text-white p-4 focus:outline-none text-center"><option value="" disabled>Status</option><option value="single">Single</option><option value="couple">Couple</option></select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" size={16}/>
                     </div>
                 </div>
                 
-                {/* 3. ZONA DE CÓDIGO (DIFERENTE PARA ADMIN Y PLAYER) */}
+                {/* 3. ZONA DE CÓDIGO (Igual que antes) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   /* ADMIN: Ve su propio código generado */
                    <div className="mb-8 relative group">
                       <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                       <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
-                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
-                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                            {code}
-                          </span>
+                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Game Code</span>
+                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{code}</span>
                       </div>
                    </div>
                 ) : (
-                   /* PLAYER: Debe escribir el código del Admin */
                    <div className="relative mb-8">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                      <input 
-                          type="number" inputMode="numeric" pattern="[0-9]*"
-                          placeholder="ADMIN'S CODE" 
-                          className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white/20 placeholder:text-sm placeholder:tracking-normal"
-                          value={code} 
-                          onChange={e=>setCode(e.target.value)} 
-                      />
+                      <input type="number" inputMode="numeric" pattern="[0-9]*" placeholder="GAME CODE" className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:opacity-100 placeholder:text-sm placeholder:tracking-widest placeholder:font-bold" value={code} onChange={e=>setCode(e.target.value)} />
                    </div>
                 )}
                 
-                {/* 4. BOTONES (LÓGICA UNIFICADA) */}
-                
-                {/* PRIMERO: Si es PAREJA y no está vinculado -> MUESTRA QR */}
+                {/* 4. BOTONES (CORREGIDOS TEXTOS E ÍCONOS) */}
                 {relationshipStatus === 'couple' && !coupleNumber ? (
                     <button 
                         onClick={() => setShowScanner(true)}
-                        disabled={!gender || !userName}
-                        className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 ${!gender || !userName ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
+                        disabled={!gender || !userName || !code}
+                        className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 ${!gender || !userName || !code ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
                     >
-                        <QrCode size={24} />
-                        {gender === 'female' ? 'Link Partner (QR)' : 'Scan Partner'}
+                        {/* ÍCONO Y TEXTO CAMBIADOS */}
+                        <HeartHandshake size={24} />
+                        {gender === 'female' ? 'Get Couple Code' : 'Enter Couple Code'}
                     </button>
                 ) : (
-                    /* SEGUNDO: Si es Single o ya está vinculado -> ENTRAR */
                     userName.toLowerCase().trim() === 'admin' ? (
                         <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
                             START PARTY NOW
@@ -1188,9 +1139,7 @@ if (!isJoined) {
                     )
                 )}
 
-                <div className="mt-8 text-xs text-white/20 tracking-widest">
-                    SECURE CONNECTION • v2.4
-                </div>
+                <div className="mt-8 text-xs text-white/20 tracking-widest">SECURE CONNECTION • v2.6</div>
              </>
           )}
         </div>
@@ -1696,128 +1645,105 @@ if (!isJoined) {
   const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
   const cardStyle = getLevelStyle(card?.level);
   
+  // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
-    <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
-      {isAdmin && (
-          <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
-      )}
-      {/* Background Pulse for Level 4 */}
-      {card?.level === '4' && <div className="absolute inset-0 bg-red-600/10 animate-pulse pointer-events-none z-0 mix-blend-overlay"></div>}
-      
-      <CustomAlert/>
-      
-      <div className="text-center py-2 border-b border-white/10 mb-4 z-10 flex flex-col items-center justify-center mt-8">
-            <div className="flex items-center justify-center gap-3">
-                {isEditingName ? (
-                    <div className="flex gap-2">
-                        <input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} />
-                        <button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button>
-                        <button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button>
-                    </div>
-                ) : (
-                    <>
-                        <h1 className="text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-yellow-100 to-yellow-600 drop-shadow-md filter backdrop-brightness-150">
-                            {userName.toUpperCase()}
-                        </h1>
-                        <button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-yellow-600/50 hover:text-yellow-200 transition-colors"><Edit2 size={18}/></button>
-                    </>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
+        
+        {/* Fondo Animado */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
+            <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50"></div>
+        </div>
+
+        {/* --- HEADER --- */}
+        <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
+            <div className="flex items-center gap-3">
+                {/* Botón para alternar Admin Panel */}
+                {isAdmin && (
+                    <button 
+                        onClick={() => setShowAdminPanel(!showAdminPanel)}
+                        className={`p-2 rounded-full transition-all ${showAdminPanel ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'bg-white/10 text-slate-400 hover:text-white border border-white/10'}`}
+                    >
+                        {showAdminPanel ? <X size={20} /> : <Gamepad2 size={20} />}
+                    </button>
                 )}
+                {/* Código Pequeño en Header */}
+                 <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
+                    <p className="text-white/50 uppercase tracking-widest">Party Code</p>
+                    <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
+                        {gameState?.code || code}
+                    </p>
+                </div>
             </div>
             
-            {/* PERSISTENT COUPLE ID */}
-            {relationshipStatus === 'couple' && (
-                <div className="mt-2 inline-flex items-center justify-center gap-2 bg-pink-900/20 px-4 py-1 rounded-full border border-pink-500/30 animate-in fade-in slide-in-from-top-1">
-                    <Users size={12} className="text-pink-400"/>
-                    <span className="text-pink-400 text-xs font-bold uppercase tracking-wider">COUPLE:</span>
-                    <span className="text-white font-mono font-bold tracking-widest">{coupleNumber}</span>
+            {/* Info del Usuario */}
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-5">
+                <span className="text-right hidden sm:block">
+                    <p className="font-bold text-sm text-white tracking-wide">{userName}</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider">{gender} • {relationshipStatus === 'couple' ? 'Couple' : 'Single'}</p>
+                </span>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-2 ${gender === 'male' ? 'bg-cyan-600 border-cyan-400 shadow-cyan-500/20' : (gender === 'female' ? 'bg-pink-600 border-pink-400 shadow-pink-500/20' : 'bg-purple-600 border-purple-400 shadow-purple-500/20')}`}>
+                    {userName.charAt(0).toUpperCase()}
                 </div>
-            )}
-      </div>
-
-      <div className="w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
-      <div className="w-full max-w-md mx-auto mb-2"><MyMatchHistory /></div>
-
-      <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full max-w-md mx-auto">
-        {isRoundFinishedTOrD ? (
-             <div className={`p-6 text-center ${glassPanel} border-white/20 w-full`}>
-                <div className="text-3xl font-black mb-4 text-white">ROUND FINISHED</div>
-                <div className="text-white/50 animate-pulse font-mono tracking-widest">LOADING NEXT VICTIM...</div>
             </div>
-        ) : (
-            <>
-                <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
-                    <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
-                        GAME: {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-                    </div>
-                    <div className="mb-4 opacity-80 drop-shadow-glow">{gameState.mode === 'question' ? <MessageCircle size={40} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={40} className="text-emerald-200"/> : <Flame size={40} className="text-pink-200"/>}</div>
-                    <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(card)}</h3>
-                </div>
+        </div>
 
-                <div className="w-full space-y-4">
-                    {!isMyTurn() && gameState.mode !== 'yn' && (
-                        <div className="text-center mb-2">
-                            <div className="text-[10px] text-white/40 uppercase tracking-[0.3em] mb-2 font-bold">CURRENT PLAYER</div>
-                            <div className={`text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase transition-all animate-pulse drop-shadow-sm`}>{currentPlayerName()}</div>
-                        </div>
-                    )}
-
-                    {gameState?.mode==='question' && isMyTurn() && (<div className="text-2xl font-black text-center mb-6 text-green-400 animate-pulse bg-green-900/20 py-4 rounded-xl border border-green-500/50 shadow-[0_0_30px_rgba(74,222,128,0.2)]">YOUR TURN<br/><span className="text-sm text-white/80 font-medium tracking-wide">READ ALOUD & ANSWER!</span></div>)}
-                    
-                    {gameState?.mode==='question' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('like')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><ThumbsUp className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">GOOD</span></button>
-                            <button onClick={()=>submitVote('no like')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><ThumbsDown className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">NAH...</span></button>
-                        </div>
-                    )}
-                    
-                    {gameState?.mode==='dare' && !isMyTurn() && !gameState?.votes?.[user?.uid || ''] && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitVote('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-emerald-900/50 active:scale-95 transition-all border border-emerald-400/30"><CheckSquare className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">DONE</span></button>
-                            <button onClick={()=>submitVote('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl flex flex-col items-center shadow-lg shadow-red-900/50 active:scale-95 transition-all border border-red-400/30"><XCircle className="mb-2 text-white" size={24}/><span className="font-black text-white text-xl">FAIL</span></button>
-                        </div>
-                    )}
-                    
-                    {gameState?.mode==='yn' && !playerAnswered && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={()=>submitAnswer('yes')} className="bg-gradient-to-b from-emerald-500 to-emerald-700 p-4 rounded-2xl shadow-lg shadow-emerald-900/50 active:scale-95 transition-all font-black text-2xl border border-emerald-400/30">YES</button>
-                            <button onClick={()=>submitAnswer('no')} className="bg-gradient-to-b from-red-500 to-red-700 p-4 rounded-2xl shadow-lg shadow-red-900/50 active:scale-95 transition-all font-black text-2xl border border-red-400/30">NO</button>
-                        </div>
-                    )}
-                    
-                    {/* REDESIGNED MATCH RESULT */}
-                    {gameState?.mode==='yn' && allYNAnswered && (
-                        <div className={`flex flex-col items-center justify-center p-6 rounded-2xl ${glassPanel} border-white/20 w-full animate-in zoom-in duration-300`}>
-                            {ynMatch === true ? (
-                                <div className="text-center mb-4">
-                                    <Smile className="w-16 h-16 text-emerald-400 mx-auto mb-2 animate-bounce drop-shadow-glow"/>
-                                    <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600 tracking-tighter">MATCH!</h3>
+        {/* --- ÁREA PRINCIPAL DE CONTENIDO --- */}
+        <div className="flex-1 w-full relative z-10 flex flex-col p-4 overflow-y-auto lg:max-w-5xl lg:mx-auto">
+            
+            {/* A) PANEL DE ADMIN (Si soy admin y está activo) */}
+            {isAdmin && showAdminPanel ? (
+                <AdminPanel 
+                    players={players} 
+                    gameState={gameState}
+                    onStartGame={startGame}
+                    onNextTurn={nextTurn}
+                    onReset={resetGame}
+                    onKick={kickPlayer}
+                />
+            ) : (
+                /* B) VISTA DE JUGADOR (Para todos, incluido Admin en modo juego) */
+                gameState?.mode === 'lobby' ? (
+                    /* B.1) LOBBY DE ESPERA */
+                    <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
+                        
+                        {/* ---> CÓDIGO GIGANTE EN EL LOBBY <--- */}
+                        <div className="mb-12 relative group cursor-default">
+                            <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
+                            <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
+                                <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
+                                <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
+                                    {gameState?.code || code}
                                 </div>
-                            ) : (
-                                <div className="text-center mb-4">
-                                    <Frown className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse drop-shadow-glow"/>
-                                    <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter">MISMATCH</h3>
-                                </div>
-                            )}
-                            
-                            <div className="text-center flex flex-col items-center">
-                                <div className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Partner</div>
-                                <span className="font-black text-3xl animate-pulse text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-[length:200%_auto]">{myPartnerName}</span>
                             </div>
+                        </div>
 
-                            <div className="text-white/30 mt-4 text-[9px] font-mono tracking-widest">NEXT ROUND IN 3s...</div>
+                        <div className="mb-6 relative">
+                            <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
+                            <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
                         </div>
-                    )}
-                    
-                    {((gameState?.mode==='question' && !isMyTurn() && gameState?.votes?.[user?.uid || '']) || (gameState?.mode==='dare' && !isMyTurn() && gameState?.votes?.[user?.uid || '']) || (gameState?.mode==='yn' && playerAnswered && !allYNAnswered)) && (
-                        <div className="text-center p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
-                            <div className="animate-spin inline-block w-8 h-8 border-2 border-current border-t-transparent text-cyan-400 rounded-full mb-3"></div>
-                            <div className="text-white/50 text-sm font-mono tracking-widest">WAITING FOR OTHERS...</div>
-                        </div>
-                    )}
-                </div>
-            </>
-        )}
-      </div>
+                        <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg">Waiting for Host</h2>
+                        <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">The game will begin soon. Get ready!</p>
+                        
+                        {isAdmin && (
+                            <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30 animate-pulse">
+                                ( Switch to Admin Panel to start the game )
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    /* B.2) INTERFAZ DEL JUEGO ACTIVO */
+                    <GameInterface 
+                        gameState={gameState}
+                        currentUser={user}
+                        players={players}
+                        onSubmit={submitAnswer}
+                        onVote={submitVote}
+                    />
+                )
+            )}
+        </div>
+        <CustomAlert/>
     </div>
-  );
+);
 }
