@@ -21,47 +21,13 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { 
-    User as UserIcon, 
-    Lock, 
-    ChevronDown, 
-    ChevronUp,       // <--- Faltaba
-    QrCode, 
-    Flame, 
-    HelpCircle,
-    Gamepad2,
-    Trophy,
-    Users,
-    UserX,
-    Play,
-    Trash2,
-    RefreshCw,
-    Settings,
-    HeartHandshake,
-    Send,            
-    Shuffle,         
-    SkipForward,     
-    Power,           
-    AlertTriangle,   
-    Check,           
-    X,
-    Info,            // <--- Faltaba (Causa probable del crash en InfoIcon)
-    BookOpen,        // <--- Faltaba (Manual Admin)
-    Zap,             // <--- Faltaba
-    CheckCircle,     // <--- Faltaba
-    Upload,          // <--- Faltaba (Manager)
-    FileSpreadsheet, // <--- Faltaba (Manager)
-    Download,        // <--- Faltaba (Manager)
-    PauseCircle,     // <--- Faltaba (Manager)
-    PlayCircle,      // <--- Faltaba (Manager)
-    CheckSquare,     // <--- Faltaba (Manager)
-    Square,          // <--- Faltaba (Manager)
-    Filter,          // <--- Faltaba (Manager)
-    ArrowUpDown,     // <--- Faltaba (Manager)
-    Search,          // <--- Faltaba (Manager)
-    Edit2,           // <--- Faltaba (Player Edit)
-    LogOut,          // <--- Faltaba (Player Leave)
-    MessageCircle    // <--- Faltaba (Cards)
-  } from 'lucide-react';
+    User as UserIcon, Lock, ChevronDown, ChevronUp, QrCode, Flame, HelpCircle,
+    Gamepad2, Trophy, Users, UserX, Play, Trash2, RefreshCw, Settings,
+    HeartHandshake, Send, Shuffle, SkipForward, Power, AlertTriangle, Check, X,
+    Info, BookOpen, Zap, CheckCircle, Upload, FileSpreadsheet, Download,
+    PauseCircle, PlayCircle, CheckSquare, Square, Filter, ArrowUpDown, Search,
+    Edit2, LogOut, MessageCircle, RefreshCcw 
+} from 'lucide-react';
 // --- CORRECCIÓN DE IMPORTS DE FIREBASE (AGREGA ESTO A TU LISTA DE IMPORTS) ---
 import { 
     writeBatch, 
@@ -1855,13 +1821,105 @@ const resetGame = async () => {
                     </div>
                 ) : (
                     /* B.2) INTERFAZ DEL JUEGO ACTIVO */
-                    <GameInterface 
-                        gameState={gameState}
-                        currentUser={user}
-                        players={players}
-                        onSubmit={submitAnswer}
-                        onVote={submitVote}
-                    />
+                    /* ========================================================================
+   PEGAR ESTO EN LUGAR DE <GameInterface ... />
+   ======================================================================== */
+<div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
+    
+    {/* --- 1. TARJETA DEL DESAFÍO --- */}
+    <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
+        {/* Etiqueta Superior */}
+        <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
+            {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+        </div>
+        
+        {/* Icono Central */}
+        <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
+                {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
+        </div>
+
+        {/* Texto de la Carta */}
+        <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
+            {getCardText(finalCard)}
+        </h3>
+        
+        {/* Nivel de Riesgo (Esquina) */}
+        <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
+            LVL {finalCard?.level || '?'}
+        </div>
+    </div>
+
+    {/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
+    <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
+        
+        {/* A) TURNO DE OTRO JUGADOR: MODO JUEZ/ESPECTADOR */}
+        {!isMyTurn() && gameState.mode !== 'yn' && (
+            <div className="text-center">
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">
+                    JUDGE THE PLAYER: {currentPlayerName()}
+                </p>
+                <div className="flex gap-3">
+                    {gameState.mode === 'question' ? (
+                        <>
+                           <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
+                           <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                        </>
+                    ) : (
+                        <>
+                           <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
+                           <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
+                        </>
+                    )}
+                </div>
+                {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
+            </div>
+        )}
+
+        {/* B) MI TURNO (TRUTH / DARE) */}
+        {isMyTurn() && gameState.mode !== 'yn' && (
+             <div className="text-center py-4">
+                 <div className="animate-bounce mb-2 text-4xl">👇</div>
+                 <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
+                 <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
+             </div>
+        )}
+
+        {/* C) MODO MATCH (TODOS JUEGAN) */}
+        {gameState.mode === 'yn' && (
+            <div className="text-center">
+                 {gameState.answers?.[user?.uid || ''] ? (
+                     <div className="py-4">
+                         <div className="text-green-400 font-bold text-xl mb-2">Answer Locked! 🔒</div>
+                         <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                     </div>
+                 ) : (
+                     <>
+                        <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
+                            <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
+                        </div>
+                     </>
+                 )}
+            </div>
+        )}
+    </div>
+
+    {/* --- 3. ESTADO DE ESPERA --- */}
+    <div className="mt-6 text-center">
+         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+             <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+             <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                 {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+             </span>
+         </div>
+         {pendingPlayers.length > 0 && (
+             <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
+                 Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
+             </div>
+         )}
+    </div>
+</div>  
                 )
             )}
         </div>
