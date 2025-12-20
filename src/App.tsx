@@ -376,7 +376,16 @@ const CouplePairing = ({
     useEffect(() => {
         if (mode === 'host' && !value) onCodeObtained(localCode);
     }, []);
-
+// Auto-generar Game Code si soy Admin
+    useEffect(() => {
+    if (userName.toLowerCase().trim() === 'admin') {
+      // Si ya hay código, no lo sobrescribimos para evitar parpadeos
+      if (!code) {
+         const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
+         setCode(autoCode);
+      }
+    }
+  }, [userName, code]);
     // Escuchar si entra el hombre (Solo mujer)
     useEffect(() => {
         if (mode === 'host' && db && localCode) {
@@ -757,34 +766,45 @@ useEffect(() => {
   const createGame = async () => {
     if (!userName.trim() || !user) return;
     
-    // GENERAR CÓDIGO AQUÍ (No en el input)
-    const newGameCode = Math.floor(10000 + Math.random() * 90000).toString();
-    setCode(newGameCode); // Actualizar estado local para que lo vea en el Lobby
+    // Validar: Si es pareja, DEBE tener el vínculo hecho
+    if (relationshipStatus === 'couple' && !coupleNumber) {
+        alert("Please link with your partner first!");
+        return;
+    }
 
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // Guardar en DB
+    // 1. Crear la SALA (Usamos el 'code' que ya se generó en pantalla)
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: newGameCode, // <--- Usamos el nuevo código generado
+      code: code, 
       mode: 'lobby',
       currentTurn: null,
       adminUid: user.uid,
       createdAt: serverTimestamp(),
-      // ... resto de configs ...
       riskLevel: 1,
       autoLoop: false,
       loopConfig: { truth: 1, dare: 1, match: 1 },
       loopIndex: 0,
-      loopSequence: []
+      loopSequence: [],
+      lastAction: 'CREATED'
     });
     
-    // Crear jugador Admin
+    // 2. Crear al JUGADOR ADMIN
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
-      uid: user.uid, name: userName, gender: 'admin',
-      coupleNumber: 'ADMIN', relationshipStatus: 'single',
-      joinedAt: serverTimestamp(), isActive: true, isBot: false,
-      matches: 0, mismatches: 0
+      uid: user.uid, 
+      name: userName, 
+      gender: gender, 
+      relationshipStatus: relationshipStatus, 
+      
+      // CAMBIO CLAVE: Si es pareja, usa el número real del QR. Si es Single, usa 'ADMIN'
+      coupleNumber: relationshipStatus === 'couple' ? coupleNumber : 'ADMIN', 
+      
+      joinedAt: serverTimestamp(), 
+      isActive: true, 
+      isBot: false,
+      matches: 0, 
+      mismatches: 0
     });
   };
 
@@ -1071,7 +1091,7 @@ if (!isJoined) {
                     <input 
                         type="text" 
                         placeholder="YOUR NICKNAME" 
-                        className={`w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all`} 
+                        className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all"
                         value={userName} 
                         onChange={e=>setUserName(e.target.value)} 
                         maxLength={12}
@@ -1094,13 +1114,20 @@ if (!isJoined) {
                     </div>
                 </div>
                 
-                {/* 3. ZONA DE CÓDIGO (DIFERENTE PARA ADMIN Y JUGADOR) */}
-                
-                {/* CASO ADMIN: Muestra el código en grande automáticamente */}
-                {/* ... Inputs de Nombre y Género arriba ... */}
-
-                {/* ZONA DE CÓDIGO: Oculta para Admin, Visible para Jugadores */}
-                {userName.toLowerCase().trim() !== 'admin' && (
+                {/* 3. ZONA DE CÓDIGO (VISUALIZACIÓN O INPUT) */}
+                {userName.toLowerCase().trim() === 'admin' ? (
+                   /* CASO ADMIN: CARTEL INFORMATIVO FIJO */
+                   <div className="mb-8 relative group">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                      <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
+                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Party Code (Auto)</span>
+                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                            {code}
+                          </span>
+                      </div>
+                   </div>
+                ) : (
+                   /* CASO JUGADOR: INPUT MANUAL */
                    <div className="relative mb-8">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
                       <input 
@@ -1113,18 +1140,26 @@ if (!isJoined) {
                    </div>
                 )}
                 
-                {/* BOTÓN FINAL */}
-                {userName.toLowerCase().trim() === 'admin' ? (
-                    <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
-                        START PARTY NOW
+                {/* 4. BOTONES DE ACCIÓN (LÓGICA UNIFICADA) */}
+                {/* Si es PAREJA y NO está vinculado aún (Sea Admin o Jugador) -> MOSTRAR QR */}
+                {relationshipStatus === 'couple' && !coupleNumber ? (
+                    <button 
+                        onClick={() => setShowScanner(true)}
+                        disabled={!gender || !userName}
+                        className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 ${!gender || !userName ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50'}`}
+                    >
+                        <QrCode size={24} />
+                        {gender === 'female' ? 'Link Partner (QR)' : 'Scan Partner'}
                     </button>
                 ) : (
-                    // ... Botones de Scan / Join para jugadores normales ...
-                    relationshipStatus === 'couple' && !coupleNumber ? (
-                        <button onClick={() => setShowScanner(true)} /* ... */ >
-                             <QrCode size={24} /> {gender === 'female' ? 'Generate QR' : 'Scan Partner'}
+                    /* SI YA ESTÁ LISTO (O ES SINGLE) */
+                    userName.toLowerCase().trim() === 'admin' ? (
+                        /* BOTÓN DE ADMIN */
+                        <button onClick={createGame} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>
+                            START PARTY NOW
                         </button>
                     ) : (
+                        /* BOTÓN DE JUGADOR */
                         <button onClick={joinGame} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>
                             {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
                         </button>
@@ -1132,7 +1167,7 @@ if (!isJoined) {
                 )}
 
                 <div className="mt-8 text-xs text-white/20 tracking-widest">
-                    SECURE CONNECTION • v2.2
+                    SECURE CONNECTION • v2.3
                 </div>
              </>
           )}
