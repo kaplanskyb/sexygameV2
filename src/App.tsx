@@ -1138,7 +1138,7 @@ if (!isJoined) {
           )}
         </div>
       </div>
-    );
+    ); 
   }
 
   // --- GAME ENDED SCREEN ---
