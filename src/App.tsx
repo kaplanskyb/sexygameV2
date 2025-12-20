@@ -559,12 +559,19 @@ export default function TruthAndDareApp() {
       setIsJoined(isPlayerInGame);
     }
   }, [players, user]);
+  // --- PEGA ESTO EN SU LUGAR ---
   useEffect(() => {
-    if (userName.toLowerCase().trim() === 'admin') {
+    const isNowAdmin = userName.toLowerCase().trim() === 'admin';
+    
+    // ESTA LÍNEA ES LA QUE ARREGLA TU PROBLEMA:
+    setIsAdmin(isNowAdmin);
+
+    if (isNowAdmin) {
       const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
       setCode(autoCode);
     } else {
-      setCode(''); 
+      // Si el código es muy largo (automático), lo limpiamos, si es corto (manual), lo dejamos
+      if (code && code.length > 5) setCode(''); 
     }
   }, [userName]);
 
