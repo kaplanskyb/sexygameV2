@@ -6,3 +6,18 @@
   background-color: #0f172a;
   color: white;
 }
+
+/* --- 👇 PEGA ESTO AL FINAL DEL ARCHIVO 👇 --- */
+
+/* Animación de vibración para alertas */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+  border: 2px solid #ef4444 !important; /* !important asegura que se ponga rojo */
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}

@@ -523,6 +523,41 @@ useEffect(() => {
 }, [relationshipStatus, gameState?.mode, isJoined]);
 
   // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
+  // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
+  useEffect(() => {
+    // Si no ha entrado al juego, no hacemos nada
+    if (!isJoined) return;
+
+    const nagInterval = setInterval(() => {
+      // 1. Si es Admin y el juego no ha empezado -> Recordar iniciar
+      if (userName === 'admin' && gameState?.mode === 'lobby') {
+        // Aquí podrías disparar una animación en el botón "Start Game"
+        const startBtn = document.getElementById('btn-start-game');
+        startBtn?.classList.add('animate-bounce');
+        setTimeout(() => startBtn?.classList.remove('animate-bounce'), 1000);
+      }
+
+      // 2. Si es Jugador, ya entró, pero FALTA GÉNERO o STATUS -> Vibrar form
+      if (userName !== 'admin' && (!gender || !relationshipStatus)) {
+        // Vibración del dispositivo (si es compatible)
+        if (navigator.vibrate) navigator.vibrate(200);
+        // Animación visual del contenedor del formulario
+        const formContainer = document.getElementById('profile-form-container');
+        formContainer?.classList.add('animate-shake'); // Asegúrate de tener esta clase en CSS
+        setTimeout(() => formContainer?.classList.remove('animate-shake'), 500);
+      }
+
+      // 3. Si es Mujer y falta Linkearse -> Animar input de código
+      if (gender === 'female' && !isLinked && relationshipStatus) {
+         const codeInput = document.getElementById('input-couple-code');
+         codeInput?.focus(); // Poner el foco en el input para insistir
+      }
+
+    }, 5000); // Se ejecuta cada 5 segundos
+
+    return () => clearInterval(nagInterval); // Limpieza al desmontar
+  }, [isJoined, userName, gameState?.mode, gender, relationshipStatus, isLinked]);
+
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [codeTipShown, setCodeTipShown] = useState(false);
   const [resetTipShown, setResetTipShown] = useState(false);
@@ -797,6 +832,15 @@ useEffect(() => {
 
   // CAMBIO 1: Aceptamos un argumento opcional (codeOverride)
   const joinGame = async (codeOverride?: any) => {
+    const joinGame = async () => {
+        // 🔒 VALIDACIÓN ESTRICTA: Nadie pasa sin llenar todo
+        if (!userName.trim() || !gender || !relationshipStatus) {
+          alert("⛔ ERROR: Por favor completa TODOS los campos:\n1. Nombre\n2. Género\n3. Estado Civil");
+          return; // Detiene la ejecución aquí
+        }
+    
+        try {
+          // ... (aquí sigue el resto de tu código existente: const playerRef = doc...)
     // 1. CERRAR MODAL INMEDIATAMENTE (Esto arregla que se quede colgada)
     setShowScanner(false);
 
@@ -1067,7 +1111,7 @@ const resetGame = async () => {
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
             </div>
 
-            <div className="w-full max-w-md relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-500">
+            <div id="profile-form-container" className="w-full max-w-md relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-500">
                 
                 {/* CABECERA */}
                 <div className="mb-6 relative inline-block"><Flame className="w-16 h-16 text-pink-500 relative z-10 mx-auto drop-shadow-lg" /></div>
@@ -1425,7 +1469,13 @@ const resetGame = async () => {
                   {total > 0 ? (
                       <div className="bg-red-900/50 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 backdrop-blur-sm"><AlertTriangle className="inline mr-2" size={16}/>Complete setup for {total} questions to start.</div>
                   ) : (
-                      <button onClick={startGame} className="w-full bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">START GAME</button>
+                    <button 
+                    id="btn-start-game"   // <--- ✅ ESTO ES LO NUEVO
+                    onClick={startGame} 
+                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                    START GAME
+                </button>
                   )}
               </div>
               <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
