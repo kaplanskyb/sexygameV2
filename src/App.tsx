@@ -24,6 +24,7 @@ import {
     User as UserIcon, 
     Lock, 
     ChevronDown, 
+    ChevronUp,       // <--- Faltaba
     QrCode, 
     Flame, 
     HelpCircle,
@@ -36,13 +37,30 @@ import {
     RefreshCw,
     Settings,
     HeartHandshake,
-    Send,           // <--- EL QUE TE DIO ERROR AHORA
-    Shuffle,        // <--- Probablemente lo uses para mezclar cartas
-    SkipForward,    // <--- Para saltar turnos
-    Power,          // <--- Para apagar/resetear el juego
-    AlertTriangle,  // <--- Para advertencias
-    Check,          // <--- Para confirmaciones
-    X               // <--- Para cerrar modales
+    Send,            
+    Shuffle,         
+    SkipForward,     
+    Power,           
+    AlertTriangle,   
+    Check,           
+    X,
+    Info,            // <--- Faltaba (Causa probable del crash en InfoIcon)
+    BookOpen,        // <--- Faltaba (Manual Admin)
+    Zap,             // <--- Faltaba
+    CheckCircle,     // <--- Faltaba
+    Upload,          // <--- Faltaba (Manager)
+    FileSpreadsheet, // <--- Faltaba (Manager)
+    Download,        // <--- Faltaba (Manager)
+    PauseCircle,     // <--- Faltaba (Manager)
+    PlayCircle,      // <--- Faltaba (Manager)
+    CheckSquare,     // <--- Faltaba (Manager)
+    Square,          // <--- Faltaba (Manager)
+    Filter,          // <--- Faltaba (Manager)
+    ArrowUpDown,     // <--- Faltaba (Manager)
+    Search,          // <--- Faltaba (Manager)
+    Edit2,           // <--- Faltaba (Player Edit)
+    LogOut,          // <--- Faltaba (Player Leave)
+    MessageCircle    // <--- Faltaba (Cards)
   } from 'lucide-react';
 
 // --- CONFIGURACIÓN FIREBASE ---
