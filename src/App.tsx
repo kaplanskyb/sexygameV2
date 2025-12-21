@@ -1183,7 +1183,7 @@ const resetGame = async () => {
                           <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
                           <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
                             {code || '...'}
-                          </span>
+                          </span> 
                       </div>
                    </div>
                 ) : (
