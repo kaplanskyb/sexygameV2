@@ -2090,3 +2090,30 @@ const resetGame = async () => {
                             </div>
                         </div>
                     )}
+</div> {/* Cierra el Área de Acción (Fondo gris) */}
+
+{/* --- 3. ESTADO DE ESPERA (Generic Waiting) --- */}
+<div className="mt-6 text-center">
+     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+         <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+         <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+             {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+         </span>
+     </div>
+     {pendingPlayers.length > 0 && (
+         <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
+             Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
+         </div>
+     )}
+</div>
+
+</div> 
+/* Cierra el bloque de Juego Activo */
+    )
+)}
+</div>
+{/* Cierre del Contenedor Principal y Alertas */}
+<CustomAlert/>
+</div>
+);
+}
