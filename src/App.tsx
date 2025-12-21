@@ -539,7 +539,84 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
-   
+  // =========================================================================
+  // 🟢 1. PEGAR ESTO AQUÍ (ARRIBA, DESPUÉS DE LOS USESTATE)
+  // =========================================================================
+
+  // --- LÓGICA SEGURA DE CARTAS ---
+  let localCard = null;
+  // Buscamos la carta manualmente para evitar errores de funciones externas
+  if (gameState?.currentChallengeId) {
+      const source = gameState.mode === 'yn' ? pairChallenges : challenges;
+      localCard = (source || []).find(c => c.id === gameState.currentChallengeId);
+  }
+  
+  // Objeto de respaldo para que NO EXPLOTE si no hay datos
+  const finalCard = localCard || fetchedCard || { level: '1', text: 'Loading...', type: 'T', male: '...', female: '...' };
+
+  // --- LÓGICA SEGURA DE ESTILOS (INLINE) ---
+  // Calculamos el estilo aquí mismo sin llamar a funciones externas
+  let computedStyle = 'border-white/10 bg-white/5';
+  const lvlStr = (finalCard.level || '1').toString();
+  if (lvlStr === '4') computedStyle = 'border-red-600/50 shadow-[0_0_50px_rgba(220,38,38,0.4)] bg-gradient-to-b from-red-950/80 to-black';
+  else if (lvlStr === '3') computedStyle = 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)] bg-gradient-to-b from-orange-950/80 to-black';
+  else if (lvlStr === '2') computedStyle = 'border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-gradient-to-b from-yellow-950/80 to-black';
+  else if (lvlStr === '1') computedStyle = 'border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-gradient-to-b from-green-950/80 to-black';
+  
+  const cardStyle = computedStyle; 
+
+  // --- LÓGICA SEGURA DE JUGADORES Y VOTOS ---
+  const currentUid = user?.uid || 'unknown';
+  const playerAnswered = gameState?.answers ? !!gameState.answers[currentUid] : false;
+  
+  // Usamos arrays vacíos si players es undefined
+  const playersSafe = players || [];
+  const playersCount = playersSafe.length > 0 ? playersSafe.length : 1;
+  const votesCount = gameState?.votes ? Object.keys(gameState.votes).length : 0;
+  const allVoted = votesCount >= (playersCount - 1);
+  
+  const answersCount = gameState?.answers ? Object.keys(gameState.answers).length : 0;
+  const allYNAnswered = answersCount >= playersCount;
+
+  // --- LÓGICA MATCH/MISMATCH ---
+  let ynMatch = null;
+  let myPartnerName = "???";
+  
+  if (gameState?.mode === 'yn' && playersSafe.length > 0) {
+      const myPartnerUid = gameState.pairs ? gameState.pairs[currentUid] : null;
+      const myAns = gameState.answers ? gameState.answers[currentUid] : null;
+      const partnerAns = (myPartnerUid && gameState.answers) ? gameState.answers[myPartnerUid] : null;
+      
+      if (myPartnerUid) {
+          const pObj = playersSafe.find(p => p.uid === myPartnerUid);
+          if(pObj) myPartnerName = pObj.name;
+      }
+      
+      if(myAns && partnerAns) { 
+          ynMatch = myAns === partnerAns; 
+      }
+  }
+
+  // --- JUGADORES PENDIENTES (BLINDADO) ---
+  const pendingPlayers = playersSafe.filter(p => !p.isBot).filter(p => {
+       if(!gameState) return false;
+       
+       if(gameState.mode === 'question' || gameState.mode === 'dare') { 
+           // Verificamos que exista el turno antes de leerlo
+           const turnIdx = gameState.currentTurnIndex || 0;
+           const currentPlayer = playersSafe[turnIdx];
+           
+           if (currentPlayer && p.uid === currentPlayer.uid) return false; 
+           
+           return !gameState.votes?.[p.uid]; 
+       }
+       if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       return false;
+   });
+
+   // Asegúrate de que esta línea esté aquí y NO duplicada más arriba
+   const [showAdminPanel, setShowAdminPanel] = useState(false); 
+
    // Variable de estado para el panel flotante de Admin
    // (Asegúrate de borrar la otra línea duplicada de "const [showAdminPanel...]" si la tenías abajo)
 
@@ -1901,68 +1978,6 @@ const resetGame = async () => {
   if (gameState.mode === 'ended') {
       return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
   }
-
-  // -----------------------------------------------------------
-  // BLOQUE DE CÁLCULOS DEL JUEGO (VERSIÓN SEGURA ANTI-CRASH)
-  // -----------------------------------------------------------
-
-  // 1. Obtener la carta actual
-  const card = currentCard();
-  // PROTECCIÓN: Si fetchedCard aún no existe, usamos un objeto vacío seguro
-  const finalCard = card || fetchedCard || { level: '1', text: 'Loading...', type: 'T' };
-
-  // 2. Pantalla de carga: Solo si hay ID pero no hay datos Y no estamos en modo admin setup
-  if (!card && !fetchedCard && gameState.currentChallengeId && gameState.mode !== 'admin_setup' && gameState.mode !== 'lobby') { 
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-            <div className="text-xl animate-pulse font-mono text-cyan-400">LOADING ROUND...</div>
-        </div>
-      ); 
-  }
-
-  // 3. Calcular estilos (Con protección ?. para evitar pantalla azul)
-  const cardStyle = getLevelStyle(finalCard?.level || '1');
-  const playerAnswered = gameState?.answers?.[user?.uid || ''];
-  
-  // Calcular votos con seguridad (si votes es undefined usa {})
-  const votesCount = Object.keys(gameState?.votes || {}).length;
-  const playersCount = players.length > 0 ? players.length : 1;
-  const allVoted = votesCount >= (playersCount - 1);
-  
-  const answersCount = Object.keys(gameState?.answers || {}).length;
-  const allYNAnswered = answersCount >= playersCount;
-
-  // 4. Lógica específica para MATCH/MISMATCH (YN)
-  let ynMatch = null;
-  let myPartnerName = "???";
-  
-  if (gameState.mode === 'yn' && allYNAnswered) {
-      const myPartnerUid = gameState.pairs?.[user?.uid || ''];
-      const myAns = gameState.answers?.[user?.uid || ''];
-      const partnerAns = gameState.answers?.[myPartnerUid || '']; // Protección extra ?.
-      
-      const pObj = players.find(p => p.uid === myPartnerUid);
-      if(pObj) myPartnerName = pObj.name;
-      
-      if(myAns && partnerAns) { 
-          ynMatch = myAns === partnerAns; 
-      }
-  }
-
-  // 5. Calcular jugadores pendientes
-  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-       if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
-           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-           return !gameState.votes?.[p.uid]; 
-       }
-       if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-       return false;
-   });
-
-  // -----------------------------------------------------------
-  // FIN DEL BLOQUE (YA PUEDES DEJAR EL RETURN ABAJO)
-  // -----------------------------------------------------------
 
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
