@@ -124,6 +124,7 @@ const parseCSVLine = (text: string) => {
 // --- ESTILOS NEÓN Y GLASS ---
 const glassPanel = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-xl";
 const glassInput = "bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder:text-white/30 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
+const disabledBtn = "opacity-50 cursor-not-allowed";
 
 // --- COMPONENTES AUXILIARES ---
 
@@ -826,7 +827,11 @@ useEffect(() => {
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
   const createGame = async (codeOverride?: any) => {
-    if (!userName.trim() || !user) return;
+    if (!userName.trim()) {
+        alert("⛔ ERROR: Please enter a Nickname.");
+        return;
+    }
+    if (!user) return;
     
     // TRUCO: Si codeOverride es un string (el código manual), úsalo. 
     // Si no (es un evento de click), usa el estado 'coupleNumber'.
@@ -875,9 +880,13 @@ useEffect(() => {
   // --- FUNCIÓN CORREGIDA ---
   const joinGame = async (codeOverride?: any) => {
     // 1. VALIDACIÓN INICIAL DE CAMPOS
-    if (!userName.trim() || !gender || !relationshipStatus) {
-      alert("⛔ ERROR: Por favor completa TODOS los campos:\n1. Nombre\n2. Género\n3. Estado Civil");
-      return; 
+    if (!userName.trim()) {
+        alert("⛔ Please enter a Nickname.");
+        return;
+    }
+    if (!gender || !relationshipStatus) {
+        alert("⛔ Please, enter Gender & Status");
+        return;
     }
 
     // 2. CERRAR MODAL INMEDIATAMENTE
@@ -1159,7 +1168,7 @@ const resetGame = async () => {
                 {/* 1. INPUT NOMBRE */}
                 <div className="relative mb-4 w-full">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                    <input type="text" placeholder="YOUR NICKNAME" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} maxLength={12}/>
+                    <input type="text" placeholder="YOUR NICKNAME" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) alert("Nickname cannot be empty!"); }} maxLength={12}/>
                 </div>
                 
                 {/* 2. SELECTORES */}
