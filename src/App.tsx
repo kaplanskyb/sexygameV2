@@ -539,6 +539,21 @@ export default function TruthAndDareApp() {
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
+  // --- HELPER STYLES ---
+  const getLevelStyle = (level: string | undefined) => {
+    switch (level) {
+      case '4': return 'border-red-600/50 shadow-[0_0_50px_rgba(220,38,38,0.4)] bg-gradient-to-b from-red-950/80 to-black';
+      case '3': return 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)] bg-gradient-to-b from-orange-950/80 to-black';
+      case '2': return 'border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-gradient-to-b from-yellow-950/80 to-black';
+      case '1': return 'border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-gradient-to-b from-green-950/80 to-black';
+      default: return 'border-white/10 bg-white/5';
+    }
+  };
+  const currentPlayerName = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex]?.name : 'Nobody';
+  const currentPlayer = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex] : null;
+  const currentCard = () => { if (!gameState || !gameState?.currentChallengeId) return undefined; if (gameState.mode === 'yn') return pairChallenges.find(c => c.id === gameState?.currentChallengeId); return challenges.find(c => c.id === gameState?.currentChallengeId); };
+  const getCardText = (c: Challenge | undefined) => { if (!c) return 'Loading...'; if (gameState?.mode === 'yn') { if (isAdmin) return `M: ${c.male} / F: ${c.female}`; const myPlayer = players.find(p => p.uid === user?.uid); if (!myPlayer) return 'Waiting...'; return myPlayer.gender === 'female' ? c.female : c.male; } return c.text || 'No text found'; };
+  const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
 // =========================================================================
   // 🟢 LÓGICA GLOBAL (PEGAR ESTO ARRIBA, DESPUÉS DE LOS USESTATE)
   // =========================================================================
@@ -775,16 +790,7 @@ useEffect(() => {
   }, [isAdmin, viewAsPlayer, gameState?.mode, gameState?.code, players.length, lobbySequence, resetTipShown, modeSwitchTipShown, startRoundTipShown, viewSwitchTipShown, backToAdminTipShown, selectedLevel, selectedType, isAutoSetup]);
 
 
-  // --- HELPER STYLES ---
-  const getLevelStyle = (level: string | undefined) => {
-    switch (level) {
-      case '4': return 'border-red-600/50 shadow-[0_0_50px_rgba(220,38,38,0.4)] bg-gradient-to-b from-red-950/80 to-black';
-      case '3': return 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)] bg-gradient-to-b from-orange-950/80 to-black';
-      case '2': return 'border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-gradient-to-b from-yellow-950/80 to-black';
-      case '1': return 'border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-gradient-to-b from-green-950/80 to-black';
-      default: return 'border-white/10 bg-white/5';
-    }
-  };
+  
 
   // 0. GLOBALS
   useEffect(() => {
@@ -1263,12 +1269,7 @@ const resetGame = async () => {
   const handleEndGame = async () => { if(confirm('End game after this round?')) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isEnding: true }); } };
   const handleReturnToSetup = async () => { if(confirm('Start a new game (Return to Setup)?')) { const batch = writeBatch(db); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', currentTurnIndex: 0, answers: {}, votes: {}, isEnding: false }); await batch.commit(); } };
   const handleRestart = async () => { if(confirm('RESET EVERYTHING? Use this only for a new party.')) { setCustomError(null); setIsAutoSetup(false); setSelectedLevel(''); const batch = writeBatch(db); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'))).forEach(d=>batch.delete(d.ref)); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'challenges'))).forEach(d=>batch.update(d.ref, {answered:false})); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges'))).forEach(d=>batch.update(d.ref, {answered:false})); batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null, matchHistory: [], isEnding: false }); await batch.commit(); } };
-  const currentPlayerName = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex]?.name : 'Nobody';
-  const currentPlayer = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex] : null;
-  const currentCard = () => { if (!gameState || !gameState?.currentChallengeId) return undefined; if (gameState.mode === 'yn') return pairChallenges.find(c => c.id === gameState?.currentChallengeId); return challenges.find(c => c.id === gameState?.currentChallengeId); };
-  const getCardText = (c: Challenge | undefined) => { if (!c) return 'Loading...'; if (gameState?.mode === 'yn') { if (isAdmin) return `M: ${c.male} / F: ${c.female}`; const myPlayer = players.find(p => p.uid === user?.uid); if (!myPlayer) return 'Waiting...'; return myPlayer.gender === 'female' ? c.female : c.male; } return c.text || 'No text found'; };
   
-  const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
 
   // --- COMPONENTS ---
   const CustomAlert = () => customError ? ( <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-[150]"> <div className={`p-6 max-w-md text-center ${glassPanel} border-red-500/50`}> <AlertTriangle className="mx-auto text-red-500 mb-2" size={40}/> <p className="text-white mb-4 whitespace-pre-line font-medium">{customError}</p> <button onClick={closeError} className="bg-red-600/80 hover:bg-red-500 px-6 py-2 rounded font-bold transition-colors">OK</button> </div> </div> ) : null;
