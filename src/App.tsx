@@ -27,7 +27,7 @@ import {
     HeartHandshake, Send, Shuffle, SkipForward, Power, AlertTriangle, Check, X,
     Info, BookOpen, Zap, CheckCircle, Upload, FileSpreadsheet, Download,
     PauseCircle, PlayCircle, CheckSquare, Square, Filter, ArrowUpDown, Search,
-    Edit2, LogOut, MessageCircle, RefreshCcw 
+    Edit2, LogOut, MessageCircle, RefreshCcw, Smile
 } from 'lucide-react';
 // --- CORRECCIÓN DE IMPORTS DE FIREBASE (AGREGA ESTO A TU LISTA DE IMPORTS) ---
 import { 
@@ -1192,7 +1192,62 @@ const resetGame = async () => {
   const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
   const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
-  const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
+  const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } 
+    // ... dentro de nextTurn, al final ...
+
+    if (roundFinished) {
+        if (gameState.isAutoMode && gameState.sequence) {
+            let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
+
+            // --- CORRECCIÓN AQUÍ: Si llegamos al final, paramos ---
+            if (nextSeqIdx >= gameState.sequence.length) {
+                 // Fin de la secuencia: Volver a Setup
+                 updates.mode = 'admin_setup';
+                 updates.isAutoMode = false; // Apagamos el auto
+                 updates.sequenceIndex = 0;
+            } else {
+                // Sigue la fiesta: Siguiente carta en la secuencia
+                const nextModeKey = gameState.sequence[nextSeqIdx];
+                let mode = nextModeKey === 'truth' ? 'question' : nextModeKey;
+                if(mode === 'truth') mode = 'question';
+                
+                let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
+                const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
+                
+                const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
+                
+                if (nextChallenge) {
+                    updates.mode = mode;
+                    updates.currentTurnIndex = 0;
+                    updates.sequenceIndex = nextSeqIdx;
+                    updates.answers = {};
+                    updates.votes = {};
+                    updates.currentChallengeId = nextChallenge.id;
+                    
+                    if (mode === 'yn') {
+                        updates.pairs = computePairs();
+                        players.filter(p => p.isBot).forEach(b => { 
+                            updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; 
+                        });
+                    }
+                    
+                    const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
+                } else {
+                    updates.mode = 'admin_setup';
+                }
+            }
+            // -------------------------------------------------------
+
+        } else {
+            updates.mode = 'admin_setup';
+            updates.currentTurnIndex = 0;
+            updates.answers = {};
+            updates.votes = {};
+        }
+    }
+    await updateDoc(gameRef, updates);
+};
 
   // ... (Manager Logic)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
@@ -2102,13 +2157,12 @@ const resetGame = async () => {
         </div>
     </div>
 
-    {/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
-    <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
+{/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
+<div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
         
         {/* A) TURNO DE OTRO JUGADOR: MODO JUEZ/ESPECTADOR */}
         {!isMyTurn() && gameState.mode !== 'yn' && (
             <div className="text-center">
-
                 <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-3">
                     NOW PLAYING: {currentPlayerName()}
                 </p>
@@ -2143,7 +2197,7 @@ const resetGame = async () => {
             <div className="text-center">
                  {gameState.answers?.[user?.uid || ''] ? (
                      <div className="py-4">
-                         <div className="text-green-400 font-bold text-xl mb-2">Answer Locked! 🔒</div>
+                         <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
                          <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
                      </div>
                  ) : (
@@ -2159,6 +2213,35 @@ const resetGame = async () => {
         )}
     </div>
 
+    {/* --- FEEDBACK DE MATCH/MISMATCH (NUEVO) --- */}
+    {gameState.mode === 'yn' && allYNAnswered && (
+        <div className="w-full mt-6 animate-in zoom-in duration-300">
+             <div className={`p-6 rounded-2xl border-2 shadow-2xl flex flex-col items-center ${ynMatch ? 'bg-emerald-900/80 border-emerald-400 shadow-emerald-500/20' : 'bg-red-900/80 border-red-500 shadow-red-500/20'}`}>
+                {ynMatch ? (
+                    <>
+                        <div className="bg-emerald-500 text-black rounded-full p-3 mb-3 animate-bounce">
+                            <Smile size={40} />
+                        </div>
+                        <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">IT'S A MATCH!</h2>
+                        <p className="text-emerald-200 text-sm font-bold mt-1">Great minds think alike!</p>
+                    </>
+                ) : (
+                    <>
+                        <div className="bg-red-500 text-white rounded-full p-3 mb-3 animate-shake">
+                            <UserX size={40} />
+                        </div>
+                        <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">MISMATCH...</h2>
+                        <p className="text-red-200 text-sm font-bold mt-1">Awkward...</p>
+                    </>
+                )}
+                
+                <div className="mt-4 bg-black/40 px-6 py-2 rounded-xl border border-white/10">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1">YOUR PARTNER WAS</p>
+                    <p className="text-2xl font-black text-white">{myPartnerName}</p>
+                </div>
+             </div>
+        </div>
+    )}
     {/* --- 3. ESTADO DE ESPERA --- */}
     <div className="mt-6 text-center">
          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
