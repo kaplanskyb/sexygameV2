@@ -2046,65 +2046,47 @@ const resetGame = async () => {
         )}
     </div>
 
-{/* RESULTADO DIVERTIDO DE MATCH/MISMATCH (NUEVO) */}
-{gameState?.mode==='yn' && allYNAnswered && (
-            <div className={`flex flex-col items-center justify-center p-8 rounded-3xl w-full animate-in zoom-in duration-500 shadow-2xl border-4 ${ynMatch ? 'bg-green-900/40 border-green-500 shadow-green-500/20' : 'bg-red-900/40 border-red-500 shadow-red-500/20'}`}>
-                
-                {ynMatch === true ? (
-                    /* --- ESCENA DE ÉXITO (MATCH) --- */
-                    <div className="text-center relative">
-                        <div className="absolute inset-0 bg-green-400 blur-2xl opacity-20 animate-pulse"></div>
-                        <HeartHandshake className="w-24 h-24 text-green-400 mx-auto mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
-                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter mb-2 transform rotate-2">
-                            IT'S A MATCH!
-                        </h3>
-                        <div className="text-green-200 font-bold text-sm uppercase tracking-[0.5em] animate-pulse">Perfect Sync</div>
-                    </div>
-                ) : (
-                    /* --- ESCENA DE FALLO (MISMATCH) --- */
-                    <div className="text-center relative">
-                        <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
-                        <AlertTriangle className="w-24 h-24 text-red-500 mx-auto mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
-                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter mb-2 transform -rotate-2">
-                            AWKWARD...
-                        </h3>
-                        <div className="text-red-300 font-bold text-sm uppercase tracking-[0.5em]">Totally Different</div>
-                    </div>
-                )}
+{/* RESULTADO COMPACTO DE MATCH/UNMATCH (VERSIÓN 2) */}
+{gameState?.mode === 'yn' && allYNAnswered && (
+                        <div className={`flex flex-col p-4 rounded-2xl w-full animate-in zoom-in duration-500 shadow-xl border-2 ${ynMatch ? 'bg-green-900/60 border-green-500 shadow-green-500/10' : 'bg-red-900/60 border-red-500 shadow-red-500/10'}`}>
 
-                {/* --- MOSTRAR PARTNER --- */}
-                <div className="mt-8 text-center w-full bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Your Partner Was</div>
-                    <div className="font-black text-3xl text-white drop-shadow-md">
-                        {myPartnerName}
-                    </div>
-                </div>
+                            {/* FILA SUPERIOR: ICONO (IZQ) + TEXTO (DER) */}
+                            <div className="flex items-center justify-center gap-4 mb-2">
+                                {ynMatch === true ? (
+                                    <>
+                                        {/* MATCH */}
+                                        <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-glow" strokeWidth={2} />
+                                        <div className="text-left">
+                                            <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-600 italic tracking-tighter">
+                                                MATCH!
+                                            </h3>
+                                            <div className="text-green-200 text-[10px] font-bold uppercase tracking-widest">Perfect Sync</div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* UNMATCH (Carita Triste) */}
+                                        <Frown className="w-12 h-12 text-red-500 animate-pulse drop-shadow-glow" strokeWidth={2} />
+                                        <div className="text-left">
+                                            <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600 italic tracking-tighter">
+                                                UNMATCH
+                                            </h3>
+                                            <div className="text-red-300 text-[10px] font-bold uppercase tracking-widest">Different Vibes</div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
-                <div className="text-white/20 mt-4 text-[9px] font-mono tracking-widest uppercase">
-                    Next round in 4s...
-                </div>
-            </div>
-        )}
+                            {/* FILA INFERIOR: NOMBRE DEL PARTNER (ABAJO) */}
+                            <div className="mt-1 text-center w-full bg-black/40 p-2 rounded-lg border border-white/5">
+                                <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner</div>
+                                <div className="font-black text-xl text-white drop-shadow-md">
+                                    {myPartnerName}
+                                </div>
+                            </div>
 
-    {/* --- 3. ESTADO DE ESPERA --- */}
-    <div className="mt-6 text-center">
-         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
-             <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
-             <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-                 {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
-             </span>
-         </div>
-         {pendingPlayers.length > 0 && (
-             <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
-                 Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
-             </div>
-         )}
-    </div>
-</div>  
-                )
-            )}
-        </div>
-        <CustomAlert/>
-    </div>
-);
-}
+                            <div className="text-white/20 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">
+                                Next round in 4s...
+                            </div>
+                        </div>
+                    )}
