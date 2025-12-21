@@ -1172,7 +1172,7 @@ const resetGame = async () => {
                 {/* 1. INPUT NOMBRE */}
                 <div className="relative mb-4 w-full">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                    <input type="text" placeholder="YOUR NICKNAME" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) alert("Nickname cannot be empty!"); }} maxLength={12}/>
+                    <input type="text" placeholder="" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) alert("Nickname cannot be empty!"); }} maxLength={12}/>
                 </div>
                 
                 {/* 2. SELECTORES */}
@@ -1221,20 +1221,34 @@ const resetGame = async () => {
                     ) : (
                         userName.toLowerCase().trim() === 'admin' ? (
                             <button 
-  onClick={() => createGame()} 
-  className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn} ${(!userName.trim() || !gender || !relationshipStatus) ? disabledBtn : ''}`} 
-  disabled={!userName.trim() || !gender || !relationshipStatus}
->
-  START PARTY NOW
-</button>
+                            onClick={() => {
+                              if (!gender || !relationshipStatus) {
+                                alert("Please, fill Gender and Status");
+                                return;
+                              }
+                              createGame();
+                            }} 
+                            className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}
+                          >
+                            START PARTY NOW
+                          </button>
                         ) : (
                             <button 
-  onClick={() => joinGame()} 
-  className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn} ${(!userName.trim() || !gender || !relationshipStatus || !code.trim()) ? disabledBtn : ''}`} 
-  disabled={!userName.trim() || !gender || !relationshipStatus || !code.trim()}
->
-  {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
-</button>
+                            onClick={() => {
+                              if (!gender || !relationshipStatus) {
+                                alert("Please, fill Gender and Status");
+                                return;
+                              }
+                              if (!code.trim()) {
+                                alert("Enter the Game Code (ask the Admin)");
+                                return;
+                              }
+                              joinGame();
+                            }} 
+                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                          >
+                            {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                          </button>
                         )
                     )}
                 </div>
