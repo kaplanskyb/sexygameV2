@@ -831,6 +831,10 @@ useEffect(() => {
         alert("⛔ ERROR: Please enter a Nickname.");
         return;
     }
+    if (!gender || !relationshipStatus) {
+        alert("⛔ ERROR: Please select Gender and Status.");
+        return;
+    }
     if (!user) return;
     
     // TRUCO: Si codeOverride es un string (el código manual), úsalo. 
@@ -1212,13 +1216,25 @@ const resetGame = async () => {
                 <div className="w-full">
                     {relationshipStatus === 'couple' && !coupleNumber ? (
                         <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                            <HeartHandshake size={24} /> {gender === 'female' ? 'Get Couple Code' : 'Enter Couple Code'}
+                            <HeartHandshake size={24} /> {gender === 'female' ? 'Enter Game Code (ask to the Admin)' : 'Enter Game Code (ask to the Admin)'}
                         </button>
                     ) : (
                         userName.toLowerCase().trim() === 'admin' ? (
-                            <button onClick={() => createGame()} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>START PARTY NOW</button>
+                            <button 
+  onClick={() => createGame()} 
+  className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn} ${(!userName.trim() || !gender || !relationshipStatus) ? disabledBtn : ''}`} 
+  disabled={!userName.trim() || !gender || !relationshipStatus}
+>
+  START PARTY NOW
+</button>
                         ) : (
-                            <button onClick={() => joinGame()} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>{coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}</button>
+                            <button 
+  onClick={() => joinGame()} 
+  className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn} ${(!userName.trim() || !gender || !relationshipStatus || !code.trim()) ? disabledBtn : ''}`} 
+  disabled={!userName.trim() || !gender || !relationshipStatus || !code.trim()}
+>
+  {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+</button>
                         )
                     )}
                 </div>
@@ -1716,7 +1732,7 @@ const resetGame = async () => {
             
             <div className="text-center mt-8 mb-4">
                 {gameState?.mode === 'lobby' ? (
-                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">LOBBY STATUS: OPEN</div>
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR THE PLAYERS TO JOIN</div>
                 ) : (
                    <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
                 )}
