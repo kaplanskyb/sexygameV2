@@ -780,9 +780,10 @@ useEffect(() => {
   useEffect(() => {
     console.log("View changed to:", viewAsPlayer ? "Player" : "Admin");
     if (!viewAsPlayer) {
-    setLoading(false); // Force no loading al volver a admin
+      console.log("Forzando no loading al volver a admin");
+      setLoading(false); // Force no loading al volver a admin
     }
-    }, [viewAsPlayer]);
+  }, [viewAsPlayer]);
     
   useEffect(() => {
     if(challenges.length > 0 || pairChallenges.length > 0){
@@ -1739,7 +1740,7 @@ const resetGame = async () => {
             <CustomAlert/>
             {tutorialStep === 8 && <TutorialTooltip text="Switch between player and admin" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
             {isAdmin && (
-                <button onClick={() => { setLoading(false); setViewAsPlayer(false); }} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
+                <button onClick={() => { console.log("Switching to admin"); setLoading(false); setViewAsPlayer(false); }} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-cyan-500 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
             )}
             {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
             <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
@@ -1854,12 +1855,17 @@ const resetGame = async () => {
         <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
             <div className="flex items-center gap-3">
                 {/* Botón para alternar Admin Panel */}
+                {/* Botón CORREGIDO: Volver a Admin View */}
                 {isAdmin && (
                     <button 
-                        onClick={() => setShowAdminPanel(!showAdminPanel)}
-                        className={`p-2 rounded-full transition-all ${showAdminPanel ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'bg-white/10 text-slate-400 hover:text-white border border-white/10'}`}
+                        onClick={() => {
+                            setLoading(false); 
+                            setViewAsPlayer(false); // <--- ESTO ES LA CLAVE
+                        }}
+                        className="p-2 rounded-full bg-white/10 text-cyan-400 hover:text-white border border-cyan-500/50 hover:bg-white/20 transition-all shadow-[0_0_10px_rgba(34,211,238,0.2)]"
+                        title="Back to Admin Panel"
                     >
-                        {showAdminPanel ? <X size={20} /> : <Gamepad2 size={20} />}
+                        <Settings size={20} />
                     </button>
                 )}
                 {/* Código Pequeño en Header */}
