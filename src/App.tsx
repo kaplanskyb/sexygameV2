@@ -409,7 +409,7 @@ const CouplePairing = ({
         }, 1500);
     };
 
-    // REEMPLAZAR EL RETURN DE CouplePairing CON ESTO:
+    // DENTRO DE CouplePairing...
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
@@ -426,24 +426,38 @@ const CouplePairing = ({
                 {isFemale ? (
                     <>
                         <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">{localCode}</div>
-                        {/* TEXTO CORREGIDO: GIVE THIS CODE... */}
-                        <div className="flex items-center gap-3 text-white font-bold text-sm uppercase tracking-wide animate-pulse bg-white/10 px-4 py-2 rounded-full">
+                        <div className="flex items-center gap-3 text-white font-bold text-sm uppercase tracking-wide animate-pulse bg-white/10 px-4 py-2 rounded-full border border-white/5">
                             <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
                             GIVE THIS CODE TO YOUR PARTNER
                         </div>
                     </>
                 ) : (
                     <>
-                        {/* TEXTO CORREGIDO Y EN BLANCO BRILLANTE */}
-                        <p className="text-white font-black text-center mb-6 text-sm uppercase tracking-widest drop-shadow-md">
+                        <p className="text-white font-black text-center mb-6 text-sm uppercase tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                             ASK YOUR PARTNER FOR THE CODE
                         </p>
                         
-                        <input type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000" className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" value={inputCode} onChange={(e) => setInputCode(e.target.value.slice(0, 4))} />
+                        {/* 1. INPUT DEL CÓDIGO (Blanco Brillante con Sombra) */}
+                        <input 
+                            type="number" 
+                            inputMode="numeric" 
+                            pattern="[0-9]*" 
+                            maxLength={4} 
+                            placeholder="0000" 
+                            className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" 
+                            value={inputCode} 
+                            onChange={(e) => setInputCode(e.target.value.slice(0, 4))} 
+                        />
                         
-                        {/* TEXTO CORREGIDO: ENTER YOUR PARTNER'S CODE */}
-                        <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>
-                            ENTER YOUR PARTNER'S CODE
+                        {/* 2. BOTÓN (Texto Blanco Brillante) */}
+                        <button 
+                            onClick={handleManSubmit} 
+                            disabled={inputCode.length < 4} 
+                            className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-white/30 cursor-not-allowed'}`}
+                        >
+                           <span className={inputCode.length === 4 ? "drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : ""}>
+                               ENTER YOUR PARTNER'S CODE
+                           </span>
                         </button>
                     </>
                 )}
@@ -524,7 +538,57 @@ export default function TruthAndDareApp() {
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
+// =========================================================================
+  // 🟢 LÓGICA GLOBAL (PEGAR ESTO ARRIBA, DESPUÉS DE LOS USESTATE)
+  // =========================================================================
 
+  // 1. Obtener la carta actual de forma segura
+  const card = currentCard();
+  // Protección: Si no hay carta local ni remota, usamos un objeto vacío para evitar crash
+  const finalCard = card || fetchedCard || { level: '1', text: 'Loading...', type: 'T' };
+
+  // 2. Calcular estilos
+  const cardStyle = getLevelStyle(finalCard?.level || '1');
+
+  // 3. Calcular estados de votación
+  const playerAnswered = gameState?.answers?.[user?.uid || ''];
+  const playersCount = players.length > 0 ? players.length : 1;
+  const votesCount = Object.keys(gameState?.votes || {}).length;
+  const allVoted = votesCount >= (playersCount - 1);
+  const answersCount = Object.keys(gameState?.answers || {}).length;
+  const allYNAnswered = answersCount >= playersCount;
+
+  // 4. Lógica MATCH/MISMATCH (Partner y Resultado)
+  let ynMatch = null;
+  let myPartnerName = "???";
+  
+  if (gameState?.mode === 'yn') {
+      const myPartnerUid = gameState.pairs?.[user?.uid || ''];
+      const myAns = gameState.answers?.[user?.uid || ''];
+      const partnerAns = gameState.answers?.[myPartnerUid || '']; 
+      
+      const pObj = players.find(p => p.uid === myPartnerUid);
+      if(pObj) myPartnerName = pObj.name;
+      
+      if(myAns && partnerAns) { 
+          ynMatch = myAns === partnerAns; 
+      }
+  }
+
+  // 5. Jugadores Pendientes
+  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+       if(!gameState) return false;
+       if(gameState.mode === 'question' || gameState.mode === 'dare') { 
+           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
+           return !gameState.votes?.[p.uid]; 
+       }
+       if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       return false;
+   });
+   
+   // Variable de estado para el panel flotante de Admin
+   // (Asegúrate de borrar la otra línea duplicada de "const [showAdminPanel...]" si la tenías abajo)
+   const [showAdminPanel, setShowAdminPanel] = useState(false);
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
     if (user && players) {
@@ -1265,7 +1329,7 @@ const resetGame = async () => {
                 <div className="w-full">
                     {relationshipStatus === 'couple' && !coupleNumber ? (
                         <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                            <HeartHandshake size={24} /> {gender === 'female' ? 'Get Couple Code' : 'Enter Couple Code'}
+                            <HeartHandshake size={24} /> {gender === 'female' ? 'SET GAME CODE (Ask Admin)' : 'SET GAME CODE (Ask Admin)'}
                         </button>
                     ) : (
                         userName.toLowerCase().trim() === 'admin' ? (
@@ -1743,7 +1807,68 @@ const resetGame = async () => {
       </div>
     );
   }
+// ... (Aquí terminaba tu bloque de admin_setup)
 
+    // ---> PEGAR ESTO PARA QUE EL ADMIN VEA EL JUEGO ACTIVO SIN PANTALLA AZUL <---
+    
+    // Si estamos en juego activo (Question/Dare/Match)
+    if (['question', 'dare', 'yn'].includes(gameState.mode)) {
+        return (
+            <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden bg-slate-900">
+                {/* Header Admin */}
+                <div className="flex justify-between items-center mb-6">
+                     <div className="flex items-center gap-2">
+                        <button onClick={() => setViewAsPlayer(true)} className="bg-white/10 p-2 rounded-full hover:bg-white/20" title="Switch View"><Gamepad2 size={20}/></button>
+                        <span className="text-pink-500 font-black tracking-widest uppercase">HOST VIEW</span>
+                     </div>
+                     <button onClick={() => setShowAdminHelp(true)} className="text-yellow-400"><HelpCircle size={24}/></button>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
+                    {/* Tarjeta del Desafío (Admin Version) */}
+                    <div className={`w-full p-6 rounded-3xl text-center mb-6 border-2 ${cardStyle} relative`}>
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20">
+                            {gameState.mode === 'yn' ? 'MATCH ROUND' : 'CURRENT CARD'}
+                        </div>
+                        <h3 className="text-xl font-bold mt-4 mb-2">{getCardText(finalCard)}</h3>
+                        {gameState.mode === 'yn' && (
+                             <div className="text-xs text-white/50 bg-black/40 p-2 rounded mt-2">
+                                 (Showing Male/Female versions based on your gender or raw data)
+                             </div>
+                        )}
+                    </div>
+
+                    {/* Estado del Juego */}
+                    <div className="w-full bg-black/40 p-4 rounded-xl border border-white/10 mb-6 text-center">
+                        <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">CURRENT STATUS</p>
+                        {pendingPlayers.length > 0 ? (
+                            <div className="text-cyan-400 font-bold animate-pulse">
+                                WAITING FOR: {pendingPlayers.map(p => p.name).join(', ')}
+                            </div>
+                        ) : (
+                            <div className="text-emerald-400 font-bold text-lg">
+                                ROUND COMPLETE! ✅
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Controles del Admin */}
+                    <div className="w-full grid grid-cols-2 gap-3">
+                        <button onClick={nextTurn} className="col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all">
+                            FORCE NEXT TURN ⏭
+                        </button>
+                        <button onClick={handleEndGame} className="bg-red-900/40 border border-red-500/40 p-3 rounded-xl font-bold text-red-300 text-xs hover:bg-red-900/60">
+                            END GAME
+                        </button>
+                        <button onClick={handleReturnToSetup} className="bg-slate-700 p-3 rounded-xl font-bold text-white text-xs hover:bg-slate-600">
+                            BACK TO SETUP
+                        </button>
+                    </div>
+                </div>
+                <CustomAlert />
+            </div>
+        );
+    }
   // --- VISTA JUGADOR ---
   if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
       return (
