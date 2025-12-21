@@ -554,34 +554,46 @@ export default function TruthAndDareApp() {
   const currentCard = () => { if (!gameState || !gameState?.currentChallengeId) return undefined; if (gameState.mode === 'yn') return pairChallenges.find(c => c.id === gameState?.currentChallengeId); return challenges.find(c => c.id === gameState?.currentChallengeId); };
   const getCardText = (c: Challenge | undefined) => { if (!c) return 'Loading...'; if (gameState?.mode === 'yn') { if (isAdmin) return `M: ${c.male} / F: ${c.female}`; const myPlayer = players.find(p => p.uid === user?.uid); if (!myPlayer) return 'Waiting...'; return myPlayer.gender === 'female' ? c.female : c.male; } return c.text || 'No text found'; };
   const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
-// =========================================================================
-  // 🟢 LÓGICA GLOBAL (PEGAR ESTO ARRIBA, DESPUÉS DE LOS USESTATE)
-  // =========================================================================
 
-  // 1. Obtener la carta actual de forma segura
+// -----------------------------------------------------------
+  // BLOQUE DE CÁLCULOS DEL JUEGO (VERSIÓN SEGURA ANTI-CRASH)
+  // -----------------------------------------------------------
+
+  // 1. Obtener la carta actual
   const card = currentCard();
-  // Protección: Si no hay carta local ni remota, usamos un objeto vacío para evitar crash
+  // PROTECCIÓN: Si fetchedCard aún no existe, usamos un objeto vacío seguro
   const finalCard = card || fetchedCard || { level: '1', text: 'Loading...', type: 'T' };
 
-  // 2. Calcular estilos
-  const cardStyle = getLevelStyle(finalCard?.level || '1');
+  // 2. Pantalla de carga: Solo si hay ID pero no hay datos Y no estamos en modo admin setup
+  if (!card && !fetchedCard && gameState.currentChallengeId && gameState.mode !== 'admin_setup' && gameState.mode !== 'lobby') { 
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+            <div className="text-xl animate-pulse font-mono text-cyan-400">LOADING ROUND...</div>
+        </div>
+      ); 
+  }
 
-  // 3. Calcular estados de votación
+  // 3. Calcular estilos (Con protección ?. para evitar pantalla azul)
+  const cardStyle = getLevelStyle(finalCard?.level || '1');
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
-  const playersCount = players.length > 0 ? players.length : 1;
+  
+  // Calcular votos con seguridad (si votes es undefined usa {})
   const votesCount = Object.keys(gameState?.votes || {}).length;
+  const playersCount = players.length > 0 ? players.length : 1;
   const allVoted = votesCount >= (playersCount - 1);
+  
   const answersCount = Object.keys(gameState?.answers || {}).length;
   const allYNAnswered = answersCount >= playersCount;
 
-  // 4. Lógica MATCH/MISMATCH (Partner y Resultado)
+  // 4. Lógica específica para MATCH/MISMATCH (YN)
   let ynMatch = null;
   let myPartnerName = "???";
   
-  if (gameState?.mode === 'yn') {
+  if (gameState.mode === 'yn' && allYNAnswered) {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
       const myAns = gameState.answers?.[user?.uid || ''];
-      const partnerAns = gameState.answers?.[myPartnerUid || '']; 
+      const partnerAns = gameState.answers?.[myPartnerUid || '']; // Protección extra ?.
       
       const pObj = players.find(p => p.uid === myPartnerUid);
       if(pObj) myPartnerName = pObj.name;
@@ -591,14 +603,13 @@ export default function TruthAndDareApp() {
       }
   }
 
-  // 5. Jugadores Pendientes
+  // 5. Calcular jugadores pendientes
   const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-       if(!gameState) return false;
-       if(gameState.mode === 'question' || gameState.mode === 'dare') { 
+       if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
            if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
            return !gameState.votes?.[p.uid]; 
        }
-       if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
        return false;
    });
    
@@ -1916,8 +1927,7 @@ const resetGame = async () => {
          );
     }
 
-    const card = currentCard();
-    const finalCard = card || fetchedCard;
+  
     const cardStyle = getLevelStyle(finalCard?.level);
 
     if (!finalCard && gameState?.currentChallengeId) {
