@@ -855,7 +855,21 @@ useEffect(() => {
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
   const createGame = async (codeOverride?: any) => {
-    if (!userName.trim() || !user) return;
+    // 1. VALIDACIONES OBLIGATORIAS
+    if (!userName.trim()) {
+        alert("⛔ Please enter your Name first!");
+        return;
+    }
+    if (!gender) {
+        alert("⛔ Please select your Gender!");
+        return;
+    }
+    if (!relationshipStatus) {
+        alert("⛔ Please select your Status (Single or Couple)!");
+        return;
+    }
+    
+    if (!user) return;
     
     // TRUCO: Si codeOverride es un string (el código manual), úsalo. 
     // Si no (es un evento de click), usa el estado 'coupleNumber'.
@@ -870,35 +884,44 @@ useEffect(() => {
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // 1. Crear Sala
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: code, 
-      mode: 'lobby',
-      currentTurn: null,
-      adminUid: user.uid,
-      createdAt: serverTimestamp(),
-      riskLevel: 1,
-      autoLoop: false,
-      loopConfig: { truth: 1, dare: 1, match: 1 },
-      loopIndex: 0,
-      loopSequence: [],
-      lastAction: 'CREATED'
-    });
-    
-    // 2. Crear Jugador Admin (USANDO finalCoupleNumber)
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
-      uid: user.uid, 
-      name: userName, 
-      gender: gender, 
-      relationshipStatus: relationshipStatus, 
-      // AQUÍ ESTÁ LA SOLUCIÓN: Usamos la variable local, no el estado lento
-      coupleNumber: relationshipStatus === 'couple' ? finalCoupleNumber : 'ADMIN', 
-      joinedAt: serverTimestamp(), 
-      isActive: true, 
-      isBot: false,
-      matches: 0, 
-      mismatches: 0
-    });
+    try {
+        // 1. Crear Sala
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
+          code: code, 
+          mode: 'lobby',
+          currentTurn: null,
+          adminUid: user.uid,
+          createdAt: serverTimestamp(),
+          riskLevel: 1,
+          autoLoop: false,
+          loopConfig: { truth: 1, dare: 1, match: 1 },
+          loopIndex: 0,
+          loopSequence: [],
+          lastAction: 'CREATED'
+        });
+        
+        // 2. Crear Jugador Admin (USANDO finalCoupleNumber)
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
+          uid: user.uid, 
+          name: userName, 
+          gender: gender, 
+          relationshipStatus: relationshipStatus, 
+          // AQUÍ ESTÁ LA SOLUCIÓN: Usamos la variable local, no el estado lento
+          coupleNumber: relationshipStatus === 'couple' ? finalCoupleNumber : 'ADMIN', 
+          joinedAt: serverTimestamp(), 
+          isActive: true, 
+          isBot: false,
+          matches: 0, 
+          mismatches: 0
+        });
+
+        // 3. Forzar entrada visual
+        setIsJoined(true);
+
+    } catch (error) {
+        console.error("Error creating game:", error);
+        alert("Error creating game. See console.");
+    }
   };
 
   // --- FUNCIÓN CORREGIDA ---
@@ -1289,7 +1312,7 @@ const resetGame = async () => {
                         userName.toLowerCase().trim() === 'admin' ? (
                             <button onClick={() => createGame()} className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}>START PARTY NOW</button>
                         ) : (
-                            <button onClick={() => joinGame()} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>{coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}</button>
+                            <button onClick={() => joinGame()} className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}>{coupleNumber ? 'ENTER (LINKED)' : 'Fill Gender and Status'}</button>
                         )
                     )}
                 </div>
