@@ -1775,7 +1775,7 @@ const resetGame = async () => {
             
             <div className="text-center mt-8 mb-4">
                 {gameState?.mode === 'lobby' ? (
-                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">LOBBY STATUS: OPEN</div>
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR THE GAME TO START</div>
                 ) : (
                    <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
                 )}
@@ -1792,28 +1792,35 @@ const resetGame = async () => {
   }
 
   // -----------------------------------------------------------
-  // BLOQUE DE CÁLCULOS DEL JUEGO (PEGAR ESTO ANTES DEL RETURN)
+  // BLOQUE DE CÁLCULOS DEL JUEGO (VERSIÓN SEGURA ANTI-CRASH)
   // -----------------------------------------------------------
 
   // 1. Obtener la carta actual
   const card = currentCard();
-  const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
+  // PROTECCIÓN: Si fetchedCard aún no existe, usamos un objeto vacío seguro
+  const finalCard = card || fetchedCard || { level: '1', text: 'Loading...', type: 'T' };
 
-  // 2. Pantalla de carga si hay ID de reto pero no tenemos los datos
-  if (!finalCard && gameState.currentChallengeId) { 
+  // 2. Pantalla de carga: Solo si hay ID pero no hay datos Y no estamos en modo admin setup
+  if (!card && !fetchedCard && gameState.currentChallengeId && gameState.mode !== 'admin_setup' && gameState.mode !== 'lobby') { 
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-            <div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div>
+            <div className="text-xl animate-pulse font-mono text-cyan-400">LOADING ROUND...</div>
         </div>
       ); 
   }
 
-  // 3. Calcular estilos y estados básicos
-  const cardStyle = getLevelStyle(finalCard?.level);
+  // 3. Calcular estilos (Con protección ?. para evitar pantalla azul)
+  const cardStyle = getLevelStyle(finalCard?.level || '1');
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
-  const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-  const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
+  
+  // Calcular votos con seguridad (si votes es undefined usa {})
+  const votesCount = Object.keys(gameState?.votes || {}).length;
+  const playersCount = players.length > 0 ? players.length : 1;
+  const allVoted = votesCount >= (playersCount - 1);
+  
+  const answersCount = Object.keys(gameState?.answers || {}).length;
+  const allYNAnswered = answersCount >= playersCount;
 
   // 4. Lógica específica para MATCH/MISMATCH (YN)
   let ynMatch = null;
@@ -1821,8 +1828,8 @@ const resetGame = async () => {
   
   if (gameState.mode === 'yn' && allYNAnswered) {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
-      const myAns = gameState.answers[user?.uid || ''];
-      const partnerAns = gameState.answers[myPartnerUid || ''];
+      const myAns = gameState.answers?.[user?.uid || ''];
+      const partnerAns = gameState.answers?.[myPartnerUid || '']; // Protección extra ?.
       
       const pObj = players.find(p => p.uid === myPartnerUid);
       if(pObj) myPartnerName = pObj.name;
@@ -1832,25 +1839,19 @@ const resetGame = async () => {
       }
   }
 
-  // 5. Calcular jugadores pendientes (Para mostrar en la UI)
+  // 5. Calcular jugadores pendientes
   const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
        if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
-           // Si es turno de alguien, esa persona no cuenta como pendiente de votar (ella responde)
            if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-           // Los demás deben votar
            return !gameState.votes?.[p.uid]; 
        }
        if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
        return false;
    });
-   
-   // Variable auxiliar para saber si soy Admin
-   // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
 
   // -----------------------------------------------------------
-  // FIN DEL BLOQUE DE CÁLCULOS
+  // FIN DEL BLOQUE (YA PUEDES DEJAR EL RETURN ABAJO)
   // -----------------------------------------------------------
-   
 
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
@@ -1981,8 +1982,9 @@ const resetGame = async () => {
         {/* A) TURNO DE OTRO JUGADOR: MODO JUEZ/ESPECTADOR */}
         {!isMyTurn() && gameState.mode !== 'yn' && (
             <div className="text-center">
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">
-                    JUDGE THE PLAYER: {currentPlayerName()}
+
+                <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-3">
+                    NOW PLAYING: {currentPlayerName()}
                 </p>
                 <div className="flex gap-3">
                     {gameState.mode === 'question' ? (
