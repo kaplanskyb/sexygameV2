@@ -1597,6 +1597,7 @@ const resetGame = async () => {
   }
 
   // --- ADMIN MAIN ---
+  // --- ADMIN MAIN ---
   if (isAdmin && !viewAsPlayer) {
     
     // 1. SI ESTAMOS EN LOBBY, SETUP O ENDED -> Muestra la UI de configuración
@@ -1767,10 +1768,9 @@ const resetGame = async () => {
              )}
            </div>
        );
-    }
+    } // <--- CIERRE DEL BLOQUE LOBBY/SETUP
 
     // 2. CORRECCIÓN CRÍTICA: SI EL JUEGO ESTÁ CORRIENDO -> Muestra HOST VIEW
-    // (Ahora esto está DENTRO del bloque if(isAdmin) para que solo el admin lo vea)
     if (['question', 'dare', 'yn'].includes(gameState.mode)) {
         return (
             <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden bg-slate-900">
@@ -1828,7 +1828,7 @@ const resetGame = async () => {
             </div>
         );
     }
-  } // <--- ESTE ES EL CIERRE DEL BLOQUE ADMIN (No lo borres)
+  } // <--- CIERRE DEL BLOQUE ADMIN PRINCIPAL
 
     if (gameState?.mode === 'admin_setup') {
          return (
