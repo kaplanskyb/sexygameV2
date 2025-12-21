@@ -412,7 +412,7 @@ const CouplePairing = ({
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
-                {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER HER CODE')}
+                {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER PARTNER CODE')}
             </h3>
 
             <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative">
@@ -426,11 +426,11 @@ const CouplePairing = ({
                 {isFemale ? (
                     <>
                         <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">{localCode}</div>
-                        <div className="flex items-center gap-3 text-slate-400 text-sm uppercase tracking-wide animate-pulse"><div className="w-2 h-2 bg-pink-500 rounded-full"></div>Waiting for him...</div>
+                        <div className="flex items-center gap-3 text-slate-400 text-sm uppercase tracking-wide animate-pulse"><div className="w-2 h-2 bg-pink-500 rounded-full"></div>Waiting for partner...</div>
                     </>
                 ) : (
                     <>
-                        <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">Ask her for the 4-digit code</p>
+                        <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">Ask your partner for their code</p>
                         <input type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000" className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" value={inputCode} onChange={(e) => setInputCode(e.target.value.slice(0, 4))} />
                         <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>LINK NOW</button>
                     </>
@@ -521,17 +521,34 @@ export default function TruthAndDareApp() {
     }
   }, [players, user]);
   // --- PEGA ESTO EN SU LUGAR ---
+  // --- DETECCIÓN DE ADMIN Y RESETEO DE ESTADO ---
   useEffect(() => {
     const isNowAdmin = userName.toLowerCase().trim() === 'admin';
-    
-    // ESTA LÍNEA ES LA QUE ARREGLA TU PROBLEMA:
     setIsAdmin(isNowAdmin);
 
     if (isNowAdmin) {
       const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
       setCode(autoCode);
+      
+      // RESETEO AUTOMÁTICO DE PARÁMETROS DEL JUEGO
+      const resetGameParams = async () => {
+          try {
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+                  code: autoCode, // Actualizamos el código en la BD
+                  mode: 'lobby',
+                  roundLevel: '1',     // Reset Risk Level
+                  nextType: 'truth',   // Reset Type
+                  isAutoMode: false,   // Reset Auto Mode
+                  answers: {},
+                  votes: {},
+                  currentTurnIndex: 0,
+                  isEnding: false
+              });
+          } catch(e) { console.error("Auto reset failed", e); }
+      };
+      resetGameParams();
+
     } else {
-      // Si el código es muy largo (automático), lo limpiamos, si es corto (manual), lo dejamos
       if (code && code.length > 5) setCode(''); 
     }
   }, [userName]);
@@ -1463,20 +1480,19 @@ const resetGame = async () => {
                 })}
               </div>
 
-              {!isSettingCode ? (
-                  <div className="relative w-full max-w-sm mb-4">
-                      {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                      <button onClick={() => setIsSettingCode(true)} className="w-full bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl font-bold text-blue-200 hover:bg-blue-800/50 transition flex items-center justify-center gap-2 text-sm backdrop-blur-sm"><Send size={16}/> Set Game Code</button>
-                      {/* Tell Code Tooltip appears here now */}
-                      {tutorialStep === 15 && <TutorialTooltip text="Tell the code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+             {/* BLOQUE DE CÓDIGO DEL ADMIN (NUEVO: SOLO LECTURA) */}
+             <div className="mb-6 w-full max-w-sm relative group animate-in zoom-in">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                  <div className="relative w-full py-6 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
+                      <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Party Code</span>
+                      <span className="text-4xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] select-all">
+                        {code || '...'}
+                      </span>
                   </div>
-              ) : (
-                  <div className="relative w-full max-w-sm flex gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
-                      <input type="text" placeholder="Enter Code..." className="bg-black/40 border border-white/20 rounded-xl p-3 text-white flex-1 outline-none focus:border-cyan-500" value={code} onChange={e=>setCode(e.target.value)} autoFocus />
-                      <button onClick={setGameCode} className="bg-green-600 px-4 rounded-xl font-bold hover:bg-green-500">Save</button>
-                      <button onClick={() => setIsSettingCode(false)} className="bg-red-600 px-4 rounded-xl hover:bg-red-500">X</button>
-                  </div>
-              )}
+                  
+                  {/* Tooltip del Tutorial (Mantenemos esto para que no se rompa el tutorial) */}
+                  {tutorialStep === 15 && <TutorialTooltip text="Tell this code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+              </div>
               
               <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-white/5 p-4 rounded-xl font-bold mb-4 flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all relative">
                   <Settings size={20}/> Content & Uploads
@@ -1827,32 +1843,39 @@ const resetGame = async () => {
                 /* B) VISTA DE JUGADOR (Para todos, incluido Admin en modo juego) */
                 gameState?.mode === 'lobby' ? (
                     /* B.1) LOBBY DE ESPERA */
-                    <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
-                        
-                        {/* ---> CÓDIGO GIGANTE EN EL LOBBY <--- */}
-                        <div className="mb-12 relative group cursor-default">
-                            <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
-                            <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
-                                <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
-                                <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
-                                    {gameState?.code || code}
-                                </div>
-                            </div>
-                        </div>
+<div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
+    
+    {/* ---> CÓDIGO GIGANTE EN EL LOBBY <--- */}
+    <div className="mb-12 relative group cursor-default">
+        <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
+        <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
+            <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
+            <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
+                {gameState?.code || code}
+            </div>
+        </div>
+    </div>
 
-                        <div className="mb-6 relative">
-                            <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
-                            <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
-                        </div>
-                        <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg">Waiting for Host</h2>
-                        <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">The game will begin soon. Get ready!</p>
-                        
-                        {isAdmin && (
-                            <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30 animate-pulse">
-                                ( Switch to Admin Panel to start the game )
-                            </p>
-                        )}
-                    </div>
+    {/* ---> AQUÍ ESTÁ EL CAMBIO DE TEXTO QUE PEDISTE <--- */}
+    <div className="mb-6 relative">
+        <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
+        <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
+    </div>
+    
+    {/* TEXTO ACTUALIZADO */}
+    <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg animate-pulse">
+        Waiting for the game to start...
+    </h2>
+    <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">
+        Get ready!
+    </p>
+    
+    {isAdmin && (
+        <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30">
+            ( Switch to Admin Panel to start the game )
+        </p>
+    )}
+</div>
                 ) : (
                     /* B.2) INTERFAZ DEL JUEGO ACTIVO */
                     /* ========================================================================
