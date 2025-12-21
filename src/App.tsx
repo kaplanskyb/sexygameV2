@@ -2342,4 +2342,3 @@ const resetGame = async () => {
         <CustomAlert/>
     </div>
 );
-}
