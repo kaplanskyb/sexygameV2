@@ -1208,23 +1208,21 @@ const resetGame = async () => {
                 ) : (
                    /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
                    <div className="relative mb-8 w-full">
-                    <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold">ENTER GAME CODE</span>
-                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                   <input 
-                       type="number" inputMode="numeric" pattern="[0-9]*" placeholder="" 
-                       className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold"
-                       value={code} 
-                       onChange={e=>setCode(e.target.value)} 
-                   />
-                   <span className="block text-xs text-white/50 mt-1">(Ask to the Admin)</span>
-                </div>
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
+                    <input 
+                    type="number" inputMode="numeric" pattern="[0-9]*" placeholder="ENTER GAME CODE (Ask the Admin)" 
+                    className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold"
+                    value={code} 
+                    onChange={e=>setCode(e.target.value)} 
+                    />
+                    </div>
                 
-                )}
+                    )}
                 
                     {/* 4. BOTONES */}
                     <div className="w-full">
                     {relationshipStatus === 'couple' && !coupleNumber ? (
-  <>
+                    <>
                     <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
                     <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
                         <HeartHandshake size={24} />
@@ -1254,18 +1252,18 @@ const resetGame = async () => {
                                 <button 
                                 onClick={() => {
                                 if (!gender || !relationshipStatus) {
-                                    alert("Please, fill Gender and Status");
-                                    return;
+                                alert("Please, fill Gender and Status");
+                                return;
                                 }
                                 if (!code.trim()) {
-                                    alert("Enter the Game Code (ask the Admin)");
-                                    return;
+                                alert("Enter the Game Code (ask the Admin)");
+                                return;
                                 }
                                 joinGame();
-                                }} 
-                                className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                            }} 
+                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
                             >
-                                {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                            {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
                             </button>
                             )
                         )}
