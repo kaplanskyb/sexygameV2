@@ -1598,109 +1598,237 @@ const resetGame = async () => {
 
   // --- ADMIN MAIN ---
   if (isAdmin && !viewAsPlayer) {
-    if (!gameState || !gameState.mode || gameState.mode === 'lobby' || !['admin_setup', 'question', 'dare', 'yn', 'ended'].includes(gameState.mode)) {
-        const { total } = checkPendingSettings();
-        const singlesCount = players.filter(p => p.relationshipStatus === 'single').length;
-        const couplesCount = players.filter(p => p.relationshipStatus === 'couple').length;
-        const { valid: couplesValid, incompleteIds } = checkCouplesCompleteness();
-        const sortedPlayers = [...players].sort((a, b) => {
-            const aIncomplete = incompleteIds.includes(a.coupleNumber) && a.relationshipStatus === 'couple';
-            const bIncomplete = incompleteIds.includes(b.coupleNumber) && b.relationshipStatus === 'couple';
-            if (aIncomplete && !bIncomplete) return -1;
-            if (!aIncomplete && bIncomplete) return 1;
-            return 0;
-        });
+    
+    // 1. SI ESTAMOS EN LOBBY, SETUP O ENDED -> Muestra la UI de configuración
+    if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup' || gameState.mode === 'ended') {
+        
+       const { total } = checkPendingSettings();
+       const singlesCount = players.filter(p => p.relationshipStatus === 'single').length;
+       const couplesCount = players.filter(p => p.relationshipStatus === 'couple').length;
+       const { valid: couplesValid, incompleteIds } = checkCouplesCompleteness();
+       const sortedPlayers = [...players].sort((a, b) => {
+           const aIncomplete = incompleteIds.includes(a.coupleNumber) && a.relationshipStatus === 'couple';
+           const bIncomplete = incompleteIds.includes(b.coupleNumber) && b.relationshipStatus === 'couple';
+           if (aIncomplete && !bIncomplete) return -1;
+           if (!aIncomplete && bIncomplete) return 1;
+           return 0;
+       });
 
-        return (
-            <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
-              {/* TUTORIAL TOOLTIPS */}
-              {tutorialStep === 0 && <TutorialTooltip text="Read the Manual first!" onClick={() => setTutorialStep(1)} className="top-14 right-4" arrowPos="top" />}
-              {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-              
-              {/* Step 15: Tell code (Visible over button as fallback position) */}
-              {tutorialStep === 15 && <TutorialTooltip text="Tell the code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-              
-              {/* Wait for players: Pointing to list */}
-              {tutorialStep === 18 && <TutorialTooltip text="Waiting for players..." onClick={() => setTutorialStep(3)} className="left-full ml-4 top-1/2 -translate-y-1/2" arrowPos="left" />}
-              
-              {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+       return (
+           <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
+             {/* TUTORIAL TOOLTIPS */}
+             {tutorialStep === 0 && <TutorialTooltip text="Read the Manual first!" onClick={() => setTutorialStep(1)} className="top-14 right-4" arrowPos="top" />}
+             {tutorialStep === 1 && <TutorialTooltip text="Set Secret Code" onClick={() => setTutorialStep(2)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+             {tutorialStep === 15 && <TutorialTooltip text="Tell the code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+             {tutorialStep === 18 && <TutorialTooltip text="Waiting for players..." onClick={() => setTutorialStep(3)} className="left-full ml-4 top-1/2 -translate-y-1/2" arrowPos="left" />}
+             {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
 
-              <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
-              {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
-              <CustomSuccess />
-              <button onClick={() => { setShowAdminHelp(true); if(tutorialStep===0) setTutorialStep(1); }} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
-              <CustomAlert/>
-              
-              <div className="flex items-center gap-2 mb-2 mt-8">
-                 <Users size={32} className="text-cyan-400"/>
-                 <h2 className="text-2xl font-black tracking-widest text-white">LOBBY ({players.length})</h2>
-              </div>
-              
-              <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10 relative">
-                  {/* Anchor for Waiting Players Tooltip */}
-                  {tutorialStep === 18 && <div className="absolute right-0 top-0 w-1 h-full"></div>}
-                  <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
-                  <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
-              </div>
+             <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
+             {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
+             <CustomSuccess />
+             <button onClick={() => { setShowAdminHelp(true); if(tutorialStep===0) setTutorialStep(1); }} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
+             <CustomAlert/>
+             
+             {/* -- LOBBY RENDER -- */}
+             {gameState?.mode !== 'admin_setup' && (
+                 <>
+                    <div className="flex items-center gap-2 mb-2 mt-8">
+                        <Users size={32} className="text-cyan-400"/>
+                        <h2 className="text-2xl font-black tracking-widest text-white">LOBBY ({players.length})</h2>
+                    </div>
+                    
+                    <div className="flex gap-4 mb-4 text-xs font-mono bg-black/40 p-2 rounded-lg border border-white/10 relative">
+                        {tutorialStep === 18 && <div className="absolute right-0 top-0 w-1 h-full"></div>}
+                        <div className="flex items-center gap-1 text-cyan-400"><UserIcon size={14}/> Singles: {singlesCount}</div>
+                        <div className="flex items-center gap-1 text-pink-400"><Users size={14}/> Couples: {couplesCount/2}</div>
+                    </div>
 
-              <div className={`w-full max-w-sm mb-4 max-h-[40vh] overflow-y-auto p-4 ${glassPanel} relative`}>
-                {players.length === 0 && <span className="text-white/30 text-sm text-center block">Waiting for players to join...</span>}
-                {sortedPlayers.map((p, idx) => {
-                    const isIncomplete = incompleteIds.includes(p.coupleNumber) && p.relationshipStatus === 'couple';
-                    return (
-                        <div key={p.uid} className={`flex justify-between items-center py-2 border-b border-white/5 last:border-0 ${p.isBot?'text-purple-400':''}`}>
-                            <div className="flex flex-col leading-tight">
-                                <span className={isIncomplete ? "text-orange-400 font-bold animate-pulse" : "font-bold"}>{p.name} {p.isBot && '(Bot)'}</span>
-                                {p.relationshipStatus === 'couple' && <span className={`text-[10px] ${isIncomplete ? "text-orange-300" : "text-pink-400"}`}>Couple #{p.coupleNumber} {isIncomplete ? "(Waiting partner)" : ""}</span>}
+                    <div className={`w-full max-w-sm mb-4 max-h-[40vh] overflow-y-auto p-4 ${glassPanel} relative`}>
+                        {players.length === 0 && <span className="text-white/30 text-sm text-center block">Waiting for players to join...</span>}
+                        {sortedPlayers.map((p, idx) => {
+                            const isIncomplete = incompleteIds.includes(p.coupleNumber) && p.relationshipStatus === 'couple';
+                            return (
+                                <div key={p.uid} className={`flex justify-between items-center py-2 border-b border-white/5 last:border-0 ${p.isBot?'text-purple-400':''}`}>
+                                    <div className="flex flex-col leading-tight">
+                                        <span className={isIncomplete ? "text-orange-400 font-bold animate-pulse" : "font-bold"}>{p.name} {p.isBot && '(Bot)'}</span>
+                                        {p.relationshipStatus === 'couple' && <span className={`text-[10px] ${isIncomplete ? "text-orange-300" : "text-pink-400"}`}>Couple #{p.coupleNumber} {isIncomplete ? "(Waiting partner)" : ""}</span>}
+                                    </div>
+                                    <div className="relative">
+                                        {tutorialStep === 3 && idx === 0 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="right-8 top-1/2 -translate-y-1/2" arrowPos="right" />}
+                                        <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500/70 hover:text-red-500 transition-colors" title="Reset Player"><UserX size={18}/></button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mb-6 w-full max-w-sm relative group animate-in zoom-in">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                        <div className="relative w-full py-6 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Party Code</span>
+                            <span className="text-4xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] select-all">
+                                {code || '...'}
+                            </span>
+                        </div>
+                        {tutorialStep === 15 && <TutorialTooltip text="Tell this code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                    </div>
+                    
+                    <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-white/5 p-4 rounded-xl font-bold mb-4 flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all relative">
+                        <Settings size={20}/> Content & Uploads
+                        {total > 0 && <span className="absolute top-3 right-3 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>}
+                    </button>
+                    
+                    {!couplesValid && <div className="bg-red-900/80 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 max-w-sm w-full animate-pulse backdrop-blur-sm"><strong className="block text-red-200 mb-1"><AlertTriangle className="inline mr-1" size={14}/> Incomplete Couples!</strong>Wait for partners for IDs: {incompleteIds.join(', ')}</div>}
+                    
+                    <div className="relative w-full max-w-sm">
+                        {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                        {total > 0 ? (
+                            <div className="bg-red-900/50 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 backdrop-blur-sm"><AlertTriangle className="inline mr-2" size={16}/>Complete setup for {total} questions to start.</div>
+                        ) : (
+                            <button id="btn-start-game" onClick={startGame} className="w-full bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">START GAME</button>
+                        )}
+                    </div>
+                    <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
+                 </>
+             )}
+
+             {/* -- SETUP RENDER -- */}
+             {gameState?.mode === 'admin_setup' && (
+                 <>
+                    {tutorialStep === 5 && <TutorialTooltip text="Switch Mode Anytime!" onClick={() => setTutorialStep(6)} className="top-1/2 right-full mr-4 -translate-y-1/2" arrowPos="right" />}
+                    <h2 className="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-8">SETUP ROUND</h2>
+                    
+                    <div className={`w-full max-w-md p-6 mb-4 ${glassPanel}`}>
+                        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 relative">
+                            <div className="flex items-center gap-2 justify-center w-full">
+                                <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div>
+                                <InfoIcon text="Auto: loops through Truth/Dare/Match. Manual: lets you pick every turn." />
+                                <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
                             </div>
                             <div className="relative">
-                                {tutorialStep === 3 && idx === 0 && <TutorialTooltip text="Reset players if needed" onClick={() => { setResetTipShown(true); setTutorialStep(4); }} className="right-8 top-1/2 -translate-y-1/2" arrowPos="right" />}
-                                <button onClick={()=>handleKickPlayer(p.uid, p.name)} className="text-red-500/70 hover:text-red-500 transition-colors" title="Reset Player"><UserX size={18}/></button>
-                            </div>
+                                <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
+                                {tutorialStep === 5 && <TutorialTooltip text="Switch Manual/Auto Mode Anytime!" onClick={() => setTutorialStep(6)} className="right-full mr-3 top-1/2 -translate-y-1/2" arrowPos="right" />}
+                            </div>      
                         </div>
-                    );
-                })}
-              </div>
 
-             {/* BLOQUE DE CÓDIGO DEL ADMIN (NUEVO: SOLO LECTURA) */}
-             <div className="mb-6 w-full max-w-sm relative group animate-in zoom-in">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                  <div className="relative w-full py-6 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
-                      <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Party Code</span>
-                      <span className="text-4xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] select-all">
-                        {code || '...'}
-                      </span>
-                  </div>
-                  
-                  {/* Tooltip del Tutorial (Mantenemos esto para que no se rompa el tutorial) */}
-                  {tutorialStep === 15 && <TutorialTooltip text="Tell this code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-              </div>
-              
-              <button onClick={()=>setIsManaging(true)} className="w-full max-w-sm bg-white/5 p-4 rounded-xl font-bold mb-4 flex items-center justify-center gap-3 border border-white/10 hover:bg-white/10 transition-all relative">
-                  <Settings size={20}/> Content & Uploads
-                  {total > 0 && <span className="absolute top-3 right-3 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>}
-              </button>
-              
-              {!couplesValid && <div className="bg-red-900/80 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 max-w-sm w-full animate-pulse backdrop-blur-sm"><strong className="block text-red-200 mb-1"><AlertTriangle className="inline mr-1" size={14}/> Incomplete Couples!</strong>Wait for partners for IDs: {incompleteIds.join(', ')}</div>}
-              
-              <div className="relative w-full max-w-sm">
-                  {tutorialStep === 4 && total === 0 && couplesValid && <TutorialTooltip text="Start the Party!" onClick={() => {}} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                  {total > 0 ? (
-                      <div className="bg-red-900/50 p-3 rounded-xl text-center text-sm mb-4 border border-red-500 backdrop-blur-sm"><AlertTriangle className="inline mr-2" size={16}/>Complete setup for {total} questions to start.</div>
-                  ) : (
-                    <button 
-                    id="btn-start-game"   // <--- ✅ ESTO ES LO NUEVO
-                    onClick={startGame} 
-                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 p-4 rounded-xl font-black tracking-widest hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                    START GAME
-                </button>
-                  )}
-              </div>
-              <button onClick={handleRestart} className="w-full max-w-sm bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
+                        {isAutoSetup ? (
+                            <div className="flex gap-3 animate-in fade-in">
+                                <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
+                                <div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
+                                <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-pink-400 font-bold mb-1">Dare</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyDare} onChange={e=>setQtyDare(parseInt(e.target.value))}/></div>
+                                <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-emerald-400 font-bold mb-1">Match</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyMM} onChange={e=>setQtyMM(parseInt(e.target.value))}/></div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-sm text-white/70">Risk Level</span>
+                                        <InfoIcon text="You can change the risk level any time." />
+                                    </div>
+                                    <div className="relative">
+                                        {tutorialStep === 52 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(53)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                        <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-sm text-white/70">Next Game Type</span>
+                                        <InfoIcon text="You can change the game type any time." />
+                                    </div>
+                                    <div className="relative">
+                                        {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                        <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {isAutoSetup && (
+                            <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm text-white/70">Risk Level</span>
+                                    <InfoIcon text="You can change the risk level any time." />
+                                </div>
+                                {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="relative w-full max-w-md">
+                        {tutorialStep === 6 && <TutorialTooltip text="Click to Start!" onClick={() => setTutorialStep(7)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+                        <button onClick={isAutoSetup ? startAutoSequence : startRound} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">
+                            {isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}
+                        </button>
+                    </div>
+                    <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
+                    <button onClick={handleRestart} className="w-full max-w-md bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
+                 </>
+             )}
+           </div>
+       );
+    }
+
+    // 2. CORRECCIÓN CRÍTICA: SI EL JUEGO ESTÁ CORRIENDO -> Muestra HOST VIEW
+    // (Ahora esto está DENTRO del bloque if(isAdmin) para que solo el admin lo vea)
+    if (['question', 'dare', 'yn'].includes(gameState.mode)) {
+        return (
+            <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden bg-slate-900">
+                {/* Header Admin */}
+                <div className="flex justify-between items-center mb-6">
+                      <div className="flex items-center gap-2">
+                         <button onClick={() => setViewAsPlayer(true)} className="bg-white/10 p-2 rounded-full hover:bg-white/20" title="Switch View"><Gamepad2 size={20}/></button>
+                         <span className="text-pink-500 font-black tracking-widest uppercase">HOST VIEW</span>
+                      </div>
+                      <button onClick={() => setShowAdminHelp(true)} className="text-yellow-400"><HelpCircle size={24}/></button>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
+                    {/* Tarjeta del Desafío (Admin Version) */}
+                    <div className={`w-full p-6 rounded-3xl text-center mb-6 border-2 ${cardStyle} relative`}>
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20">
+                            {gameState.mode === 'yn' ? 'MATCH ROUND' : 'CURRENT CARD'}
+                        </div>
+                        <h3 className="text-xl font-bold mt-4 mb-2">{getCardText(finalCard)}</h3>
+                        {gameState.mode === 'yn' && (
+                             <div className="text-xs text-white/50 bg-black/40 p-2 rounded mt-2">
+                                 (Showing Male/Female versions based on your gender or raw data)
+                             </div>
+                        )}
+                    </div>
+
+                    {/* Estado del Juego */}
+                    <div className="w-full bg-black/40 p-4 rounded-xl border border-white/10 mb-6 text-center">
+                        <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">CURRENT STATUS</p>
+                        {pendingPlayers.length > 0 ? (
+                            <div className="text-cyan-400 font-bold animate-pulse">
+                                WAITING FOR: {pendingPlayers.map(p => p.name).join(', ')}
+                            </div>
+                        ) : (
+                            <div className="text-emerald-400 font-bold text-lg">
+                                ROUND COMPLETE! ✅
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Controles del Admin */}
+                    <div className="w-full grid grid-cols-2 gap-3">
+                        <button onClick={nextTurn} className="col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all">
+                            FORCE NEXT TURN ⏭
+                        </button>
+                        <button onClick={handleEndGame} className="bg-red-900/40 border border-red-500/40 p-3 rounded-xl font-bold text-red-300 text-xs hover:bg-red-900/60">
+                            END GAME
+                        </button>
+                        <button onClick={handleReturnToSetup} className="bg-slate-700 p-3 rounded-xl font-bold text-white text-xs hover:bg-slate-600">
+                            BACK TO SETUP
+                        </button>
+                    </div>
+                </div>
+                <CustomAlert />
             </div>
         );
     }
+  } // <--- ESTE ES EL CIERRE DEL BLOQUE ADMIN (No lo borres)
 
     if (gameState?.mode === 'admin_setup') {
          return (
