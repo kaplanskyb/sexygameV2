@@ -614,8 +614,6 @@ export default function TruthAndDareApp() {
        return false;
    });
 
-   // Asegúrate de que esta línea esté aquí y NO duplicada más arriba
-   const [showAdminPanel, setShowAdminPanel] = useState(false); 
 
    // Variable de estado para el panel flotante de Admin
    // (Asegúrate de borrar la otra línea duplicada de "const [showAdminPanel...]" si la tenías abajo)
