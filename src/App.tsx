@@ -35,39 +35,7 @@ import {
     // ... mantén los que ya tenías (getFirestore, doc, etc.)
 } from 'firebase/firestore';
 
-// --- COMPONENTE ADMIN PANEL (TE FALTABA ESTO) ---
-const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKick }: any) => {
-    return (
-        <div className="bg-slate-800 p-4 rounded-xl border border-white/10 animate-in slide-in-from-right">
-            <h3 className="text-xl font-bold text-pink-500 mb-4 border-b border-white/10 pb-2">Admin Control Panel</h3>
-            
-            <div className="space-y-4">
-                <div className="bg-black/40 p-3 rounded-lg">
-                    <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Game Actions</p>
-                    <div className="grid grid-cols-2 gap-2">
-                         <button onClick={onStartGame} className="bg-emerald-600 hover:bg-emerald-500 p-2 rounded text-xs font-bold">Start Game</button>
-                         <button onClick={onNextTurn} className="bg-blue-600 hover:bg-blue-500 p-2 rounded text-xs font-bold">Force Next</button>
-                    </div>
-                </div>
 
-                <div className="bg-black/40 p-3 rounded-lg">
-                    <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Danger Zone</p>
-                    <button onClick={onReset} className="w-full bg-red-900/50 hover:bg-red-800 border border-red-500/50 p-2 rounded text-xs font-bold text-red-200">Reset Entire Game</button>
-                </div>
-
-                <div className="bg-black/40 p-3 rounded-lg">
-                     <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Manage Players</p>
-                     {players.map((p: any) => (
-                         <div key={p.uid} className="flex justify-between items-center text-xs py-1 border-b border-white/5 last:border-0">
-                             <span>{p.name}</span>
-                             <button onClick={() => onKick(p.uid, p.name)} className="text-red-400 hover:text-red-200">Kick</button>
-                         </div>
-                     ))}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
@@ -469,6 +437,32 @@ const CouplePairing = ({
                 )}
             </div>
             {!isLinked && <button onClick={onBack} className="mt-8 text-slate-500 hover:text-white text-sm font-bold uppercase tracking-widest transition-colors">Cancel</button>}
+        </div>
+    );
+};
+
+// PEGAR ESTO ANTES DE "export default function..."
+const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKick }: any) => {
+    return (
+        <div className="bg-slate-800 p-4 rounded-xl border border-white/10 mb-6">
+            <h3 className="text-xl font-bold text-pink-500 mb-4 border-b border-white/10 pb-2">Admin Control Panel</h3>
+            <div className="space-y-4">
+                <div className="bg-black/40 p-3 rounded-lg">
+                    <div className="grid grid-cols-2 gap-2">
+                         <button onClick={onStartGame} className="bg-emerald-600 p-2 rounded text-xs font-bold">Start Game</button>
+                         <button onClick={onNextTurn} className="bg-blue-600 p-2 rounded text-xs font-bold">Force Next</button>
+                    </div>
+                </div>
+                <button onClick={onReset} className="w-full bg-red-900/50 border border-red-500/50 p-2 rounded text-xs font-bold text-red-200">Reset Entire Game</button>
+                <div className="bg-black/40 p-3 rounded-lg max-h-40 overflow-y-auto">
+                     {players.map((p: any) => (
+                         <div key={p.uid} className="flex justify-between items-center text-xs py-1 border-b border-white/5">
+                             <span>{p.name}</span>
+                             <button onClick={() => onKick(p.uid, p.name)} className="text-red-400">Kick</button>
+                         </div>
+                     ))}
+                </div>
+            </div>
         </div>
     );
 };
@@ -1732,7 +1726,34 @@ const resetGame = async () => {
 
   const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
   const cardStyle = getLevelStyle(card?.level);
+  // --- PEGAR ESTO JUSTO ENCIMA DEL "return (" FINAL ---
   
+  // 1. Calcular carta actual
+  const card = currentCard();
+  const finalCard = card || fetchedCard;
+  
+  // 2. Calcular estilo (colores según nivel)
+  const cardStyle = getLevelStyle(finalCard?.level);
+
+  // 3. Calcular si ya respondí
+  const playerAnswered = gameState?.answers?.[user?.uid || ''];
+  const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
+  
+  // 4. Calcular jugadores pendientes (para el mensajito de espera)
+  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+       if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
+           // Si es turno de alguien, esa persona no cuenta como pendiente de votar (ella responde)
+           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
+           // Los demás deben votar
+           return !gameState.votes?.[p.uid]; 
+       }
+       if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       return false;
+   });
+
+   // 5. Variable para el panel de Admin
+   const [showAdminPanel, setShowAdminPanel] = useState(false); // <--- OJO: Si esto da error, muévelo arriba con los otros useState
+   
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
