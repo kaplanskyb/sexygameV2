@@ -542,7 +542,7 @@ export default function TruthAndDareApp() {
    
    // Variable de estado para el panel flotante de Admin
    // (Asegúrate de borrar la otra línea duplicada de "const [showAdminPanel...]" si la tenías abajo)
-   const [showAdminPanel, setShowAdminPanel] = useState(false);
+
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
     if (user && players) {
