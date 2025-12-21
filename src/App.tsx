@@ -1280,6 +1280,18 @@ const resetGame = async () => {
   const handleEndGame = async () => { if(confirm('End game after this round?')) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isEnding: true }); } };
   const handleReturnToSetup = async () => { if(confirm('Start a new game (Return to Setup)?')) { const batch = writeBatch(db); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', currentTurnIndex: 0, answers: {}, votes: {}, isEnding: false }); await batch.commit(); } };
   const handleRestart = async () => { if(confirm('RESET EVERYTHING? Use this only for a new party.')) { setCustomError(null); setIsAutoSetup(false); setSelectedLevel(''); const batch = writeBatch(db); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'))).forEach(d=>batch.delete(d.ref)); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'challenges'))).forEach(d=>batch.update(d.ref, {answered:false})); (await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges'))).forEach(d=>batch.update(d.ref, {answered:false})); batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', adminUid: null, matchHistory: [], isEnding: false }); await batch.commit(); } };
+  const toggleAutoMode = async () => {
+    if (!gameState) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+      isAutoMode: !gameState.isAutoMode
+    });
+  };
+  
+  const kickPlayer = async (uid: string, name: string) => {
+    if (confirm(`¿Expulsar a ${name}?`)) {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid));
+    }
+  };
   
 
   // --- COMPONENTS ---
@@ -1928,8 +1940,6 @@ const resetGame = async () => {
     }
 
   
-    const cardStyle = getLevelStyle(finalCard?.level);
-
 
 
     return (
