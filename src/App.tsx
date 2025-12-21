@@ -732,12 +732,13 @@ useEffect(() => {
 
   // --- HELPER STYLES ---
   const getLevelStyle = (level: string | undefined) => {
-    switch (level) {
-      case '4': return 'border-red-600/50 shadow-[0_0_50px_rgba(220,38,38,0.4)] bg-gradient-to-b from-red-950/80 to-black';
-      case '3': return 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)] bg-gradient-to-b from-orange-950/80 to-black';
-      case '2': return 'border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-gradient-to-b from-yellow-950/80 to-black';
-      case '1': return 'border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-gradient-to-b from-green-950/80 to-black';
-      default: return 'border-white/10 bg-white/5';
+    if (!level) return 'border-white/10 bg-white/5'; // Retorno por defecto si no hay nivel
+    switch (level.toString()) {
+        case '4': return 'border-red-600/50 shadow-[0_0_50px_rgba(220,38,38,0.4)] bg-gradient-to-b from-red-950/80 to-black';
+        case '3': return 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)] bg-gradient-to-b from-orange-950/80 to-black';
+        case '2': return 'border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-gradient-to-b from-yellow-950/80 to-black';
+        case '1': return 'border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-gradient-to-b from-green-950/80 to-black';
+        default: return 'border-white/10 bg-white/5';
     }
   };
 
@@ -1189,7 +1190,15 @@ const resetGame = async () => {
   const currentPlayerName = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex]?.name : 'Nobody';
   const currentPlayer = () => gameState && players.length > 0 ? players[gameState?.currentTurnIndex] : null;
   const currentCard = () => { if (!gameState || !gameState?.currentChallengeId) return undefined; if (gameState.mode === 'yn') return pairChallenges.find(c => c.id === gameState?.currentChallengeId); return challenges.find(c => c.id === gameState?.currentChallengeId); };
-  const getCardText = (c: Challenge | undefined) => { if (!c) return 'Loading...'; if (gameState?.mode === 'yn') { if (isAdmin) return `M: ${c.male} / F: ${c.female}`; const myPlayer = players.find(p => p.uid === user?.uid); if (!myPlayer) return 'Waiting...'; return myPlayer.gender === 'female' ? c.female : c.male; } return c.text || 'No text found'; };
+  const getCardText = (c: Challenge | undefined) => {
+    if (!c) return 'Loading...'; 
+    // Añadimos protección para leer textos en modo Match
+    if (c.male || c.female) {
+        // Lógica simple para mostrar texto
+        return `${c.male} / ${c.female}`;
+    }
+    return c.text || 'No text found'; 
+};
   
   const isMyTurn = () => gameState && players[gameState?.currentTurnIndex]?.uid === user?.uid;
 
