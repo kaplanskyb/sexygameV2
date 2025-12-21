@@ -538,53 +538,7 @@ export default function TruthAndDareApp() {
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
-// =========================================================================
-  // 🟢 LÓGICA GLOBAL (PEGAR ESTO ARRIBA, DESPUÉS DE LOS USESTATE)
-  // =========================================================================
 
-  // 1. Obtener la carta actual de forma segura
-  const card = currentCard();
-  // Protección: Si no hay carta local ni remota, usamos un objeto vacío para evitar crash
-  const finalCard = card || fetchedCard || { level: '1', text: 'Loading...', type: 'T' };
-
-  // 2. Calcular estilos
-  const cardStyle = getLevelStyle(finalCard?.level || '1');
-
-  // 3. Calcular estados de votación
-  const playerAnswered = gameState?.answers?.[user?.uid || ''];
-  const playersCount = players.length > 0 ? players.length : 1;
-  const votesCount = Object.keys(gameState?.votes || {}).length;
-  const allVoted = votesCount >= (playersCount - 1);
-  const answersCount = Object.keys(gameState?.answers || {}).length;
-  const allYNAnswered = answersCount >= playersCount;
-
-  // 4. Lógica MATCH/MISMATCH (Partner y Resultado)
-  let ynMatch = null;
-  let myPartnerName = "???";
-  
-  if (gameState?.mode === 'yn') {
-      const myPartnerUid = gameState.pairs?.[user?.uid || ''];
-      const myAns = gameState.answers?.[user?.uid || ''];
-      const partnerAns = gameState.answers?.[myPartnerUid || '']; 
-      
-      const pObj = players.find(p => p.uid === myPartnerUid);
-      if(pObj) myPartnerName = pObj.name;
-      
-      if(myAns && partnerAns) { 
-          ynMatch = myAns === partnerAns; 
-      }
-  }
-
-  // 5. Jugadores Pendientes
-  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-       if(!gameState) return false;
-       if(gameState.mode === 'question' || gameState.mode === 'dare') { 
-           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-           return !gameState.votes?.[p.uid]; 
-       }
-       if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-       return false;
-   });
    
    // Variable de estado para el panel flotante de Admin
    // (Asegúrate de borrar la otra línea duplicada de "const [showAdminPanel...]" si la tenías abajo)
