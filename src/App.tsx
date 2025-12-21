@@ -300,10 +300,11 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
                                     <ol className="list-decimal pl-5 space-y-3 text-slate-300">
                                         <li><strong>Name & Gender:</strong> Enter your nickname and select your gender.</li>
                                         <li><strong>Status:</strong> Choose if you are <strong>Single</strong> or playing with a <strong>Couple</strong>.</li>
-                                        <li><strong>Male's Last 4 Phone Digits:</strong>
+                                        <li><strong>Linking (Couples Only):</strong>
                                             <ul className="list-disc pl-5 mt-1 text-slate-400 text-sm">
-                                                <li>If you are a <strong>Couple</strong>: Both of you must enter the SAME number here (e.g., the last 4 digits of the boyfriend's phone). This links you together.</li>
-                                                <li>If you are <strong>Single</strong>: Enter YOUR own last 4 phone digits (or any number you will remember).</li>
+                                                <li><strong>Females:</strong> You will see a specific 4-digit code on your screen.</li>
+                                                <li><strong>Males:</strong> You must enter the code displayed on your partner's phone to link.</li>
+                                                <li><em className="text-white/50">Singles skip this step automatically.</em></li>
                                             </ul>
                                         </li>
                                         <li><strong>Game Code:</strong> Ask the Admin (Game Master) for the code.</li>
@@ -818,9 +819,10 @@ useEffect(() => {
         if (totalVotes >= neededVotes) shouldAdvance = true;
     }
     if (shouldAdvance) {
-        // FIX: Changed to 3000ms as requested
-        const timer = setTimeout(() => { nextTurn(); }, 3000);
+        // CORRECCIÓN: Aumentado a 4000ms (4 segundos) para ver el resultado
+        const timer = setTimeout(() => { nextTurn(); }, 4000); 
         return () => clearTimeout(timer);
+    }
     }
   }, [gameState, isAdmin, players.length]);
 
@@ -961,7 +963,26 @@ useEffect(() => {
 
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
-  const toggleAutoMode = async () => { const newMode = !gameState?.isAutoMode; let updates: any = { isAutoMode: newMode }; if (newMode && (!gameState?.sequence || gameState.sequence.length === 0)) { let sequence: string[] = []; for(let i=0; i<qtyTruth; i++) sequence.push('question'); for(let i=0; i<qtyDare; i++) sequence.push('dare'); for(let i=0; i<qtyMM; i++) sequence.push('yn'); updates.sequence = sequence; updates.sequenceIndex = 0; } await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); };
+  const toggleAutoMode = async () => { 
+    const newMode = !gameState?.isAutoMode; 
+    let updates: any = { isAutoMode: newMode };
+    
+    // CORRECCIÓN: Si activamos el modo (newMode es true), SIEMPRE regeneramos la secuencia
+    // con los valores actuales de los inputs (qtyTruth, etc.), eliminando la condición vieja.
+    if (newMode) { 
+        let sequence: string[] = []; 
+        for(let i=0; i<qtyTruth; i++) sequence.push('question');
+        for(let i=0; i<qtyDare; i++) sequence.push('dare'); 
+        for(let i=0; i<qtyMM; i++) sequence.push('yn'); 
+        
+        // Solo actualizamos si hay algo en la secuencia
+        if (sequence.length > 0) {
+            updates.sequence = sequence; 
+            updates.sequenceIndex = 0; // Reiniciamos el ciclo al principio
+        }
+    } 
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); 
+};
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
@@ -2009,7 +2030,7 @@ const resetGame = async () => {
             <div className="text-center">
                  {gameState.answers?.[user?.uid || ''] ? (
                      <div className="py-4">
-                         <div className="text-green-400 font-bold text-xl mb-2">Answer Locked! 🔒</div>
+                         <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
                          <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
                      </div>
                  ) : (
@@ -2024,6 +2045,46 @@ const resetGame = async () => {
             </div>
         )}
     </div>
+
+{/* RESULTADO DIVERTIDO DE MATCH/MISMATCH (NUEVO) */}
+{gameState?.mode==='yn' && allYNAnswered && (
+            <div className={`flex flex-col items-center justify-center p-8 rounded-3xl w-full animate-in zoom-in duration-500 shadow-2xl border-4 ${ynMatch ? 'bg-green-900/40 border-green-500 shadow-green-500/20' : 'bg-red-900/40 border-red-500 shadow-red-500/20'}`}>
+                
+                {ynMatch === true ? (
+                    /* --- ESCENA DE ÉXITO (MATCH) --- */
+                    <div className="text-center relative">
+                        <div className="absolute inset-0 bg-green-400 blur-2xl opacity-20 animate-pulse"></div>
+                        <HeartHandshake className="w-24 h-24 text-green-400 mx-auto mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
+                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter mb-2 transform rotate-2">
+                            IT'S A MATCH!
+                        </h3>
+                        <div className="text-green-200 font-bold text-sm uppercase tracking-[0.5em] animate-pulse">Perfect Sync</div>
+                    </div>
+                ) : (
+                    /* --- ESCENA DE FALLO (MISMATCH) --- */
+                    <div className="text-center relative">
+                        <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
+                        <AlertTriangle className="w-24 h-24 text-red-500 mx-auto mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter mb-2 transform -rotate-2">
+                            AWKWARD...
+                        </h3>
+                        <div className="text-red-300 font-bold text-sm uppercase tracking-[0.5em]">Totally Different</div>
+                    </div>
+                )}
+
+                {/* --- MOSTRAR PARTNER --- */}
+                <div className="mt-8 text-center w-full bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                    <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Your Partner Was</div>
+                    <div className="font-black text-3xl text-white drop-shadow-md">
+                        {myPartnerName}
+                    </div>
+                </div>
+
+                <div className="text-white/20 mt-4 text-[9px] font-mono tracking-widest uppercase">
+                    Next round in 4s...
+                </div>
+            </div>
+        )}
 
     {/* --- 3. ESTADO DE ESPERA --- */}
     <div className="mt-6 text-center">
