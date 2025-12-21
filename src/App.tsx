@@ -906,10 +906,7 @@ useEffect(() => {
 
     // 3. VALIDACIÓN DE CÓDIGO DE SALA (Si no es Admin)
     const isUserAdmin = userName.toLowerCase() === 'admin';
-    if (!isUserAdmin && !code) { 
-        alert("Please enter the Game Code first."); 
-        return; 
-    }
+    if (!isUserAdmin && !code.trim()) { alert("Enter Game Code, (ask the Admin)"); return; }
 
     // 4. DETERMINAR CÓDIGO DE PAREJA
     // Usamos el que viene del modal (codeOverride) o el del estado
@@ -1239,7 +1236,7 @@ const resetGame = async () => {
                                             return;
                                         }
                                         if (!code.trim()) {
-                                            alert("Enter the Game Code (ask the Admin)");
+                                            alert("Enter Game Code, (ask the Admin)");
                                             return;
                                         }
                                         createGame();
