@@ -1218,15 +1218,21 @@ const resetGame = async () => {
                     <div className="w-full">
                     {relationshipStatus === 'couple' && !coupleNumber ? (
                     <>
-                    <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
-                    <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
+                        <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
+                        <button onClick={() => {
+                        if (!code.trim()) {
+                            alert("Enter Game Code (ask the Admin)");
+                            return;
+                        }
+                        setShowScanner(true);
+                        }} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
                         <HeartHandshake size={24} />
-                    </button>
-                    <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
+                        </button>
+                        <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
                     </>
                     ) : (
-                   
-                            userName.toLowerCase().trim() === 'admin' ? (
+                    // el resto no cambia, but ensure this is followed by valid JSX
+                    userName.toLowerCase().trim() === 'admin' ? (
                                 <button 
                                 onClick={() => {
                                     if (!gender || !relationshipStatus) {
