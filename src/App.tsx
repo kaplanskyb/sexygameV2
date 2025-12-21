@@ -777,7 +777,13 @@ useEffect(() => {
     const unsubPairChallenges = onSnapshot(query(pairChallengesRef), (snapshot) => { setPairChallenges(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge))); });
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
-
+  useEffect(() => {
+    console.log("View changed to:", viewAsPlayer ? "Player" : "Admin");
+    if (!viewAsPlayer) {
+    setLoading(false); // Force no loading al volver a admin
+    }
+    }, [viewAsPlayer]);
+    
   useEffect(() => {
     if(challenges.length > 0 || pairChallenges.length > 0){
         const availableChallenges = [...challenges, ...pairChallenges].filter(c => !c.answered && !c.paused && c.level);
@@ -1202,59 +1208,72 @@ const resetGame = async () => {
                 ) : (
                    /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
                    <div className="relative mb-8 w-full">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                      <input 
-                          type="number" inputMode="numeric" pattern="[0-9]*" placeholder="GAME CODE" 
-                          className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold"
-                          value={code} 
-                          onChange={e=>setCode(e.target.value)} 
-                      />
-                   </div>
+                    <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold">ENTER GAME CODE</span>
+                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
+                   <input 
+                       type="number" inputMode="numeric" pattern="[0-9]*" placeholder="" 
+                       className="w-full pl-12 py-4 text-center tracking-[0.5em] font-mono font-bold text-2xl bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500 transition-all text-white placeholder:text-white placeholder:text-sm placeholder:tracking-widest placeholder:font-bold"
+                       value={code} 
+                       onChange={e=>setCode(e.target.value)} 
+                   />
+                   <span className="block text-xs text-white/50 mt-1">(Ask to the Admin)</span>
+                </div>
+                
                 )}
                 
-                {/* 4. BOTONES */}
-                <div className="w-full">
+                    {/* 4. BOTONES */}
+                    <div className="w-full">
                     {relationshipStatus === 'couple' && !coupleNumber ? (
-                        <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                            <HeartHandshake size={24} /> {gender === 'female' ? 'Enter Game Code (ask to the Admin)' : 'Enter Game Code (ask to the Admin)'}
-                        </button>
+  <>
+                    <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
+                    <button onClick={() => setShowScanner(true)} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
+                        <HeartHandshake size={24} />
+                    </button>
+                    <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
+                    </>
                     ) : (
-                        userName.toLowerCase().trim() === 'admin' ? (
-                            <button 
-                            onClick={() => {
-                              if (!gender || !relationshipStatus) {
-                                alert("Please, fill Gender and Status");
-                                return;
-                              }
-                              createGame();
-                            }} 
-                            className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}
-                          >
-                            START PARTY NOW
-                          </button>
-                        ) : (
-                            <button 
-                            onClick={() => {
-                              if (!gender || !relationshipStatus) {
-                                alert("Please, fill Gender and Status");
-                                return;
-                              }
-                              if (!code.trim()) {
-                                alert("Enter the Game Code (ask the Admin)");
-                                return;
-                              }
-                              joinGame();
-                            }} 
-                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
-                          >
-                            {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
-                          </button>
-                        )
+                    // rest unchanged
                     )}
-                </div>
+                            userName.toLowerCase().trim() === 'admin' ? (
+                                <button 
+                                    onClick={() => {
+                                        if (!gender || !relationshipStatus) {
+                                            alert("Please, fill Gender and Status");
+                                            return;
+                                        }
+                                        if (!code.trim()) {
+                                            alert("Enter the Game Code (ask the Admin)");
+                                            return;
+                                        }
+                                        createGame();
+                                    }} 
+                                    className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}
+                                >
+                                    START PARTY NOW
+                                </button>
+                            ) : (
+                                <button 
+                                onClick={() => {
+                                if (!gender || !relationshipStatus) {
+                                    alert("Please, fill Gender and Status");
+                                    return;
+                                }
+                                if (!code.trim()) {
+                                    alert("Enter the Game Code (ask the Admin)");
+                                    return;
+                                }
+                                joinGame();
+                                }} 
+                                className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                            >
+                                {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                            </button>
+                            )
+                        )}
+                    </div>
 
-                <div className="mt-8 text-xs text-white/20 tracking-widest">SECURE CONNECTION • v5.0 FIXED</div>
-            </div>
+                    <div className="mt-8 text-xs text-white/20 tracking-widest">SECURE CONNECTION • v5.0 FIXED</div>
+                </div>
 
             {/* MODAL DE EMPAREJAMIENTO */}
             {showScanner && (
@@ -1722,7 +1741,7 @@ const resetGame = async () => {
             <CustomAlert/>
             {tutorialStep === 8 && <TutorialTooltip text="Switch between player and admin" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
             {isAdmin && (
-                <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
+                <button onClick={() => { setLoading(false); setViewAsPlayer(false); }} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
             )}
             {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
             <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
