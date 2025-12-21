@@ -1011,72 +1011,135 @@ export default function TruthAndDareApp() {
         );
     }
   
-    // ACTIVE GAME INTERFACE (Jugador) - Aquí es donde pegamos el return final para evitar duplicados arriba
-
-      // 4.2 SETUP ROUND
-      if (gameState.mode === 'admin_setup') {
-          return (
-            <div className="min-h-screen p-4 flex flex-col items-center justify-center text-white relative">
-                 <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full text-cyan-400"><Gamepad2 size={24} /></button>
-                 <h2 className="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-8">SETUP ROUND</h2>
-                 
-                 <div className="w-full max-w-md p-6 mb-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                          <div className={`font-black text-xl ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
-                          <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
-                      </div>
-
-                      {isAutoSetup ? (
-                          <div className="flex gap-3 animate-in fade-in">
-                              <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
-                              <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-pink-400 font-bold mb-1">Dare</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyDare} onChange={e=>setQtyDare(parseInt(e.target.value))}/></div>
-                              <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-emerald-400 font-bold mb-1">Match</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyMM} onChange={e=>setQtyMM(parseInt(e.target.value))}/></div>
-                          </div>
-                      ) : (
-                          <div className="space-y-4">
-                              <div className="flex justify-between"><span className="font-bold text-sm text-white/70">Risk Level</span><select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
-                              <div className="flex justify-between"><span className="font-bold text-sm text-white/70">Type</span><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div>
-                          </div>
-                      )}
-                      
-                      {isAutoSetup && (
-                          <div className="mt-4 flex justify-between"><span className="font-bold text-sm text-white/70">Risk Level</span><select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
-                      )}
+    // --- FINAL RETURN: INTERFAZ DE JUEGO ACTIVO ---
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
+        {/* Fondo */}
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-black to-black"></div>
+        
+        <div className="relative z-10 w-full max-w-md mx-auto flex flex-col items-center flex-1 p-4 animate-in fade-in">
+             
+             {/* Header */}
+             <div className="w-full flex justify-between items-center mb-4">
+                 <div className="flex items-center gap-2">
+                     <span className="font-black text-xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">SEXY GAME</span>
                  </div>
+                 {relationshipStatus === 'couple' && <div className="text-[10px] font-mono bg-white/10 px-2 py-1 rounded text-white/50">{coupleNumber}</div>}
+             </div>
 
-                 <button onClick={isAutoSetup ? startAutoSequence : startRound} className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg active:scale-95 transition-all">
-                    {isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}
-                 </button>
-                 <CustomAlert />
-            </div>
-          );
-      }
+             {/* RESULTADO MATCH (OVERLAY) */}
+             {gameState.mode === 'yn' && allYNAnswered && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
+                    <div className="text-center p-6">
+                        <div className="text-8xl mb-6 animate-bounce">{ynMatch ? '❤️' : '💔'}</div>
+                        <h2 className={`text-5xl font-black uppercase tracking-tighter mb-4 ${ynMatch ? 'text-green-500 drop-shadow-[0_0_30px_rgba(34,197,94,0.8)]' : 'text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]'}`}>
+                            {ynMatch ? 'IT\'S A MATCH!' : 'MISMATCH!'}
+                        </h2>
+                        <div className="bg-white/10 p-6 rounded-2xl border border-white/10">
+                            <p className="text-sm text-white/50 uppercase tracking-widest mb-2">PARTNER'S ANSWER</p>
+                            <p className="text-3xl font-black text-white">{myPartnerName} said {gameState.answers[gameState.pairs?.[user?.uid || ''] || '']?.toUpperCase()}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-      // 4.3 HOST VIEW (Juego Activo)
-      if (['question', 'dare', 'yn'].includes(gameState.mode)) {
-          return (
-            <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden bg-slate-900">
-                <div className="flex justify-between items-center mb-6">
-                     <div className="flex items-center gap-2"><button onClick={() => setViewAsPlayer(true)} className="bg-white/10 p-2 rounded-full hover:bg-white/20"><Gamepad2 size={20}/></button><span className="text-pink-500 font-black tracking-widest uppercase">HOST VIEW</span></div>
+            {/* TARJETA DEL JUEGO */}
+            <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
+                <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
+                    {gameState.mode === 'yn' ? 'MATCH ROUND' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
                 </div>
-                <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
-                    <div className={`w-full p-6 rounded-3xl text-center mb-6 border-2 ${cardStyle} relative`}>
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20">{gameState.mode === 'yn' ? 'MATCH ROUND' : 'CURRENT CARD'}</div>
-                        <h3 className="text-xl font-bold mt-4 mb-2">{getCardText(finalCard)}</h3>
-                        {gameState.mode === 'yn' && <div className="text-xs text-white/50 bg-black/40 p-2 rounded mt-2">(Showing combined data)</div>}
-                    </div>
-                    <div className="w-full bg-black/40 p-4 rounded-xl border border-white/10 mb-6 text-center">
-                        <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">CURRENT STATUS</p>
-                        {pendingPlayers.length > 0 ? ( <div className="text-cyan-400 font-bold animate-pulse">WAITING FOR: {pendingPlayers.map(p => p.name).join(', ')}</div> ) : ( <div className="text-emerald-400 font-bold text-lg">ROUND COMPLETE! ✅</div> )}
-                    </div>
-                    <button onClick={nextTurn} className="w-full bg-blue-600 p-4 rounded-xl font-bold mb-4 shadow-lg">FORCE NEXT TURN ⏭</button>
-                    <button onClick={handleReturnToSetup} className="bg-slate-700 p-3 rounded-xl font-bold text-white text-xs">BACK TO SETUP</button>
-                </div>
-                <CustomAlert />
+                
+                {/* Indicador de Partner (Match Mode) */}
+                {gameState.mode === 'yn' && (
+                    <div className="w-full bg-black/50 border border-white/20 rounded-xl p-3 mb-4 flex items-center justify-center gap-3 animate-pulse">
+                         <Users size={16} className="text-emerald-400"/>
+                         <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest">PLAYING WITH:</span>
+                         <span className="text-emerald-400 font-black text-sm uppercase">{myPartnerName}</span>
+                     </div>
+                )}
+
+                <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
+                    {getCardText(finalCard)}
+                </h3>
             </div>
-          );
-      }
-  }
+
+            {/* BOTONES DE ACCIÓN */}
+            <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl relative z-20">
+                
+                {/* A) MODO ESPECTADOR / JUEZ */}
+                {!isMyTurn() && gameState.mode !== 'yn' && (
+                    <div className="text-center">
+                        <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">NOW PLAYING: {currentPlayerName()}</p>
+                        <div className="flex gap-3">
+                            {gameState.mode === 'question' ? (
+                                <>
+                                <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
+                                <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                                </>
+                            ) : (
+                                <>
+                                <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
+                                <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
+                                </>
+                            )}
+                        </div>
+                        {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
+                    </div>
+                )}
+
+                {/* B) MI TURNO */}
+                {isMyTurn() && gameState.mode !== 'yn' && (
+                     <div className="text-center py-4">
+                         <div className="animate-bounce mb-2 text-4xl">👇</div>
+                         <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
+                         <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
+                     </div>
+                )}
+
+                {/* C) MODO MATCH */}
+                {gameState.mode === 'yn' && (
+                    <div className="text-center">
+                         {gameState.answers?.[user?.uid || ''] ? (
+                             <div className="py-4">
+                                 <div className="text-green-400 font-bold text-xl mb-2 animate-bounce">Answered! <CheckCircle className="inline ml-1" size={20}/></div>
+                                 <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                             </div>
+                         ) : (
+                             <>
+                                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
+                                    <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
+                                </div>
+                             </>
+                         )}
+                    </div>
+                )}
+            </div>
+            
+            <div className="mt-4 w-full"><MyMatchHistory /></div>
+            
+            <div className="mt-6 text-center">
+                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+                     <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+                     <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                         {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+                     </span>
+                 </div>
+            </div>
+        </div>
+        
+        {/* BOTONES FLOTANTES */}
+        <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors"><HelpCircle size={24}/></button>
+        {isAdmin && (<button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50" title="Admin Panel"><Settings size={24} /></button>)}
+        
+        {/* MODALS */}
+        {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} />}
+        <CustomAlert />
+        <CustomSuccess />
+    </div>
+  );
+}
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
