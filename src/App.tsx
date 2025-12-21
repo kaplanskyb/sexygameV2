@@ -823,7 +823,7 @@ useEffect(() => {
         const timer = setTimeout(() => { nextTurn(); }, 4000); 
         return () => clearTimeout(timer);
     }
-    }
+    // (Aquí no debe haber nada)
   }, [gameState, isAdmin, players.length]);
 
   // --- LOGICA DE JUEGO ---
