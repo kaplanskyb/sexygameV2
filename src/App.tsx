@@ -2004,341 +2004,203 @@ const resetGame = async () => {
   }
 // ... (Aquí terminaba tu bloque de admin_setup)
 
-    // ---> PEGAR ESTO PARA QUE EL ADMIN VEA EL JUEGO ACTIVO SIN PANTALLA AZUL <---
-    
-    // Si estamos en juego activo (Question/Dare/Match)
-    if (['question', 'dare', 'yn'].includes(gameState.mode)) {
-        return (
-            <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden bg-slate-900">
-                {/* Header Admin */}
-                <div className="flex justify-between items-center mb-6">
-                     <div className="flex items-center gap-2">
-                        <button onClick={() => setViewAsPlayer(true)} className="bg-white/10 p-2 rounded-full hover:bg-white/20" title="Switch View"><Gamepad2 size={20}/></button>
-                        <span className="text-pink-500 font-black tracking-widest uppercase">HOST VIEW</span>
-                     </div>
-                     <button onClick={() => setShowAdminHelp(true)} className="text-yellow-400"><HelpCircle size={24}/></button>
-                </div>
-
-                <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
-                    {/* Tarjeta del Desafío (Admin Version) */}
-                    <div className={`w-full p-6 rounded-3xl text-center mb-6 border-2 ${cardStyle} relative`}>
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20">
-                            {gameState.mode === 'yn' ? 'MATCH ROUND' : 'CURRENT CARD'}
-                        </div>
-                        <h3 className="text-xl font-bold mt-4 mb-2">{getCardText(finalCard)}</h3>
-                        {gameState.mode === 'yn' && (
-                             <div className="text-xs text-white/50 bg-black/40 p-2 rounded mt-2">
-                                 (Showing Male/Female versions based on your gender or raw data)
-                             </div>
-                        )}
-                    </div>
-
-                    {/* Estado del Juego */}
-                    <div className="w-full bg-black/40 p-4 rounded-xl border border-white/10 mb-6 text-center">
-                        <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">CURRENT STATUS</p>
-                        {pendingPlayers.length > 0 ? (
-                            <div className="text-cyan-400 font-bold animate-pulse">
-                                WAITING FOR: {pendingPlayers.map(p => p.name).join(', ')}
-                            </div>
-                        ) : (
-                            <div className="text-emerald-400 font-bold text-lg">
-                                ROUND COMPLETE! ✅
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Controles del Admin */}
-                    <div className="w-full grid grid-cols-2 gap-3">
-                        <button onClick={nextTurn} className="col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all">
-                            FORCE NEXT TURN ⏭
-                        </button>
-                        <button onClick={handleEndGame} className="bg-red-900/40 border border-red-500/40 p-3 rounded-xl font-bold text-red-300 text-xs hover:bg-red-900/60">
-                            END GAME
-                        </button>
-                        <button onClick={handleReturnToSetup} className="bg-slate-700 p-3 rounded-xl font-bold text-white text-xs hover:bg-slate-600">
-                            BACK TO SETUP
-                        </button>
-                    </div>
-                </div>
-                <CustomAlert />
-            </div>
-        );
-    }
-  // --- VISTA JUGADOR ---
-  if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white relative overflow-hidden">
-            <CustomAlert/>
-            {tutorialStep === 8 && <TutorialTooltip text="Switch between player and admin" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
-            {isAdmin && (
-                <button onClick={() => setViewAsPlayer(false)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-yellow-500 text-yellow-500 transition-all z-50 animate-pulse backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
-            )}
-            {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
-            <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
-            
-            <div className="text-center py-2 border-b border-white/10 mb-4 w-full flex items-center justify-center gap-2 relative flex-col mt-8">
-                {gameState?.mode === 'admin_setup' && isAdmin && viewAsPlayer ? (
-                   <div className="mb-4 bg-cyan-900/40 border border-cyan-500/50 p-4 rounded-xl animate-pulse">
-                      <h3 className="text-xl font-black text-cyan-400 mb-1">HOST IS SETTING UP ROUND...</h3>
-                      <p className="text-xs text-cyan-200">Wait for the host to start the game.</p>
-                   </div>
-                ) : (
-                    <div className="flex items-center gap-3">
-                        {isEditingName ? (<div className="flex gap-2"><input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} /><button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button><button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button></div>) : (<><h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 drop-shadow-sm">{userName.toUpperCase()}</h1><button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-white/30 hover:text-white transition-colors"><Edit2 size={18}/></button></>)}
-                    </div>
-                )}
-                {relationshipStatus === 'couple' && (<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-300 text-xs font-mono mt-2"><Users size={12}/> COUPLE ID: {coupleNumber}</div>)}
-            </div>
-            
-            <div className="w-full max-w-md"><ScoreBoard /></div>
-            <div className="w-full max-w-md"><MyMatchHistory /></div>
-            
-            <div className="text-center mt-8 mb-4">
-                {gameState?.mode === 'lobby' ? (
-                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR THE GAME TO START</div>
-                ) : (
-                   <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
-                )}
-            </div>
-            
-            <div className="mt-auto w-full flex justify-center pb-8"><button onClick={handleSelfLeave} className="text-red-500/50 hover:text-red-500 flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><LogOut size={14}/> Reset Player</button></div>
-        </div>
-      );
-  }
-
-  // ... (Keep existing game ended logic and card logic)
-  if (gameState.mode === 'ended') {
-      return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
-  }
-
-
-
-  // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
-  return (
+ 
+return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
-        
-        {/* Fondo Animado */}
-        <div className="absolute inset-0 z-0">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
-            <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50"></div>
+      {/* Fondo Animado */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
+        <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50"></div>
+      </div>
+  
+      {/* HEADER */}
+      <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdminPanel(!showAdminPanel)}
+              className={`p-2 rounded-full transition-all ${showAdminPanel ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'bg-white/10 text-slate-400 hover:text-white border border-white/10'}`}
+            >
+              {showAdminPanel ? <X size={20} /> : <Gamepad2 size={20} />}
+            </button>
+          )}
+          <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
+            <p className="text-white/50 uppercase tracking-widest">Party Code</p>
+            <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
+              {gameState?.code || code}
+            </p>
+          </div>
         </div>
-
-        {/* --- HEADER --- */}
-        <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
-            <div className="flex items-center gap-3">
-                {/* Botón para alternar Admin Panel */}
-                {isAdmin && (
-                    <button 
-                        onClick={() => setShowAdminPanel(!showAdminPanel)}
-                        className={`p-2 rounded-full transition-all ${showAdminPanel ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'bg-white/10 text-slate-400 hover:text-white border border-white/10'}`}
-                    >
-                        {showAdminPanel ? <X size={20} /> : <Gamepad2 size={20} />}
-                    </button>
-                )}
-                {/* Código Pequeño en Header */}
-                 <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
-                    <p className="text-white/50 uppercase tracking-widest">Party Code</p>
-                    <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
-                        {gameState?.code || code}
-                    </p>
+  
+        <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-5">
+          <span className="text-right hidden sm:block">
+            <p className="font-bold text-sm text-white tracking-wide">{userName}</p>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">{gender} • {relationshipStatus === 'couple' ? 'Couple' : 'Single'}</p>
+          </span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-2 ${gender === 'male' ? 'bg-cyan-600 border-cyan-400 shadow-cyan-500/20' : (gender === 'female' ? 'bg-pink-600 border-pink-400 shadow-pink-500/20' : 'bg-purple-600 border-purple-400 shadow-purple-500/20')}`}>
+            {userName.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </div>
+  
+      {/* PANEL ADMIN */}
+      {isAdmin && showAdminPanel && (
+        <AdminPanel
+          players={players}
+          gameState={gameState}
+          onStartGame={startGame}
+          onNextTurn={nextTurn}
+          onReset={resetGame}
+          onKick={kickPlayer}
+        />
+      )}
+  
+      {/* ÁREA PRINCIPAL */}
+      <div className="flex-1 w-full relative z-10 flex flex-col p-4 overflow-y-auto lg:max-w-5xl lg:mx-auto">
+        {gameState?.mode === 'lobby' ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
+            <div className="mb-12 relative group cursor-default">
+              <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
+              <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
+                <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
+                <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
+                  {gameState?.code || code}
                 </div>
+              </div>
             </div>
-            
-            {/* Info del Usuario */}
-            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-5">
-                <span className="text-right hidden sm:block">
-                    <p className="font-bold text-sm text-white tracking-wide">{userName}</p>
-                    <p className="text-[10px] text-white/50 uppercase tracking-wider">{gender} • {relationshipStatus === 'couple' ? 'Couple' : 'Single'}</p>
-                </span>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-2 ${gender === 'male' ? 'bg-cyan-600 border-cyan-400 shadow-cyan-500/20' : (gender === 'female' ? 'bg-pink-600 border-pink-400 shadow-pink-500/20' : 'bg-purple-600 border-purple-400 shadow-purple-500/20')}`}>
-                    {userName.charAt(0).toUpperCase()}
-                </div>
+            <div className="mb-6 relative">
+              <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
+              <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
             </div>
-        </div>
-
-        {/* --- ÁREA PRINCIPAL DE CONTENIDO --- */}
-        <div className="flex-1 w-full relative z-10 flex flex-col p-4 overflow-y-auto lg:max-w-5xl lg:mx-auto">
-            
-            {/* A) PANEL DE ADMIN (Si soy admin y está activo) */}
-            {isAdmin && showAdminPanel ? (
-                <AdminPanel 
-                    players={players} 
-                    gameState={gameState}
-                    onStartGame={startGame}
-                    onNextTurn={nextTurn}
-                    onReset={resetGame}
-                    onKick={kickPlayer}
-                />
-            ) : (
-                /* B) VISTA DE JUGADOR (Para todos, incluido Admin en modo juego) */
-                gameState?.mode === 'lobby' ? (
-                    /* B.1) LOBBY DE ESPERA */
-    <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
-    
-    {/* ---> CÓDIGO GIGANTE EN EL LOBBY <--- */}
-    <div className="mb-12 relative group cursor-default">
-        <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
-        <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
-            <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
-            <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
-                {gameState?.code || code}
-            </div>
-        </div>
-    </div>
-
-    {/* ---> AQUÍ ESTÁ EL CAMBIO DE TEXTO QUE PEDISTE <--- */}
-    <div className="mb-6 relative">
-        <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
-        <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
-    </div>
-    
-    {/* TEXTO ACTUALIZADO */}
-    <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg animate-pulse">
-        Waiting for the game to start...
-    </h2>
-    <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">
-        Get ready!
-    </p>
-    
-    {isAdmin && (
-        <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30">
-            ( Switch to Admin Panel to start the game )
-        </p>
-    )}
-</div>
-                ) : (
-                    /* B.2) INTERFAZ DEL JUEGO ACTIVO */
-                    /* ========================================================================
-   PEGAR ESTO EN LUGAR DE <GameInterface ... />
-   ======================================================================== */
-<div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
-    
-    {/* --- 1. TARJETA DEL DESAFÍO --- */}
-    <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
-        {/* Etiqueta Superior */}
-        <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
-            {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-        </div>
-        
-        {/* Icono Central */}
-        <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg animate-pulse">
+              Waiting for the game to start...
+            </h2>
+            <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">
+              Get ready!
+            </p>
+            {isAdmin && (
+              <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30">
+                ( Switch to Admin Panel to start the game )
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
+            {/* TARJETA DEL DESAFÍO */}
+            <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
+              <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
+                {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+              </div>
+              <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
                 {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
-        </div>
-
-        {/* Texto de la Carta */}
-        <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
-            {getCardText(finalCard)}
-        </h3>
-        
-        {/* Nivel de Riesgo (Esquina) */}
-        <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
-            LVL {finalCard?.level || '?'}
-        </div>
-    </div>
-
-{/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
-<div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
-        
-        {/* A) TURNO DE OTRO JUGADOR: MODO JUEZ/ESPECTADOR */}
-        {!isMyTurn() && gameState.mode !== 'yn' && (
-            <div className="text-center">
-                <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-3">
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
+                {getCardText(finalCard)}
+              </h3>
+              <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
+                LVL {finalCard?.level || '?'}
+              </div>
+            </div>
+  
+            {/* ÁREA DE ACCIÓN */}
+            <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
+              {!isMyTurn() && gameState.mode !== 'yn' && (
+                <div className="text-center">
+                  <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-3">
                     NOW PLAYING: {currentPlayerName()}
-                </p>
-                <div className="flex gap-3">
+                  </p>
+                  <div className="flex gap-3">
                     {gameState.mode === 'question' ? (
-                        <>
-                           <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
-                           <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
-                        </>
+                      <>
+                        <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
+                        <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                      </>
                     ) : (
-                        <>
-                           <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
-                           <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
-                        </>
+                      <>
+                        <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
+                        <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
+                      </>
                     )}
+                  </div>
+                  {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
                 </div>
-                {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
-            </div>
-        )}
-
-        {/* B) MI TURNO (TRUTH / DARE) */}
-        {isMyTurn() && gameState.mode !== 'yn' && (
-             <div className="text-center py-4">
-                 <div className="animate-bounce mb-2 text-4xl">👇</div>
-                 <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
-                 <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
-             </div>
-        )}
-
-        {/* C) MODO MATCH (TODOS JUEGAN) */}
-        {gameState.mode === 'yn' && (
-            <div className="text-center">
-                 {gameState.answers?.[user?.uid || ''] ? (
-                     <div className="py-4">
-                         <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
-                         <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
-                     </div>
-                 ) : (
-                     <>
-                        <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
-                            <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
-                        </div>
-                     </>
-                 )}
-            </div>
-        )}
-    </div>
-
-    {/* --- FEEDBACK DE MATCH/MISMATCH (NUEVO) --- */}
-    {gameState.mode === 'yn' && allYNAnswered && (
-        <div className="w-full mt-6 animate-in zoom-in duration-300">
-             <div className={`p-6 rounded-2xl border-2 shadow-2xl flex flex-col items-center ${ynMatch ? 'bg-emerald-900/80 border-emerald-400 shadow-emerald-500/20' : 'bg-red-900/80 border-red-500 shadow-red-500/20'}`}>
-                {ynMatch ? (
+              )}
+  
+              {isMyTurn() && gameState.mode !== 'yn' && (
+                <div className="text-center py-4">
+                  <div className="animate-bounce mb-2 text-4xl">👇</div>
+                  <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
+                  <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
+                </div>
+              )}
+  
+              {gameState.mode === 'yn' && (
+                <div className="text-center">
+                  {gameState.answers?.[user?.uid || ''] ? (
+                    <div className="py-4">
+                      <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
+                      <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                    </div>
+                  ) : (
                     <>
-                        <div className="bg-emerald-500 text-black rounded-full p-3 mb-3 animate-bounce">
-                            <Smile size={40} />
-                        </div>
-                        <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">IT'S A MATCH!</h2>
-                        <p className="text-emerald-200 text-sm font-bold mt-1">Great minds think alike!</p>
+                      <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
+                      <div className="flex gap-3">
+                        <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
+                        <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
+                      </div>
                     </>
-                ) : (
+                  )}
+                </div>
+              )}
+            </div>
+  
+            {/* FEEDBACK MATCH/MISMATCH */}
+            {gameState.mode === 'yn' && allYNAnswered && (
+              <div className="w-full mt-6 animate-in zoom-in duration-300">
+                <div className={`p-6 rounded-2xl border-2 shadow-2xl flex flex-col items-center ${ynMatch ? 'bg-emerald-900/80 border-emerald-400 shadow-emerald-500/20' : 'bg-red-900/80 border-red-500 shadow-red-500/20'}`}>
+                  {ynMatch ? (
                     <>
-                        <div className="bg-red-500 text-white rounded-full p-3 mb-3 animate-shake">
-                            <UserX size={40} />
-                        </div>
-                        <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">MISMATCH...</h2>
-                        <p className="text-red-200 text-sm font-bold mt-1">Awkward...</p>
+                      <div className="bg-emerald-500 text-black rounded-full p-3 mb-3 animate-bounce">
+                        <Smile size={40} />
+                      </div>
+                      <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">IT'S A MATCH!</h2>
+                      <p className="text-emerald-200 text-sm font-bold mt-1">Great minds think alike!</p>
                     </>
-                )}
-                
-                <div className="mt-4 bg-black/40 px-6 py-2 rounded-xl border border-white/10">
+                  ) : (
+                    <>
+                      <div className="bg-red-500 text-white rounded-full p-3 mb-3 animate-shake">
+                        <UserX size={40} />
+                      </div>
+                      <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-md uppercase">MISMATCH...</h2>
+                      <p className="text-red-200 text-sm font-bold mt-1">Awkward...</p>
+                    </>
+                  )}
+                  <div className="mt-4 bg-black/40 px-6 py-2 rounded-xl border border-white/10">
                     <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1">YOUR PARTNER WAS</p>
                     <p className="text-2xl font-black text-white">{myPartnerName}</p>
+                  </div>
                 </div>
-             </div>
-        </div>
-    )}
-    {/* --- 3. ESTADO DE ESPERA --- */}
-    <div className="mt-6 text-center">
-         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
-             <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
-             <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-                 {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
-             </span>
-         </div>
-         {pendingPlayers.length > 0 && (
-             <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
-                 Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
-             </div>
-         )}
-    </div>
-</div>  
-                )
+              </div>
             )}
-        </div>
-        <CustomAlert/>
+  
+            {/* ESTADO DE ESPERA */}
+            <div className="mt-6 text-center">
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+                <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+                <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                  {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+                </span>
+              </div>
+              {pendingPlayers.length > 0 && (
+                <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
+                  Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+  
+      <CustomAlert/>
     </div>
-);
+  );
