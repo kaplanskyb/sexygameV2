@@ -1232,8 +1232,7 @@ const resetGame = async () => {
                     <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
                     </>
                     ) : (
-                    // rest unchanged
-                    )}
+                   
                             userName.toLowerCase().trim() === 'admin' ? (
                                 <button 
                                     onClick={() => {
