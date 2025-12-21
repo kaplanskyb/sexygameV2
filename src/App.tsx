@@ -409,10 +409,11 @@ const CouplePairing = ({
         }, 1500);
     };
 
+    // REEMPLAZAR EL RETURN DE CouplePairing CON ESTO:
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-8 uppercase tracking-widest text-center animate-pulse">
-                {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'WAITING FOR PARTNER...' : 'ENTER PARTNER CODE')}
+                {isLinked ? '❤️ LINKED! ❤️' : (isFemale ? 'PARTNER CODE' : 'LINKING...')}
             </h3>
 
             <div className="bg-slate-800 border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col items-center relative">
@@ -420,19 +421,30 @@ const CouplePairing = ({
                     <div className="absolute inset-0 z-20 bg-emerald-500 rounded-3xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
                         <HeartHandshake size={64} className="text-white mb-4 animate-bounce" />
                         <span className="text-white font-black text-3xl tracking-widest">CONNECTED</span>
-                        <span className="text-white/80 text-sm mt-2 font-bold tracking-widest animate-pulse">STARTING GAME...</span>
                     </div>
                 )}
                 {isFemale ? (
                     <>
                         <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">{localCode}</div>
-                        <div className="flex items-center gap-3 text-slate-400 text-sm uppercase tracking-wide animate-pulse"><div className="w-2 h-2 bg-pink-500 rounded-full"></div>Waiting for partner...</div>
+                        {/* TEXTO CORREGIDO: GIVE THIS CODE... */}
+                        <div className="flex items-center gap-3 text-white font-bold text-sm uppercase tracking-wide animate-pulse bg-white/10 px-4 py-2 rounded-full">
+                            <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                            GIVE THIS CODE TO YOUR PARTNER
+                        </div>
                     </>
                 ) : (
                     <>
-                        <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">Ask your partner for their code</p>
+                        {/* TEXTO CORREGIDO Y EN BLANCO BRILLANTE */}
+                        <p className="text-white font-black text-center mb-6 text-sm uppercase tracking-widest drop-shadow-md">
+                            ASK YOUR PARTNER FOR THE CODE
+                        </p>
+                        
                         <input type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000" className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" value={inputCode} onChange={(e) => setInputCode(e.target.value.slice(0, 4))} />
-                        <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>LINK NOW</button>
+                        
+                        {/* TEXTO CORREGIDO: ENTER YOUR PARTNER'S CODE */}
+                        <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>
+                            ENTER YOUR PARTNER'S CODE
+                        </button>
                     </>
                 )}
             </div>
@@ -945,7 +957,7 @@ useEffect(() => {
 
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
-  const toggleAutoMode = async () => { const newMode = !gameState?.isAutoMode; let updates: any = { isAutoMode: newMode }; if (newMode && (!gameState?.sequence || gameState.sequence.length === 0)) { let sequence: string[] = []; for(let i=0; i<qtyTruth; i++) sequence.push('question'); for(let i=0; i<qtyDare; i++) sequence.push('dare'); for(let i=0; i<qtyMM; i++) sequence.push('yn'); updates.sequence = sequence; updates.sequenceIndex = 0; } await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); };
+  
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
@@ -1014,6 +1026,57 @@ const resetGame = async () => {
       }
       return pairs; 
   };
+
+  // --- PEGAR ESTO ENCIMA DE "const startRound" ---
+  const startAutoSequence = async () => {
+    // 1. Validaciones
+    if (!selectedLevel) { showError("⚠️ Select a Level to start!"); return; }
+    
+    // 2. Crear la secuencia EXACTA basada en los inputs
+    let sequence: string[] = [];
+    for(let i=0; i<qtyTruth; i++) sequence.push('question');
+    for(let i=0; i<qtyDare; i++) sequence.push('dare');
+    for(let i=0; i<qtyMM; i++) sequence.push('yn');
+    
+    // 3. Mezclar la secuencia (opcional)
+    sequence.sort(() => Math.random() - 0.5);
+
+    if (sequence.length === 0) { showError("⚠️ Select at least 1 round!"); return; }
+
+    // 4. Configurar el primer turno
+    const initialMode = sequence[0];
+    const typeChar = initialMode === 'yn' ? 'YN' : initialMode === 'question' ? 'T' : 'D';
+    const firstPlayerGender = players[0].gender;
+    
+    const nextChallenge = await findNextAvailableChallenge(typeChar, selectedLevel, firstPlayerGender);
+    
+    if (!nextChallenge) { showError('No challenges found for these settings.'); return; }
+
+    // 5. Guardar en Base de Datos
+    let updates: any = {
+        mode: initialMode,
+        currentTurnIndex: 0,
+        answers: {},
+        votes: {},
+        adminUid: user?.uid,
+        currentChallengeId: nextChallenge.id,
+        roundLevel: selectedLevel,
+        isAutoMode: true,     // ACTIVAR MODO AUTO
+        sequence: sequence,   // GUARDAR LA LISTA DE RONDAS
+        sequenceIndex: 0      // EMPEZAR EN 0
+    };
+
+    if (initialMode === 'yn') {
+        updates.pairs = computePairs();
+        players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; });
+    }
+
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
+    
+    // Marcar carta como usada
+    const coll = initialMode === 'yn' ? 'pairChallenges' : 'challenges';
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
+};
 
   const startRound = async () => {
     if (isAutoSetup) { if (!selectedLevel) { showError("⚠️ Select a Level to start Auto Mode!"); return; } } else { if (!selectedLevel) { showError("⚠️ Select Risk Level!"); return; } if (!selectedType) { showError("⚠️ Select Game Type!"); return; } }
@@ -1592,7 +1655,13 @@ const resetGame = async () => {
                 
                 <div className="relative w-full max-w-md">
                     {tutorialStep === 6 && <TutorialTooltip text="Click to Start!" onClick={() => setTutorialStep(7)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                    <button onClick={startRound} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">{isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}</button>
+                    {/* BUSCA ESTE BOTÓN Y CAMBIA EL onClick */}
+<button 
+    onClick={isAutoSetup ? startAutoSequence : startRound} 
+    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-xl font-black tracking-widest shadow-lg shadow-emerald-900/40 active:scale-95 transition-all"
+>
+    {isAutoSetup ? 'INITIATE AUTO SEQUENCE' : 'START ROUND'}
+</button>
                 </div>
                 <div className="mt-4 w-full max-w-md"><ScoreBoard /></div>
                 <button onClick={handleRestart} className="w-full max-w-md bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-bold mt-4 transition-colors text-sm shadow-lg shadow-red-900/30">RESET ALL</button>
