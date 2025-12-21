@@ -904,9 +904,7 @@ useEffect(() => {
 
     if (!user) return;
 
-    // 3. VALIDACIÓN DE CÓDIGO DE SALA (Si no es Admin)
-    const isUserAdmin = userName.toLowerCase() === 'admin';
-    if (!isUserAdmin && !code.trim()) { alert("Enter Game Code, (ask the Admin)"); return; }
+   
 
     // 4. DETERMINAR CÓDIGO DE PAREJA
     // Usamos el que viene del modal (codeOverride) o el del estado
@@ -1230,20 +1228,20 @@ const resetGame = async () => {
                    
                             userName.toLowerCase().trim() === 'admin' ? (
                                 <button 
-                                    onClick={() => {
-                                        if (!gender || !relationshipStatus) {
-                                            alert("Please, fill Gender and Status");
-                                            return;
-                                        }
-                                        if (!code.trim()) {
-                                            alert("Enter Game Code, (ask the Admin)");
-                                            return;
-                                        }
-                                        createGame();
-                                    }} 
-                                    className={`w-full py-4 rounded-xl font-black text-xl uppercase tracking-widest transition-all shadow-lg hover:shadow-cyan-500/50 ${gradientBtn}`}
+                                onClick={() => {
+                                    if (!gender || !relationshipStatus) {
+                                    alert("Please, fill Gender and Status");
+                                    return;
+                                    }
+                                    if (!code.trim()) {
+                                    alert("Enter Game Code (ask the Admin)");
+                                    return;
+                                    }
+                                    joinGame();
+                                }} 
+                                className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
                                 >
-                                    START PARTY NOW
+                                {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
                                 </button>
                             ) : (
                                 <button 
