@@ -469,6 +469,7 @@ const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKi
 
 export default function TruthAndDareApp() {
     const [isJoined, setIsJoined] = useState(false);
+    const [showAdminPanel, setShowAdminPanel] = useState(false); // <--- OJO: Si esto da error, muévelo arriba con los otros useState
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('');
   const [gender, setGender] = useState('');
@@ -1705,13 +1706,31 @@ const resetGame = async () => {
       return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
   }
 
+  // -----------------------------------------------------------
+  // BLOQUE DE CÁLCULOS DEL JUEGO (PEGAR ESTO ANTES DEL RETURN)
+  // -----------------------------------------------------------
+
+  // 1. Obtener la carta actual
   const card = currentCard();
-  if (!card && gameState.currentChallengeId) { return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div><div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div></div>; }
-  
+  const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
+
+  // 2. Pantalla de carga si hay ID de reto pero no tenemos los datos
+  if (!finalCard && gameState.currentChallengeId) { 
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+            <div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div>
+        </div>
+      ); 
+  }
+
+  // 3. Calcular estilos y estados básicos
+  const cardStyle = getLevelStyle(finalCard?.level);
   const playerAnswered = gameState?.answers?.[user?.uid || ''];
   const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
   const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
-  
+
+  // 4. Lógica específica para MATCH/MISMATCH (YN)
   let ynMatch = null;
   let myPartnerName = "???";
   
@@ -1719,27 +1738,16 @@ const resetGame = async () => {
       const myPartnerUid = gameState.pairs?.[user?.uid || ''];
       const myAns = gameState.answers[user?.uid || ''];
       const partnerAns = gameState.answers[myPartnerUid || ''];
+      
       const pObj = players.find(p => p.uid === myPartnerUid);
       if(pObj) myPartnerName = pObj.name;
-      if(myAns && partnerAns) { ynMatch = myAns === partnerAns; }
+      
+      if(myAns && partnerAns) { 
+          ynMatch = myAns === partnerAns; 
+      }
   }
 
-  const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
-  const cardStyle = getLevelStyle(card?.level);
-  // --- PEGAR ESTO JUSTO ENCIMA DEL "return (" FINAL ---
-  
-  // 1. Calcular carta actual
-  const card = currentCard();
-  const finalCard = card || fetchedCard;
-  
-  // 2. Calcular estilo (colores según nivel)
-  const cardStyle = getLevelStyle(finalCard?.level);
-
-  // 3. Calcular si ya respondí
-  const playerAnswered = gameState?.answers?.[user?.uid || ''];
-  const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-  
-  // 4. Calcular jugadores pendientes (para el mensajito de espera)
+  // 5. Calcular jugadores pendientes (Para mostrar en la UI)
   const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
        if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
            // Si es turno de alguien, esa persona no cuenta como pendiente de votar (ella responde)
@@ -1750,10 +1758,15 @@ const resetGame = async () => {
        if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
        return false;
    });
-
-   // 5. Variable para el panel de Admin
-   const [showAdminPanel, setShowAdminPanel] = useState(false); // <--- OJO: Si esto da error, muévelo arriba con los otros useState
    
+   // Variable auxiliar para saber si soy Admin
+   // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
+
+  // -----------------------------------------------------------
+  // FIN DEL BLOQUE DE CÁLCULOS
+  // -----------------------------------------------------------
+   
+
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
