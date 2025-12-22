@@ -1936,79 +1936,7 @@ const resetGame = async () => {
          );
     }
 
-    const card = currentCard();
-    const finalCard = card || fetchedCard;
- 
-    const cardStyle = getLevelStyle(finalCard?.level);
 
-    
-
-    const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-        if(gameState.mode === 'question' || gameState.mode === 'dare') { if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; return !gameState.votes?.[p.uid]; }
-        if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-        return false;
-    });
-
-    return (
-      <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
-        {tutorialStep === 7 && <TutorialTooltip text="Switch between admin and player!" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
-        <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
-        {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
-        <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
-        
-        <div className="mt-8 w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
-        
-        <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
-            <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode === 'yn' ? 'MATCH' : gameState?.mode?.toUpperCase()}</span></div>
-            <div className="text-xs text-white/50 uppercase tracking-widest font-bold">Turn: <span className="text-white">{currentPlayerName()}</span></div>
-        </div>
-        
-        <div className={`w-full max-w-md p-4 mb-4 flex flex-col gap-4 ${glassPanel}`}>
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 relative">
-                 <div className="flex items-center gap-2 justify-center w-full">
-                    <div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div>
-                    <div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div>
-                 </div>
-                 <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
-            </div>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/50 font-bold uppercase">Risk Level</span>
-                    <InfoIcon text="You can change the risk level any time." />
-                </div>
-                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
-            </div>
-            {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Game Type</span><div className="flex items-center gap-2"><InfoIcon text="You can change the game type any time." /><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div></div>)}
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
-          <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
-              <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
-                  {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-              </div>
-              <div className="mb-4 opacity-80 drop-shadow-glow">{gameState.mode === 'question' ? <MessageCircle size={40} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={40} className="text-emerald-200"/> : <Flame size={40} className="text-pink-200"/>}</div>
-              <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(finalCard)}</h3>
-          </div>
-
-          <div className={`w-full p-4 mb-4 ${glassPanel}`}>
-              <h4 className={`font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest ${pendingPlayers.length > 0 ? "text-cyan-400 animate-pulse" : "text-white/50"}`}><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Waiting for answers:</h4>
-              {pendingPlayers.length === 0 ? (<div className="text-emerald-400 font-bold text-center">Ready for next!</div>) : (<div className="text-sm text-white/70 font-bold text-center">{pendingPlayers.map(p => p.name).join(', ')}</div>)}
-          </div>
-
-          {gameState?.isAutoMode ? (<div className="text-center text-emerald-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center text-sm uppercase tracking-widest"><RefreshCw className="animate-spin" size={14}/> Auto-Advancing...</div>) : (
-            <div className="w-full flex items-center gap-2">
-                <button onClick={nextTurn} className="flex-1 bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg shadow-indigo-900/50 transition-all">FORCE NEXT TURN</button>
-                <InfoIcon text="Use this to skip waiting if a player is stuck!" />
-            </div>
-          )}
-          <div className="flex gap-4 w-full mt-4">
-             <button onClick={handleEndGame} className="flex-1 bg-red-900/30 border border-red-500/30 p-3 rounded-xl font-bold text-red-400 hover:bg-red-900/50 text-xs">END GAME</button>
-             <button onClick={handleRestart} className="flex-1 bg-white/5 border border-white/10 p-3 rounded-xl font-bold text-white/50 hover:bg-white/10 text-xs">RESET ALL</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
 
 
