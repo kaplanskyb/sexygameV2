@@ -795,7 +795,7 @@ useEffect(() => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
-        
+        if (data.code) setCode(data.code);
         // Sincronizar estados locales con la DB
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
         if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode);
@@ -838,7 +838,7 @@ useEffect(() => {
     
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
-  
+
   useEffect(() => {
     console.log("View changed to:", viewAsPlayer ? "Player" : "Admin");
     if (!viewAsPlayer) {
@@ -1089,8 +1089,14 @@ useEffect(() => {
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), { uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0 });
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [], isEnding: false });
-  };
+    // Busca esta parte al final de la función startGame:
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
+        mode: 'admin_setup', 
+        matchHistory: [], 
+        isEnding: false,
+        currentChallengeId: null // <--- ESTO EVITA LA PANTALLA AZUL
+    });
+};
   
 // --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
 const resetGame = async () => {
@@ -1299,17 +1305,42 @@ const resetGame = async () => {
                     </div>
                 </div>
                 
-                {/* 3. CÓDIGO (AQUÍ ESTÁ EL ARREGLO VISUAL) */}
+                {/* 3. CÓDIGO DEL ADMIN (MANUAL Y PERSISTENTE) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   /* ---> SI SOY ADMIN: VEO MI CÓDIGO GIGANTE (NO INPUT) <--- */
                    <div className="mb-8 w-full relative group animate-in zoom-in">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                      <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
-                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
-                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                            {code || '...'}
-                          </span> 
-                      </div>
+                      
+                      {/* LÓGICA: ¿YA TENEMOS CÓDIGO? */}
+                      {code ? (
+                          /* CASO A: SÍ HAY CÓDIGO -> LO MOSTRAMOS */
+                          <>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                            <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
+                                <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
+                                <span className="text-4xl font-black font-mono tracking-[0.2em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                                    {code}
+                                </span> 
+                            </div>
+                            {/* Botón chiquito por si quiere cambiarlo */}
+                            <button 
+                                onClick={() => setCode(Math.floor(10000 + Math.random() * 90000).toString())}
+                                className="mt-2 text-[10px] text-white/30 hover:text-white uppercase tracking-widest underline decoration-white/20 hover:decoration-white transition-all w-full text-center"
+                            >
+                                Generate New Code
+                            </button>
+                          </>
+                      ) : (
+                          /* CASO B: NO HAY CÓDIGO -> BOTÓN PARA GENERAR */
+                          <button 
+                            onClick={() => {
+                                const newCode = Math.floor(10000 + Math.random() * 90000).toString();
+                                setCode(newCode);
+                            }}
+                            className="w-full py-6 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-white/50 hover:text-white hover:border-pink-500 hover:bg-pink-500/10 transition-all group"
+                          >
+                              <RefreshCcw className="mb-2 group-hover:animate-spin" size={24}/>
+                              <span className="font-bold tracking-widest text-sm">GENERATE PARTY CODE</span>
+                          </button>
+                      )}
                    </div>
                 ) : (
                    /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
