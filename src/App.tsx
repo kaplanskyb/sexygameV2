@@ -1659,20 +1659,20 @@ const resetGame = async () => {
     </div>
 
     {/* SWITCH 2: DRINK MODE (CORREGIDO) */}
-<div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all pointer-events-none ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}>
-    <div className="flex items-center gap-2 pointer-events-auto">
-        <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
-        <div className="flex flex-col">
-            <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
-            {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
-        </div>
+    <div 
+  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}
+  onClick={toggleDrinkMode}
+>
+  <div className="flex items-center gap-2">
+    <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
+    <div className="flex flex-col">
+      <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
+      {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
     </div>
-    <button 
-        onClick={toggleDrinkMode}
-        className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors pointer-events-auto ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
-    >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
-    </button>
+  </div>
+  <div className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}>
+    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+  </div>
 </div>
 </div>
 
@@ -1945,7 +1945,15 @@ const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
     if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
     return false;
 });
-
+const toggleDrinkMode = async () => {
+    if (!isAdmin || !gameState) return;
+    
+    const newDrinkMode = !gameState.isDrinkMode;
+    
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+      isDrinkMode: newDrinkMode
+    });
+  };
 // 6. Lógica de Drink Mode (CORREGIDO) 
 const calculateDrinkPenalty = () => {
    if (!gameState || !gameState.isDrinkMode) return false;
