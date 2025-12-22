@@ -562,14 +562,7 @@ export default function TruthAndDareApp() {
   const [showRiskInfo, setShowRiskInfo] = useState(false);
   const [isDrinkMode, setIsDrinkMode] = useState(false); // <--- NUEVO ESTADO AQUÍ
 
-  // --- PRE-GENERAR CÓDIGO PARA EL ADMIN ---
-  useEffect(() => {
-    // Si soy admin y la caja de código está vacía, genero uno visualmente YA.
-    if (userName.toLowerCase().trim() === 'admin' && !code) {
-        const randomCode = Math.floor(10000 + Math.random() * 90000).toString();
-        setCode(randomCode);
-    }
-}, [userName]);
+  
 
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
@@ -1305,13 +1298,11 @@ const resetGame = async () => {
                     </div>
                 </div>
                 
-                {/* 3. CÓDIGO DEL ADMIN (MANUAL Y PERSISTENTE) */}
+                {/* 3. CÓDIGO DEL ADMIN (MANUAL) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
                    <div className="mb-8 w-full relative group animate-in zoom-in">
-                      
-                      {/* LÓGICA: ¿YA TENEMOS CÓDIGO? */}
                       {code ? (
-                          /* CASO A: SÍ HAY CÓDIGO -> LO MOSTRAMOS */
+                          /* SI YA HAY CÓDIGO -> LO MOSTRAMOS */
                           <>
                             <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
                             <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
@@ -1320,16 +1311,15 @@ const resetGame = async () => {
                                     {code}
                                 </span> 
                             </div>
-                            {/* Botón chiquito por si quiere cambiarlo */}
                             <button 
                                 onClick={() => setCode(Math.floor(10000 + Math.random() * 90000).toString())}
                                 className="mt-2 text-[10px] text-white/30 hover:text-white uppercase tracking-widest underline decoration-white/20 hover:decoration-white transition-all w-full text-center"
                             >
-                                Generate New Code
+                                Generate Different Code
                             </button>
                           </>
                       ) : (
-                          /* CASO B: NO HAY CÓDIGO -> BOTÓN PARA GENERAR */
+                          /* SI NO HAY CÓDIGO -> BOTÓN PARA GENERAR */
                           <button 
                             onClick={() => {
                                 const newCode = Math.floor(10000 + Math.random() * 90000).toString();
@@ -1343,6 +1333,7 @@ const resetGame = async () => {
                       )}
                    </div>
                 ) : (
+
                    /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
                    <div className="relative mb-8 w-full">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
@@ -1681,17 +1672,22 @@ const resetGame = async () => {
                 })}
               </div>
 
-             {/* BLOQUE DE CÓDIGO DEL ADMIN (NUEVO: SOLO LECTURA) */}
+             {/* BLOQUE DE CÓDIGO DEL ADMIN (PERSISTENTE) */}
              <div className="mb-6 w-full max-w-sm relative group animate-in zoom-in">
                   <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                   <div className="relative w-full py-6 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
                       <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Party Code</span>
                       <span className="text-4xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] select-all">
-                        {code || '...'}
+                        {gameState?.code || code || '...'}
                       </span>
                   </div>
+                  {/* Botón de emergencia para regenerar código si se reseteó mal */}
+                  {(!gameState?.code || gameState?.code === '') && (
+                      <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: Math.floor(10000 + Math.random() * 90000).toString() })} className="mt-2 text-xs text-red-400 underline w-full text-center">
+                          Force Generate Code
+                      </button>
+                  )}
                   
-                  {/* Tooltip del Tutorial (Mantenemos esto para que no se rompa el tutorial) */}
                   {tutorialStep === 15 && <TutorialTooltip text="Tell this code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               </div>
               
