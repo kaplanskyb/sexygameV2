@@ -3,6 +3,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from "react-qr-code";
 import { QrReader } from "react-qr-reader";
 import { initializeApp } from 'firebase/app';
+// ... imports existentes ...
+import confetti from 'canvas-confetti'; // NECESITAS INSTALAR ESTO
+
+// --- SONIDOS (Usando HTML5 Audio nativo para no añadir más dependencias pesadas) ---
+const playSound = (type: 'pop' | 'success' | 'fail' | 'drink' | 'click') => {
+  const sounds = {
+    pop: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+    success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+    fail: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3', // Tono negativo
+    drink: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3', // Sonido de alerta/sirena
+    click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'
+  };
+  const audio = new Audio(sounds[type]);
+  audio.volume = 0.5;
+  audio.play().catch(e => console.log("Audio interaction required", e));
+};
+
+// ... resto de imports
 import { 
     getFirestore, 
     doc, 
@@ -103,6 +121,7 @@ interface GameState {
   matchHistory?: HistoryEntry[];
   nextType?: string;
   isEnding?: boolean;
+  isDrinkMode?: boolean; // <--- AGREGAR ESTO
 }
 
 // --- HELPER CSV PARSER ---
@@ -470,6 +489,15 @@ const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKi
     );
 };
 
+const DrinkAlert = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+      <div className="bg-red-600/90 border-4 border-yellow-400 p-8 rounded-3xl animate-bounce shadow-[0_0_100px_rgba(220,38,38,0.8)] rotate-3">
+        <h1 className="text-6xl font-black text-yellow-300 drop-shadow-lg tracking-widest text-center">DRINK!</h1>
+        <p className="text-white text-xl font-bold text-center mt-2 uppercase">Penalty Time</p>
+      </div>
+    </div>
+  );
+
 export default function TruthAndDareApp() {
     const [isJoined, setIsJoined] = useState(false);
     const [showAdminPanel, setShowAdminPanel] = useState(false); // <--- OJO: Si esto da error, muévelo arriba con los otros useState
@@ -515,6 +543,7 @@ export default function TruthAndDareApp() {
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
+  const [isDrinkMode, setIsDrinkMode] = useState(false); // <--- NUEVO ESTADO AQUÍ
 
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
@@ -739,8 +768,10 @@ useEffect(() => {
         const data = docSnap.data() as GameState;
         setGameState(data);
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
+        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode); // <--- NUEVA LÓGICA AQUÍ
         if (data.roundLevel && data.roundLevel !== selectedLevel) setSelectedLevel(data.roundLevel);
         if (data.nextType && data.nextType !== selectedType) setSelectedType(data.nextType);
+        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode);
       } else {
         setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
       }
@@ -961,7 +992,14 @@ useEffect(() => {
             updates.sequenceIndex = 0; // Reiniciamos el ciclo al principio
         }
     } 
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); 
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
+    const toggleDrinkMode = async () => {
+        const newMode = !gameState?.isDrinkMode;
+        playSound('click');
+        setIsDrinkMode(newMode);
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isDrinkMode: newMode });
+      }; 
+
 };
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
@@ -1078,8 +1116,6 @@ const resetGame = async () => {
     const coll = initialMode === 'yn' ? 'pairChallenges' : 'challenges';
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallengeToUse.id!), { answered: true });
   };
-  const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
-  const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
   const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
@@ -1605,6 +1641,16 @@ const resetGame = async () => {
                         </div>     
                         </div>
 
+                        {/* --- INICIO PEGAR AQUÍ (Interruptor Drink Mode) --- */}
+                        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 mt-2">
+                            <div className="flex items-center gap-2 justify-center w-full">
+                                    <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Penalty Mode</div>
+                                    <div className={`font-black text-xl ml-2 ${isDrinkMode ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>{isDrinkMode ? 'DRINK ON 🍺' : 'DRINK OFF'}</div>
+                            </div>
+                            <button onClick={toggleDrinkMode} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isDrinkMode ? 'bg-red-600' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
+                        </div>
+                        {/* --- FIN PEGAR AQUÍ --- */}
+
                     {isAutoSetup ? (
                         <div className="flex gap-3 animate-in fade-in">
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
@@ -1821,6 +1867,46 @@ const resetGame = async () => {
           ynMatch = myAns === partnerAns; 
       }
   }
+// --- INICIO LÓGICA DRINK & CONFETI ---
+let showDrinkAlert = false;
+let showConfetti = false;
+
+// Calculamos si ya todos votaron en Truth/Dare
+const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
+
+// 1. Lógica TRUTH (Drink si gana 'dislike')
+if (gameState.mode === 'question' && allVoted) {
+    const likes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
+    const noLikes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length; // En tu código es 'dislike'
+    
+    if (gameState.isDrinkMode && noLikes > likes) showDrinkAlert = true;
+    if (likes >= noLikes) showConfetti = true;
+}
+
+// 2. Lógica DARE (Drink si gana 'no' / Failed)
+if (gameState.mode === 'dare' && allVoted) {
+    const done = Object.values(gameState.votes || {}).filter(v => v === 'yes').length;
+    const fail = Object.values(gameState.votes || {}).filter(v => v === 'no').length;
+    
+    if (gameState.isDrinkMode && fail > done) showDrinkAlert = true;
+    if (done >= fail) showConfetti = true;
+}
+
+// 3. Lógica MATCH (Drink si NO hay match)
+if (gameState.mode === 'yn' && allYNAnswered) {
+     if (ynMatch === false && gameState.isDrinkMode) showDrinkAlert = true;
+     if (ynMatch === true) showConfetti = true;
+}
+
+// Efectos de Sonido y Confeti
+useEffect(() => {
+    if (showDrinkAlert) playSound('drink');
+    if (showConfetti) {
+        playSound('success');
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    }
+}, [showDrinkAlert, showConfetti, gameState.currentTurnIndex]);
+// --- FIN LÓGICA DRINK & CONFETI ---
 
   // 5. Calcular jugadores pendientes (Para mostrar en la UI)
   const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
@@ -1845,6 +1931,8 @@ const resetGame = async () => {
   // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
+        {/* ALERTA DE DRINK (Solo aparece si showDrinkAlert es true) */}
+        {showDrinkAlert && <DrinkAlert />}
         
         {/* Fondo Animado */}
         <div className="absolute inset-0 z-0">
@@ -1973,7 +2061,7 @@ const resetGame = async () => {
                 {gameState.mode === 'question' ? (
                     <>
                     <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
-                    <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                    <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Nah.. 😴</button>
                     </>
                 ) : (
                     <>
