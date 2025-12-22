@@ -872,7 +872,8 @@ useEffect(() => {
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
-  const createGame = async (codeOverride?: any) => {
+  const createGame = async (linkCodeInput?: any) => {
+    // 1. Validaciones básicas
     if (!userName.trim()) {
         alert("⛔ ERROR: Please enter a Nickname.");
         return;
@@ -883,22 +884,41 @@ useEffect(() => {
     }
     if (!user) return;
     
-    // 1. DETERINAR EL CÓDIGO DE LA SALA
-    // Si pasamos un código (nuevo generado), lo usamos. Si no, usamos el del estado.
-    const roomCode = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : code;
+    // 2. DEFINIR EL CÓDIGO DE LA SALA (PARTY CODE - 5 DÍGITOS)
+    // Usamos el código que ya se ve en pantalla (pre-generado) o creamos uno nuevo.
+    // ESTE ES EL QUE VERÁN TODOS PARA UNIRSE.
+    let finalPartyCode = code;
+    if (!finalPartyCode || finalPartyCode.length < 5) {
+        finalPartyCode = Math.floor(10000 + Math.random() * 90000).toString();
+    }
 
-    // Validación extra
-    if (!roomCode) {
-        alert("Error: Could not generate Room Code.");
-        return;
+    // 3. DEFINIR EL CÓDIGO DE PAREJA (LINK CODE - 3 DÍGITOS)
+    // Si el admin es pareja, usamos el código que le pasó el modal o el que ya tenía.
+    let finalCoupleID = 'ADMIN'; // Por defecto si es soltero
+    
+    if (relationshipStatus === 'couple') {
+        // ¿Viene del modal?
+        if (typeof linkCodeInput === 'string' && linkCodeInput.length === 3) {
+            finalCoupleID = linkCodeInput;
+        } 
+        // ¿Ya lo tenía guardado?
+        else if (coupleNumber) {
+            finalCoupleID = coupleNumber;
+        } 
+        else {
+            alert("⚠️ Error: You are set as Couple but not linked correctly.");
+            return;
+        }
     }
 
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // 2. Crear Sala con el roomCode
+    // 4. GUARDAR EN BASE DE DATOS
+    
+    // A) Crear la SALA con el CÓDIGO DE 5 DÍGITOS
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: roomCode,  // <--- USAR roomCode AQUÍ
+      code: finalPartyCode, 
       mode: 'lobby',
       currentTurn: null,
       adminUid: user.uid,
@@ -911,14 +931,13 @@ useEffect(() => {
       lastAction: 'CREATED'
     });
 
-    // 3. Crear Jugador Admin
+    // B) Crear al ADMIN con su CÓDIGO DE PAREJA (3 DÍGITOS)
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
       uid: user.uid, 
       name: userName, 
       gender: gender, 
       relationshipStatus: relationshipStatus, 
-      // Si es pareja, usamos el código. Si es single, 'ADMIN'.
-      coupleNumber: relationshipStatus === 'couple' ? roomCode : 'ADMIN', 
+      coupleNumber: finalCoupleID, // <--- Aquí va el de 3 dígitos
       joinedAt: serverTimestamp(), 
       isActive: true, 
       isBot: false,
@@ -926,10 +945,10 @@ useEffect(() => {
       mismatches: 0
     });
     
-    // 4. Actualizar estado local visualmente y entrar
-    setCode(roomCode);
+    // 5. Actualizar estado visual para entrar al Lobby
+    setCode(finalPartyCode); // La UI mostrará el código de 5 dígitos
     setIsJoined(true);
-};
+  };
 
   // --- FUNCIÓN CORREGIDA ---
   const joinGame = async (codeOverride?: any) => {
