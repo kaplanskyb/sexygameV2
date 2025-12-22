@@ -1658,22 +1658,7 @@ const resetGame = async () => {
         </div>
     </div>
 
-    {/* SWITCH 2: DRINK MODE (CORREGIDO) */}
-<div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all pointer-events-none ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}>
-    <div className="flex items-center gap-2 pointer-events-auto">
-        <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
-        <div className="flex flex-col">
-            <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
-            {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
-        </div>
-    </div>
-    <button 
-        onClick={toggleDrinkMode}
-        className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors pointer-events-auto ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
-    >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
-    </button>
-</div>
+    
 </div>
 
 
@@ -1802,8 +1787,26 @@ const resetGame = async () => {
                 <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
             </div>
             {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Game Type</span><div className="flex items-center gap-2"><InfoIcon text="You can change the game type any time." /><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div></div>)}
+            {/* SWITCH DRINK MODE - SIEMPRE VISIBLE EN ADMIN DURANTE JUEGO */}
+            <div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}>
+                <div className="flex items-center gap-2">
+                    <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
+                    <div className="flex flex-col">
+                        <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
+                        {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
+                    </div>
+                </div>
+                <button 
+                    onClick={toggleDrinkMode}
+                    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
+                >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+            </div>
         </div>
+        
         {gameState?.isAutoMode && (
+            
     <div className="flex gap-3 animate-in fade-in mb-6 mt-6">
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
             <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
