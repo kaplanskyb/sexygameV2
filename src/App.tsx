@@ -350,7 +350,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
 };
 
 // Asegúrate de tener estos imports arriba:
-// import { QrReader } from 'react-qr-reader';  
+// import { QrReader } from 'react-qr-reader';
 // import { Check, X } from 'lucide-react';
 
 // Asegúrate de que estos imports estén arriba en tu archivo:
@@ -1658,7 +1658,23 @@ const resetGame = async () => {
         </div>
     </div>
 
-    
+    {/* SWITCH 2: DRINK MODE (CORREGIDO) */}
+<div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all pointer-events-none ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}>
+    <div className="flex items-center gap-2 pointer-events-auto">
+        <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
+        <div className="flex flex-col">
+            <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
+            {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
+        </div>
+    </div>
+    <button 
+        onClick={toggleDrinkMode}
+        className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors pointer-events-auto ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
+    >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+    </button>
+</div>
+</div>
 
 
    
@@ -1746,7 +1762,15 @@ const resetGame = async () => {
     const finalCard = card || fetchedCard;
     const cardStyle = getLevelStyle(finalCard?.level);
 
-    
+    if (!finalCard && gameState?.currentChallengeId) {
+        return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div><div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div></div>;
+    }
+
+    const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+        if(gameState.mode === 'question' || gameState.mode === 'dare') { if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; return !gameState.votes?.[p.uid]; }
+        if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+        return false;
+    });
 
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
@@ -1770,23 +1794,6 @@ const resetGame = async () => {
                  </div>
                  <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
             </div>
-            {/* SWITCH 2: DRINK MODE (CORREGIDO) */}
-    <div 
-  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}
-  onClick={toggleDrinkMode}
->
-  <div className="flex items-center gap-2">
-    <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
-    <div className="flex flex-col">
-      <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
-      {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
-    </div>
-  </div>
-  <div className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}>
-    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
-  </div>
-</div>
-</div>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-white/50 font-bold uppercase">Risk Level</span>
@@ -1892,7 +1899,19 @@ const resetGame = async () => {
   // BLOQUE DE CÁLCULOS DEL JUEGO (PEGAR ESTO ANTES DEL RETURN)
   // -----------------------------------------------------------
 
- 
+  // 1. Obtener la carta actual
+  const card = currentCard();
+  const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
+
+  // 2. Pantalla de carga si hay ID de reto pero no tenemos los datos
+  if (!finalCard && gameState.currentChallengeId) { 
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+            <div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div>
+        </div>
+      ); 
+  }
 
   // 3. Calcular estilos y estados básicos
   const cardStyle = getLevelStyle(finalCard?.level);
@@ -2322,8 +2341,5 @@ const showDrinkAlert = calculateDrinkPenalty();
         </div>
         <CustomAlert/>
     </div>
-  );
+);
 }
-}
-
-export default TruthAndDareApp;
