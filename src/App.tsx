@@ -1870,40 +1870,43 @@ const resetGame = async () => {
       }
   }
 
-  // 5. Calcular jugadores pendientes (Para mostrar en la UI)
-  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-       if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
-           // Si es turno de alguien, esa persona no cuenta como pendiente de votar (ella responde)
-           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-           // Los demás deben votar
-           return !gameState.votes?.[p.uid]; 
-       }
-       if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-       // --- LÓGICA DE DRINK MODE ---
-const calculateDrinkPenalty = () => {
-    if (!gameState || !gameState.isDrinkMode) return false;
-
-    // Solo calcular si todos (menos el que juega) han votado
-    const activePlayersCount = players.filter(p => !p.isBot).length;
-    const votesCount = Object.keys(gameState.votes || {}).length;
-    // En modo Match no usamos votos, usamos respuestas
-    if (gameState.mode !== 'yn' && votesCount < activePlayersCount - 1) return false;
-
-    const needed = Math.floor((activePlayersCount - 1) / 2) + 1; // Mayoría simple
-
-    if (gameState.mode === 'question') {
-        // Truth: contar "dislike"
-        const nahVotes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length;
-        return nahVotes >= needed;
+// 5. Calcular jugadores pendientes (CORREGIDO) [cite: 1031]
+const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+    if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
+        // El jugador del turno actual no vota [cite: 1031]
+        if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
+        return !gameState.votes?.[p.uid]; 
     }
-    if (gameState.mode === 'dare') {
-        // Dare: contar "no"
-        const failVotes = Object.values(gameState.votes || {}).filter(v => v === 'no').length;
-        return failVotes >= needed;
-    }
+    if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
     return false;
+});
+
+// 6. Lógica de Drink Mode (CORREGIDO) [cite: 1032]
+const calculateDrinkPenalty = () => {
+   if (!gameState || !gameState.isDrinkMode) return false; [cite: 1032]
+
+   const activePlayersCount = players.filter(p => !p.isBot).length; [cite: 1032]
+   const votesCount = Object.keys(gameState.votes || {}).length; [cite: 1032]
+   
+   // En modo Match (yn) no usamos votos, esperamos a que todos respondan [cite: 1033]
+   if (gameState.mode !== 'yn' && votesCount < activePlayersCount - 1) return false; [cite: 1033]
+
+   const needed = Math.floor((activePlayersCount - 1) / 2) + 1; // Mayoría simple [cite: 1034, 1035]
+
+   if (gameState.mode === 'question') {
+       // Truth: contamos los votos "dislike" [cite: 1035]
+       const nahVotes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length; [cite: 1035]
+       return nahVotes >= needed; [cite: 1036]
+   }
+   if (gameState.mode === 'dare') {
+       // Dare: contamos los votos "no" [cite: 1036]
+       const failVotes = Object.values(gameState.votes || {}).filter(v => v === 'no').length; [cite: 1036]
+       return failVotes >= needed; [cite: 1037]
+   }
+   return false; [cite: 1037]
 };
-const showDrinkAlert = calculateDrinkPenalty();
+
+const showDrinkAlert = calculateDrinkPenalty(); [cite: 1037]
        return false;
    });
    
@@ -2069,7 +2072,7 @@ const showDrinkAlert = calculateDrinkPenalty();
             </div>
         )}
 
-// PASTE THIS RIGHT AFTER:
+
 
         {/* --- PENALTY SIGN (TRUTH / DARE) --- */}
         {showDrinkAlert && (
@@ -2182,7 +2185,7 @@ const showDrinkAlert = calculateDrinkPenalty();
                         <div className="text-green-200 font-bold text-[10px] uppercase tracking-widest animate-pulse">Perfect Sync</div>
                     </div>
                 </div>
-            // REPLACE WITH THIS:
+         
 ) : (
     /* --- MISMATCH BLOCK (ELSE) --- */
     <div className="flex flex-col items-center justify-center w-full">
