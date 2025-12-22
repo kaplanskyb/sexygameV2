@@ -350,7 +350,7 @@ const HelpModal = ({ onClose, type }: { onClose: () => void, type: 'admin' | 'pl
 };
 
 // Asegúrate de tener estos imports arriba:
-// import { QrReader } from 'react-qr-reader';
+// import { QrReader } from 'react-qr-reader';  
 // import { Check, X } from 'lucide-react';
 
 // Asegúrate de que estos imports estén arriba en tu archivo:
@@ -1746,15 +1746,7 @@ const resetGame = async () => {
     const finalCard = card || fetchedCard;
     const cardStyle = getLevelStyle(finalCard?.level);
 
-    if (!finalCard && gameState?.currentChallengeId) {
-        return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div><div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div></div>;
-    }
-
-    const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-        if(gameState.mode === 'question' || gameState.mode === 'dare') { if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; return !gameState.votes?.[p.uid]; }
-        if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-        return false;
-    });
+    
 
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
