@@ -1900,19 +1900,7 @@ const resetGame = async () => {
   // BLOQUE DE CÁLCULOS DEL JUEGO (PEGAR ESTO ANTES DEL RETURN)
   // -----------------------------------------------------------
 
-  // 1. Obtener la carta actual
-  const card = currentCard();
-  const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
-
-  // 2. Pantalla de carga si hay ID de reto pero no tenemos los datos
-  if (!finalCard && gameState.currentChallengeId) { 
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
-            <div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div>
-        </div>
-      ); 
-  }
+ 
 
   // 3. Calcular estilos y estados básicos
   const cardStyle = getLevelStyle(finalCard?.level);
