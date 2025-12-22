@@ -1630,9 +1630,12 @@ const resetGame = async () => {
                 <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
         </div>
         <div className="relative">
-            <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}>
-                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} />
-            </button>
+        <button 
+    onClick={() => setIsAutoSetup(!isAutoSetup)}
+    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}
+>
+    <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} />
+</button>
             {/* Tooltip Tutorial */}
             {tutorialStep === 5 && <TutorialTooltip text="Switch Manual/Auto Mode Anytime!" onClick={() => setTutorialStep(6)} className="right-full mr-3 top-1/2 -translate-y-1/2" arrowPos="right" />}
         </div>
@@ -1648,11 +1651,11 @@ const resetGame = async () => {
                 </div>
         </div>
         <button 
-    onClick={toggleDrinkMode}
-    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
->
-    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
-</button>
+        onClick={toggleDrinkMode}
+        className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
+    >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+    </button>
     </div>
 </div>
 
