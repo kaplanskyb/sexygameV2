@@ -524,36 +524,16 @@ export default function TruthAndDareApp() {
     }
   }, [players, user]);
   // --- PEGA ESTO EN SU LUGAR ---
-  // --- DETECCIÓN DE ADMIN Y RESETEO DE ESTADO ---
-  useEffect(() => {
+ // --- DETECCIÓN DE ADMIN (CORREGIDO: NO RESETEA AL REFRESCAR) ---
+ useEffect(() => {
     const isNowAdmin = userName.toLowerCase().trim() === 'admin';
     setIsAdmin(isNowAdmin);
 
-    if (isNowAdmin) {
-      const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
-      setCode(autoCode);
-      
-      // RESETEO AUTOMÁTICO DE PARÁMETROS DEL JUEGO
-      const resetGameParams = async () => {
-          try {
-              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
-                  code: autoCode, // Actualizamos el código en la BD
-                  mode: 'lobby',
-                  roundLevel: '1',     // Reset Risk Level
-                  nextType: 'truth',   // Reset Type
-                  isAutoMode: false,   // Reset Auto Mode
-                  answers: {},
-                  votes: {},
-                  currentTurnIndex: 0,
-                  isEnding: false
-              });
-          } catch(e) { console.error("Auto reset failed", e); }
-      };
-      resetGameParams();
-
-    } else {
-      if (code && code.length > 5) setCode(''); 
-    }
+    // CORRECCIÓN IMPORTANTE:
+    // Hemos eliminado el bloque "resetGameParams". 
+    // Ahora, si haces refresh, el Admin simplemente se reconecta 
+    // y lee el estado actual de Firebase sin borrar nada.
+    
   }, [userName]);
 
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
