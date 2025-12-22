@@ -2046,54 +2046,56 @@ const resetGame = async () => {
         )}
     </div>
 
-{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON CONFETI PANTALLA COMPLETA */}
+{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON CONFETI */}
 {gameState?.mode === 'yn' && allYNAnswered && (
     <>
         {/* 1. ESTILOS DE ANIMACIÓN (Inyectados) */}
         <style>{`
             @keyframes floatUp {
-                0% { transform: translateY(110vh) rotate(0deg); opacity: 1; }
-                100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+                0% { transform: translateY(120vh) scale(0.5) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(-20vh) scale(1) rotate(360deg); opacity: 0; }
             }
             @keyframes fallDown {
                 0% { transform: translateY(-20vh) translateX(0px); opacity: 0; }
                 10% { opacity: 1; }
-                100% { transform: translateY(110vh) translateX(20px); opacity: 0.5; }
+                100% { transform: translateY(120vh) translateX(20px); opacity: 0.5; }
             }
         `}</style>
 
-        {/* 2. CAPA DE EFECTOS (FIXED FULL SCREEN - Z-INDEX 50) */}
-        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+        {/* 2. CAPA DE EFECTOS (SOLUCIÓN FIX: ABSOLUTE GIGANTE CENTRADO) */}
+        {/* Usamos w-[120vw] y h-[120vh] con centrado absoluto para romper el contenedor padre */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vh] z-0 pointer-events-none overflow-hidden">
             {ynMatch ? (
                 // --- MATCH: CONFETI SUBIENDO ---
-                [...Array(40)].map((_, i) => (
-                    <div key={i} className="absolute text-2xl" style={{
+                [...Array(50)].map((_, i) => (
+                    <div key={i} className="absolute text-3xl" style={{
                         left: `${Math.random() * 100}%`,
-                        bottom: '-50px',
-                        animation: `floatUp ${Math.random() * 3 + 2}s linear infinite`,
+                        bottom: '-10%', // Empieza bien abajo
+                        animation: `floatUp ${Math.random() * 3 + 3}s linear infinite`,
                         animationDelay: `${Math.random() * 2}s`,
+                        textShadow: '0 0 10px rgba(255,255,255,0.5)'
                     }}>
-                        {['🎉', '✨', '🔥', '❤️', '🍾'][Math.floor(Math.random() * 5)]}
+                        {['🎉', '✨', '🔥', '❤️', '🍾', '💎'][Math.floor(Math.random() * 6)]}
                     </div>
                 ))
             ) : (
                 // --- MISMATCH: LLUVIA CAYENDO ---
-                [...Array(30)].map((_, i) => (
-                    <div key={i} className="absolute text-2xl grayscale opacity-50" style={{
+                [...Array(40)].map((_, i) => (
+                    <div key={i} className="absolute text-3xl grayscale opacity-40" style={{
                         left: `${Math.random() * 100}%`,
-                        top: '-50px',
-                        animation: `fallDown ${Math.random() * 2 + 1.5}s linear infinite`,
+                        top: '-10%',
+                        animation: `fallDown ${Math.random() * 2 + 2}s linear infinite`,
                         animationDelay: `${Math.random() * 2}s`,
                     }}>
-                        {['💧', '💔', '🌧️', '🥀'][Math.floor(Math.random() * 4)]}
+                        {['💧', '💔', '🌧️', '🥀', '☁️'][Math.floor(Math.random() * 5)]}
                     </div>
                 ))
             )}
         </div>
 
-        {/* 3. TARJETA DE RESULTADO COMPACTA (Z-INDEX 60 - Encima del confeti) */}
-        <div className={`relative z-60 flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
-            'bg-green-900/90 border-green-500 shadow-green-500/50' : 'bg-slate-900/90 border-red-500 shadow-red-500/50'}`}>
+        {/* 3. TARJETA DE RESULTADO (Z-INDEX SUPERIOR) */}
+        <div className={`relative z-10 flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
+            'bg-green-900/95 border-green-500 shadow-green-500/50' : 'bg-slate-900/95 border-red-500 shadow-red-500/50'}`}>
             
             {ynMatch === true ? (
                 <div className="flex items-center gap-4 relative mb-2 justify-center">
