@@ -598,36 +598,34 @@ useEffect(() => {
 
 // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
 useEffect(() => {
-    // Si no ha entrado al juego, no hacemos nada
-    if (!isJoined) return;
-
+    // CORRECCIÓN: Este efecto solo debe correr si NO estamos unidos o si hay alertas específicas.
+    // Pero el error real es intentar acceder al DOM que ya no existe.
+    
     const nagInterval = setInterval(() => {
-      // 1. Si es Admin y el juego no ha empezado -> Recordar iniciar
+      // 1. Admin start reminder
       if (userName === 'admin' && gameState?.mode === 'lobby') {
         const startBtn = document.getElementById('btn-start-game');
-        startBtn?.classList.add('animate-bounce');
+        startBtn?.classList.add('animate-bounce'); // Usar ?.
         setTimeout(() => startBtn?.classList.remove('animate-bounce'), 1000);
       }
 
-      // 2. Si es Jugador, ya entró, pero FALTA GÉNERO o STATUS -> Vibrar form
-      if (userName !== 'admin' && (!gender || !relationshipStatus)) {
+      // 2. Si NO ha entrado (isJoined false), animar el formulario
+      if (!isJoined && userName !== 'admin' && (!gender || !relationshipStatus)) {
         if (navigator.vibrate) navigator.vibrate(200);
         const formContainer = document.getElementById('profile-form-container');
-        formContainer?.classList.add('animate-shake'); 
+        formContainer?.classList.add('animate-shake'); // Usar ?. CRÍTICO
         setTimeout(() => formContainer?.classList.remove('animate-shake'), 500);
       }
 
-      // 3. CORRECCIÓN AQUÍ: Usamos !coupleNumber en lugar de !isLinked
-      // Si es Mujer, está en Pareja y NO tiene número de pareja -> Animar input
-      if (gender === 'female' && relationshipStatus === 'couple' && !coupleNumber) {
+      // 3. Mujer en pareja sin código
+      if (!isJoined && gender === 'female' && relationshipStatus === 'couple' && !coupleNumber) {
          const codeInput = document.getElementById('input-couple-code');
-         codeInput?.focus(); 
+         codeInput?.focus(); // Usar ?.
       }
 
     }, 5000); 
 
-    return () => clearInterval(nagInterval); 
-    // CORRECCIÓN AQUÍ TAMBIÉN: Quitamos isLinked de la lista de dependencias
+    return () => clearInterval(nagInterval);
   }, [isJoined, userName, gameState?.mode, gender, relationshipStatus, coupleNumber]);
 
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
