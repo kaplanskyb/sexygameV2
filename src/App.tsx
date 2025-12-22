@@ -2003,7 +2003,7 @@ const resetGame = async () => {
                     {gameState.mode === 'question' ? (
                         <>
                            <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
-                           <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                           <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Nah... 😴</button>
                         </>
                     ) : (
                         <>
@@ -2046,45 +2046,50 @@ const resetGame = async () => {
         )}
     </div>
 
-{/* RESULTADO DIVERTIDO DE MATCH/MISMATCH (NUEVO) */}
-{gameState?.mode==='yn' && allYNAnswered && (
-            <div className={`flex flex-col items-center justify-center p-8 rounded-3xl w-full animate-in zoom-in duration-500 shadow-2xl border-4 ${ynMatch ? 'bg-green-900/40 border-green-500 shadow-green-500/20' : 'bg-red-900/40 border-red-500 shadow-red-500/20'}`}>
-                
-                {ynMatch === true ? (
-                    /* --- ESCENA DE ÉXITO (MATCH) --- */
-                    <div className="text-center relative">
-                        <div className="absolute inset-0 bg-green-400 blur-2xl opacity-20 animate-pulse"></div>
-                        <HeartHandshake className="w-24 h-24 text-green-400 mx-auto mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
-                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter mb-2 transform rotate-2">
-                            IT'S A MATCH!
-                        </h3>
-                        <div className="text-green-200 font-bold text-sm uppercase tracking-[0.5em] animate-pulse">Perfect Sync</div>
-                    </div>
-                ) : (
-                    /* --- ESCENA DE FALLO (MISMATCH) --- */
-                    <div className="text-center relative">
-                        <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
-                        <AlertTriangle className="w-24 h-24 text-red-500 mx-auto mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
-                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter mb-2 transform -rotate-2">
-                            AWKWARD...
-                        </h3>
-                        <div className="text-red-300 font-bold text-sm uppercase tracking-[0.5em]">Totally Different</div>
-                    </div>
-                )}
-
-                {/* --- MOSTRAR PARTNER --- */}
-                <div className="mt-8 text-center w-full bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Your Partner Was</div>
-                    <div className="font-black text-3xl text-white drop-shadow-md">
-                        {myPartnerName}
-                    </div>
+{/* RESULTADO COMPACTO DE MATCH/MISMATCH */}
+{gameState?.mode === 'yn' && allYNAnswered && (
+    <div className={`flex flex-col items-center justify-center p-4 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 ${ynMatch ?
+        'bg-green-900/60 border-green-500 shadow-green-500/20' : 'bg-red-900/60 border-red-500 shadow-red-500/20'}`}>
+        
+        {ynMatch === true ? (
+            /* --- ESCENA DE ÉXITO (MATCH) COMPACTA --- */
+            <div className="flex items-center gap-4 relative">
+                <div className="absolute inset-0 bg-green-400 blur-xl opacity-20 animate-pulse"></div>
+                <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
+                <div className="text-left">
+                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter leading-none transform rotate-2">
+                        MATCH!
+                    </h3>
+                    <div className="text-green-200 font-bold text-[10px] uppercase tracking-widest animate-pulse">Perfect Sync</div>
                 </div>
-
-                <div className="text-white/20 mt-4 text-[9px] font-mono tracking-widest uppercase">
-                    Next round in 4s...
+            </div>
+        ) : (
+            /* --- ESCENA DE FALLO (MISMATCH) COMPACTA --- */
+            <div className="flex items-center gap-4 relative">
+                <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
+                <AlertTriangle className="w-12 h-12 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                <div className="text-left">
+                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
+                        NOPE...
+                    </h3>
+                    <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
                 </div>
             </div>
         )}
+
+        {/* --- MOSTRAR PARTNER (Compacto) --- */}
+        <div className="mt-3 flex items-center justify-between w-full bg-black/40 px-3 py-2 rounded-lg border border-white/5 backdrop-blur-sm">
+            <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner:</span>
+            <span className="font-black text-lg text-white drop-shadow-md leading-none">
+                {myPartnerName}
+            </span>
+        </div>
+
+        <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest uppercase">
+            Next in 4s...
+        </div>
+    </div>
+)}
 
     {/* --- 3. ESTADO DE ESPERA --- */}
     <div className="mt-6 text-center">
