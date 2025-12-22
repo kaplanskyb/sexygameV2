@@ -2025,8 +2025,8 @@ const resetGame = async () => {
              </div>
         )}
 
-        {/* C) MODO MATCH (TODOS JUEGAN) - Solo visible si NO han terminado todos */}
-        {gameState.mode === 'yn' && !allYNAnswered && (
+{/* C) MODO MATCH (TODOS JUEGAN) - Solo visible si NO han terminado todos */}
+{gameState.mode === 'yn' && !allYNAnswered && (
             <div className="text-center">
                 {gameState.answers?.[user?.uid || ''] ? (
                     <div className="py-4">
@@ -2046,44 +2046,55 @@ const resetGame = async () => {
         )}
     </div>
 
-{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON EFECTOS */}
+{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON CONFETI PANTALLA COMPLETA */}
 {gameState?.mode === 'yn' && allYNAnswered && (
-    <div className={`relative flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
-        'bg-green-900/80 border-green-500 shadow-green-500/40' : 'bg-slate-900/80 border-red-500 shadow-red-500/40'}`}>
-        
-        {/* --- EFECTOS VISUALES (CONFETI O LLUVIA) --- */}
-        <div className="absolute inset-0 pointer-events-none z-0">
+    <>
+        {/* 1. ESTILOS DE ANIMACIÓN (Inyectados) */}
+        <style>{`
+            @keyframes floatUp {
+                0% { transform: translateY(110vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+            }
+            @keyframes fallDown {
+                0% { transform: translateY(-20vh) translateX(0px); opacity: 0; }
+                10% { opacity: 1; }
+                100% { transform: translateY(110vh) translateX(20px); opacity: 0.5; }
+            }
+        `}</style>
+
+        {/* 2. CAPA DE EFECTOS (FIXED FULL SCREEN - Z-INDEX 50) */}
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
             {ynMatch ? (
-                // CONFETI PARA MATCH 🎉
-                [...Array(20)].map((_, i) => (
-                    <div key={i} className="absolute text-lg animate-bounce" style={{
+                // --- MATCH: CONFETI SUBIENDO ---
+                [...Array(40)].map((_, i) => (
+                    <div key={i} className="absolute text-2xl" style={{
                         left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * -50}px`,
-                        animationDuration: `${Math.random() * 2 + 1}s`,
-                        animationDelay: `${Math.random()}s`,
-                        opacity: 0.7
+                        bottom: '-50px',
+                        animation: `floatUp ${Math.random() * 3 + 2}s linear infinite`,
+                        animationDelay: `${Math.random() * 2}s`,
                     }}>
-                        {['🎉', '✨', '🎊', '❤️'][Math.floor(Math.random() * 4)]}
+                        {['🎉', '✨', '🔥', '❤️', '🍾'][Math.floor(Math.random() * 5)]}
                     </div>
                 ))
             ) : (
-                // LLUVIA/CORAZONES ROTOS PARA MISMATCH 💔
-                [...Array(15)].map((_, i) => (
-                    <div key={i} className="absolute text-lg animate-pulse" style={{
+                // --- MISMATCH: LLUVIA CAYENDO ---
+                [...Array(30)].map((_, i) => (
+                    <div key={i} className="absolute text-2xl grayscale opacity-50" style={{
                         left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * -50}px`,
-                        animationDuration: `${Math.random() * 3 + 2}s`,
-                        animationDelay: `${Math.random()}s`,
-                        opacity: 0.5
+                        top: '-50px',
+                        animation: `fallDown ${Math.random() * 2 + 1.5}s linear infinite`,
+                        animationDelay: `${Math.random() * 2}s`,
                     }}>
-                        {['💔', '⛈️', '🌧️'][Math.floor(Math.random() * 3)]}
+                        {['💧', '💔', '🌧️', '🥀'][Math.floor(Math.random() * 4)]}
                     </div>
                 ))
             )}
         </div>
 
-        {/* --- CONTENIDO DE LA TARJETA (Z-INDEX 10 PARA ESTAR SOBRE EL CONFETI) --- */}
-        <div className="relative z-10 w-full">
+        {/* 3. TARJETA DE RESULTADO COMPACTA (Z-INDEX 60 - Encima del confeti) */}
+        <div className={`relative z-60 flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
+            'bg-green-900/90 border-green-500 shadow-green-500/50' : 'bg-slate-900/90 border-red-500 shadow-red-500/50'}`}>
+            
             {ynMatch === true ? (
                 <div className="flex items-center gap-4 relative mb-2 justify-center">
                     <HeartHandshake className="w-10 h-10 text-green-400 animate-bounce drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
@@ -2096,7 +2107,7 @@ const resetGame = async () => {
                 </div>
             ) : (
                 <div className="flex items-center gap-4 relative mb-2 justify-center">
-                    <AlertTriangle className="w-10 h-10 text-red-500 animate-shake drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                    <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
                     <div className="text-left">
                         <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
                             NOPE...
@@ -2106,7 +2117,7 @@ const resetGame = async () => {
                 </div>
             )}
 
-            {/* PARTNER CENTRADO */}
+            {/* Partner Centrado */}
             <div className="w-full bg-black/60 py-1.5 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg">
                 <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">
                     Your Partner
@@ -2120,7 +2131,7 @@ const resetGame = async () => {
                 Next in 4s...
             </div>
         </div>
-    </div>
+    </>
 )}
 {/* NUEVO: INTERACTIONS ON SCREEN (Se muestra solo si hay historial) */}
 <div className="w-full mt-4 px-2 animate-in slide-in-from-bottom-4 duration-500">
