@@ -2025,71 +2025,100 @@ const resetGame = async () => {
              </div>
         )}
 
-        {/* C) MODO MATCH (TODOS JUEGAN) */}
-        {gameState.mode === 'yn' && (
+        {/* C) MODO MATCH (TODOS JUEGAN) - Solo visible si NO han terminado todos */}
+        {gameState.mode === 'yn' && !allYNAnswered && (
             <div className="text-center">
-                 {gameState.answers?.[user?.uid || ''] ? (
-                     <div className="py-4">
-                         <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
-                         <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
-                     </div>
-                 ) : (
-                     <>
+                {gameState.answers?.[user?.uid || ''] ? (
+                    <div className="py-4">
+                        <div className="text-green-400 font-bold text-xl mb-2 animate-bounce">Answered! 🔒</div>
+                        <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                    </div>
+                ) : (
+                    <>
                         <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
                         <div className="flex gap-3">
                             <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
                             <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
                         </div>
-                     </>
-                 )}
+                    </>
+                )}
             </div>
         )}
     </div>
 
-{/* RESULTADO COMPACTO DE MATCH/MISMATCH */}
+{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON EFECTOS */}
 {gameState?.mode === 'yn' && allYNAnswered && (
-    <div className={`flex flex-col items-center justify-center p-4 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 ${ynMatch ?
-        'bg-green-900/60 border-green-500 shadow-green-500/20' : 'bg-red-900/60 border-red-500 shadow-red-500/20'}`}>
+    <div className={`relative flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
+        'bg-green-900/80 border-green-500 shadow-green-500/40' : 'bg-slate-900/80 border-red-500 shadow-red-500/40'}`}>
         
-        {ynMatch === true ? (
-            /* --- ESCENA DE ÉXITO (MATCH) COMPACTA --- */
-            <div className="flex items-center gap-4 relative">
-                <div className="absolute inset-0 bg-green-400 blur-xl opacity-20 animate-pulse"></div>
-                <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
-                <div className="text-left">
-                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter leading-none transform rotate-2">
-                        MATCH!
-                    </h3>
-                    <div className="text-green-200 font-bold text-[10px] uppercase tracking-widest animate-pulse">Perfect Sync</div>
-                </div>
-            </div>
-        ) : (
-            /* --- ESCENA DE FALLO (MISMATCH) COMPACTA --- */
-            <div className="flex items-center gap-4 relative">
-                <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
-                <AlertTriangle className="w-12 h-12 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
-                <div className="text-left">
-                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
-                        NOPE...
-                    </h3>
-                    <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
-                </div>
-            </div>
-        )}
-
-        {/* --- MOSTRAR PARTNER (CENTRADO Y COMPACTO) --- */}
-        {/* Aquí está el cambio clave: flex-col y items-center */}
-        <div className="w-full bg-black/40 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm flex flex-col items-center justify-center">
-            <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold mb-0.5">
-                Your Partner
-            </span>
-            <span className="font-black text-lg text-white drop-shadow-md leading-none text-center">
-                {myPartnerName}
-            </span>
+        {/* --- EFECTOS VISUALES (CONFETI O LLUVIA) --- */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+            {ynMatch ? (
+                // CONFETI PARA MATCH 🎉
+                [...Array(20)].map((_, i) => (
+                    <div key={i} className="absolute text-lg animate-bounce" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * -50}px`,
+                        animationDuration: `${Math.random() * 2 + 1}s`,
+                        animationDelay: `${Math.random()}s`,
+                        opacity: 0.7
+                    }}>
+                        {['🎉', '✨', '🎊', '❤️'][Math.floor(Math.random() * 4)]}
+                    </div>
+                ))
+            ) : (
+                // LLUVIA/CORAZONES ROTOS PARA MISMATCH 💔
+                [...Array(15)].map((_, i) => (
+                    <div key={i} className="absolute text-lg animate-pulse" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * -50}px`,
+                        animationDuration: `${Math.random() * 3 + 2}s`,
+                        animationDelay: `${Math.random()}s`,
+                        opacity: 0.5
+                    }}>
+                        {['💔', '⛈️', '🌧️'][Math.floor(Math.random() * 3)]}
+                    </div>
+                ))
+            )}
         </div>
 
-        <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest uppercase">
-            Next in 4s...
+        {/* --- CONTENIDO DE LA TARJETA (Z-INDEX 10 PARA ESTAR SOBRE EL CONFETI) --- */}
+        <div className="relative z-10 w-full">
+            {ynMatch === true ? (
+                <div className="flex items-center gap-4 relative mb-2 justify-center">
+                    <HeartHandshake className="w-10 h-10 text-green-400 animate-bounce drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
+                    <div className="text-left">
+                        <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter leading-none transform rotate-2">
+                            MATCH!
+                        </h3>
+                        <div className="text-green-200 font-bold text-[10px] uppercase tracking-widest animate-pulse">Perfect Sync</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex items-center gap-4 relative mb-2 justify-center">
+                    <AlertTriangle className="w-10 h-10 text-red-500 animate-shake drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                    <div className="text-left">
+                        <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
+                            NOPE...
+                        </h3>
+                        <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
+                    </div>
+                </div>
+            )}
+
+            {/* PARTNER CENTRADO */}
+            <div className="w-full bg-black/60 py-1.5 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg">
+                <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">
+                    Your Partner
+                </span>
+                <span className="font-black text-lg text-white drop-shadow-md leading-none text-center">
+                    {myPartnerName}
+                </span>
+            </div>
+
+            <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">
+                Next in 4s...
+            </div>
         </div>
     </div>
 )}
