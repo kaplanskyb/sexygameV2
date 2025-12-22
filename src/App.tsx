@@ -389,7 +389,7 @@ const CouplePairing = ({
     // Generar código de 4 dígitos (Solo mujer/Host)
     const [localCode] = useState(() => {
         if (value) return value;
-        return Math.floor(1000 + Math.random() * 9000).toString();
+        return Math.floor(100 + Math.random() * 900).toString();
     });
 
     const [inputCode, setInputCode] = useState('');
@@ -544,6 +544,15 @@ export default function TruthAndDareApp() {
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
   const [isDrinkMode, setIsDrinkMode] = useState(false); // <--- NUEVO ESTADO AQUÍ
+
+  // --- PRE-GENERAR CÓDIGO PARA EL ADMIN ---
+  useEffect(() => {
+    // Si soy admin y la caja de código está vacía, genero uno visualmente YA.
+    if (userName.toLowerCase().trim() === 'admin' && !code) {
+        const randomCode = Math.floor(10000 + Math.random() * 90000).toString();
+        setCode(randomCode);
+    }
+}, [userName]);
 
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
@@ -857,22 +866,22 @@ useEffect(() => {
     }
     if (!user) return;
     
-    // TRUCO: Si codeOverride es un string (el código manual), úsalo. 
-    // Si no (es un evento de click), usa el estado 'coupleNumber'.
-    const finalCoupleNumber = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : coupleNumber;
+    // 1. DETERINAR EL CÓDIGO DE LA SALA
+    // Si pasamos un código (nuevo generado), lo usamos. Si no, usamos el del estado.
+    const roomCode = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : code;
 
-    // Validación usando el valor final real
-    if (relationshipStatus === 'couple' && !finalCoupleNumber) {
-        alert("Please link with your partner first!");
+    // Validación extra
+    if (!roomCode) {
+        alert("Error: Could not generate Room Code.");
         return;
     }
 
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // 1. Crear Sala
+    // 2. Crear Sala con el roomCode
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: code, 
+      code: roomCode,  // <--- USAR roomCode AQUÍ
       mode: 'lobby',
       currentTurn: null,
       adminUid: user.uid,
@@ -884,22 +893,26 @@ useEffect(() => {
       loopSequence: [],
       lastAction: 'CREATED'
     });
-    
-    // 2. Crear Jugador Admin (USANDO finalCoupleNumber)
+
+    // 3. Crear Jugador Admin
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
       uid: user.uid, 
       name: userName, 
       gender: gender, 
       relationshipStatus: relationshipStatus, 
-      // AQUÍ ESTÁ LA SOLUCIÓN: Usamos la variable local, no el estado lento
-      coupleNumber: relationshipStatus === 'couple' ? finalCoupleNumber : 'ADMIN', 
+      // Si es pareja, usamos el código. Si es single, 'ADMIN'.
+      coupleNumber: relationshipStatus === 'couple' ? roomCode : 'ADMIN', 
       joinedAt: serverTimestamp(), 
       isActive: true, 
       isBot: false,
       matches: 0, 
       mismatches: 0
     });
-  };
+    
+    // 4. Actualizar estado local visualmente y entrar
+    setCode(roomCode);
+    setIsJoined(true);
+};
 
   // --- FUNCIÓN CORREGIDA ---
   const joinGame = async (codeOverride?: any) => {
@@ -1252,58 +1265,60 @@ const resetGame = async () => {
                 
                     )}
                 
-                    {/* 4. BOTONES */}
+                    {/* 4. BOTONES (CORREGIDO) */}
                     <div className="w-full">
-                    {relationshipStatus === 'couple' && !coupleNumber ? (
-                    <>
-                        <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
-                        <button onClick={() => {
-                        if (!code.trim()) {
-                            alert("Enter Game Code (ask the Admin)");
-                            return;
-                        }
-                        setShowScanner(true);
-                        }} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                        <HeartHandshake size={24} />
-                        </button>
-                        <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
-                    </>
-                    ) : (
-                    // el resto no cambia, but ensure this is followed by valid JSX
-                    userName.toLowerCase().trim() === 'admin' ? (
-                                <button 
-                                onClick={() => {
-                                    if (!gender || !relationshipStatus) {
-                                    alert("Please, fill Gender and Status");
-                                    return;
-                                    }
+                        {relationshipStatus === 'couple' && !coupleNumber ? (
+                            /* CASO 1: PAREJA SIN LINK (Botón de Escanear) */
+                            <>
+                                <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
+                                <button onClick={() => {
                                     if (!code.trim()) {
-                                    alert("Enter Game Code (ask the Admin)");
-                                    return;
+                                        alert("Enter Game Code (ask the Admin)");
+                                        return;
                                     }
-                                    joinGame();
-                                }} 
-                                className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                                    setShowScanner(true);
+                                }} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
+                                    <HeartHandshake size={24} />
+                                </button>
+                                <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
+                            </>
+                        ) : (
+                            /* CASO 2: LOGIN NORMAL (Admin o Jugador) */
+                            userName.toLowerCase().trim() === 'admin' ? (
+                                /* BOTÓN ADMIN: CREAR PARTIDA */
+                                <button 
+                                    onClick={() => {
+                                        if (!gender || !relationshipStatus) {
+                                            alert("Please, fill Gender and Status");
+                                            return;
+                                        }
+                                        // Generar código nuevo si no existe
+                                        const newCode = coupleNumber || code || Math.floor(1000 + Math.random() * 9000).toString();
+                                        // Llamar a createGame con el código
+                                        createGame(newCode);
+                                    }} 
+                                    className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
                                 >
-                                {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                                    {coupleNumber ? 'CREATE (LINKED)' : 'CREATE PARTY'}
                                 </button>
                             ) : (
+                                /* BOTÓN JUGADOR: UNIRSE */
                                 <button 
-                                onClick={() => {
-                                if (!gender || !relationshipStatus) {
-                                alert("Please, fill Gender and Status");
-                                return;
-                                }
-                                if (!code.trim()) {
-                                alert("Enter the Game Code (ask the Admin)");
-                                return;
-                                }
-                                joinGame();
-                            }} 
-                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
-                            >
-                            {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
-                            </button>
+                                    onClick={() => {
+                                        if (!gender || !relationshipStatus) {
+                                            alert("Please, fill Gender and Status");
+                                            return;
+                                        }
+                                        if (!code.trim()) {
+                                            alert("Enter the Game Code (ask the Admin)");
+                                            return;
+                                        }
+                                        joinGame();
+                                    }} 
+                                    className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                                >
+                                    {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                                </button>
                             )
                         )}
                     </div>
