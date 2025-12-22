@@ -1647,9 +1647,12 @@ const resetGame = async () => {
                 {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
                 </div>
         </div>
-        <button onClick={toggleDrinkMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}>
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
-        </button>
+        <button 
+    onClick={toggleDrinkMode}
+    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}
+>
+    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+</button>
     </div>
 </div>
 
