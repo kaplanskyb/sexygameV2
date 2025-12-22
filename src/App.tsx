@@ -3,24 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from "react-qr-code";
 import { QrReader } from "react-qr-reader";
 import { initializeApp } from 'firebase/app';
-// ... imports existentes ...
-import confetti from 'canvas-confetti'; // NECESITAS INSTALAR ESTO
-
-// --- SONIDOS (Usando HTML5 Audio nativo para no añadir más dependencias pesadas) ---
-const playSound = (type: 'pop' | 'success' | 'fail' | 'drink' | 'click') => {
-  const sounds = {
-    pop: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-    fail: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3', // Tono negativo
-    drink: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3', // Sonido de alerta/sirena
-    click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'
-  };
-  const audio = new Audio(sounds[type]);
-  audio.volume = 0.5;
-  audio.play().catch(e => console.log("Audio interaction required", e));
-};
-
-// ... resto de imports
 import { 
     getFirestore, 
     doc, 
@@ -121,7 +103,6 @@ interface GameState {
   matchHistory?: HistoryEntry[];
   nextType?: string;
   isEnding?: boolean;
-  isDrinkMode?: boolean; // <--- AGREGAR ESTO
 }
 
 // --- HELPER CSV PARSER ---
@@ -386,16 +367,16 @@ const CouplePairing = ({
     appId
 }: any) => {
     
-    // 1. CAMBIO: Generar código de 3 dígitos (100 - 999)
+    // Generar código de 4 dígitos (Solo mujer/Host)
     const [localCode] = useState(() => {
         if (value) return value;
-        return Math.floor(100 + Math.random() * 900).toString();
+        return Math.floor(1000 + Math.random() * 9000).toString();
     });
 
     const [inputCode, setInputCode] = useState('');
     const [isLinked, setIsLinked] = useState(false);
     const isFemale = gender === 'female';
-    const currentAppId = appId || 'truth-dare-v1';
+    const currentAppId = appId || 'sexy_game_v2';
 
     // 1. LÓGICA MUJER: Escuchar la BD
     useEffect(() => {
@@ -420,12 +401,12 @@ const CouplePairing = ({
 
     // 2. LÓGICA HOMBRE: Enviar código y ENTRAR
     const handleManSubmit = () => {
-        // 2. CAMBIO: Validar 3 dígitos
-        if (inputCode.length !== 3) return; 
+        if (inputCode.length !== 4) return;
+        
         onCodeObtained(inputCode);
         setIsLinked(true);
 
-        // Enviamos 'inputCode' como argumento al salir
+        // CAMBIO CLAVE: Enviamos 'inputCode' como argumento al salir
         setTimeout(() => { 
             onAutoJoin(inputCode); 
         }, 1500);
@@ -445,7 +426,6 @@ const CouplePairing = ({
                         <span className="text-white/80 text-sm mt-2 font-bold tracking-widest animate-pulse">STARTING GAME...</span>
                     </div>
                 )}
-                
                 {isFemale ? (
                     <>
                         <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">{localCode}</div>
@@ -454,24 +434,8 @@ const CouplePairing = ({
                 ) : (
                     <>
                         <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">Ask your partner for their code</p>
-                        {/* 3. CAMBIO: Inputs configurados para 3 dígitos */}
-                        <input 
-                            type="number" 
-                            inputMode="numeric" 
-                            pattern="[0-9]*" 
-                            maxLength={3} 
-                            placeholder="000" 
-                            className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" 
-                            value={inputCode} 
-                            onChange={(e) => setInputCode(e.target.value.slice(0, 3))} 
-                        />
-                        <button 
-                            onClick={handleManSubmit} 
-                            disabled={inputCode.length < 3} 
-                            className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 3 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
-                        >
-                            LINK NOW
-                        </button>
+                        <input type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000" className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" value={inputCode} onChange={(e) => setInputCode(e.target.value.slice(0, 4))} />
+                        <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>LINK NOW</button>
                     </>
                 )}
             </div>
@@ -505,15 +469,6 @@ const AdminPanel = ({ players, gameState, onStartGame, onNextTurn, onReset, onKi
         </div>
     );
 };
-
-const DrinkAlert = () => (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
-      <div className="bg-red-600/90 border-4 border-yellow-400 p-8 rounded-3xl animate-bounce shadow-[0_0_100px_rgba(220,38,38,0.8)] rotate-3">
-        <h1 className="text-6xl font-black text-yellow-300 drop-shadow-lg tracking-widest text-center">DRINK!</h1>
-        <p className="text-white text-xl font-bold text-center mt-2 uppercase">Penalty Time</p>
-      </div>
-    </div>
-  );
 
 export default function TruthAndDareApp() {
     const [isJoined, setIsJoined] = useState(false);
@@ -560,9 +515,6 @@ export default function TruthAndDareApp() {
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
-  const [isDrinkMode, setIsDrinkMode] = useState(false); // <--- NUEVO ESTADO AQUÍ
-
-  
 
   // Sincronizar el estado isJoined con la lista de jugadores
   useEffect(() => {
@@ -598,34 +550,36 @@ useEffect(() => {
 
 // --- TUTORIAL REACTIVO (NAGGING LOOP 5s) ---
 useEffect(() => {
-    // CORRECCIÓN: Este efecto solo debe correr si NO estamos unidos o si hay alertas específicas.
-    // Pero el error real es intentar acceder al DOM que ya no existe.
-    
+    // Si no ha entrado al juego, no hacemos nada
+    if (!isJoined) return;
+
     const nagInterval = setInterval(() => {
-      // 1. Admin start reminder
+      // 1. Si es Admin y el juego no ha empezado -> Recordar iniciar
       if (userName === 'admin' && gameState?.mode === 'lobby') {
         const startBtn = document.getElementById('btn-start-game');
-        startBtn?.classList.add('animate-bounce'); // Usar ?.
+        startBtn?.classList.add('animate-bounce');
         setTimeout(() => startBtn?.classList.remove('animate-bounce'), 1000);
       }
 
-      // 2. Si NO ha entrado (isJoined false), animar el formulario
-      if (!isJoined && userName !== 'admin' && (!gender || !relationshipStatus)) {
+      // 2. Si es Jugador, ya entró, pero FALTA GÉNERO o STATUS -> Vibrar form
+      if (userName !== 'admin' && (!gender || !relationshipStatus)) {
         if (navigator.vibrate) navigator.vibrate(200);
         const formContainer = document.getElementById('profile-form-container');
-        formContainer?.classList.add('animate-shake'); // Usar ?. CRÍTICO
+        formContainer?.classList.add('animate-shake'); 
         setTimeout(() => formContainer?.classList.remove('animate-shake'), 500);
       }
 
-      // 3. Mujer en pareja sin código
-      if (!isJoined && gender === 'female' && relationshipStatus === 'couple' && !coupleNumber) {
+      // 3. CORRECCIÓN AQUÍ: Usamos !coupleNumber en lugar de !isLinked
+      // Si es Mujer, está en Pareja y NO tiene número de pareja -> Animar input
+      if (gender === 'female' && relationshipStatus === 'couple' && !coupleNumber) {
          const codeInput = document.getElementById('input-couple-code');
-         codeInput?.focus(); // Usar ?.
+         codeInput?.focus(); 
       }
 
     }, 5000); 
 
-    return () => clearInterval(nagInterval);
+    return () => clearInterval(nagInterval); 
+    // CORRECCIÓN AQUÍ TAMBIÉN: Quitamos isLinked de la lista de dependencias
   }, [isJoined, userName, gameState?.mode, gender, relationshipStatus, coupleNumber]);
 
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
@@ -777,45 +731,21 @@ useEffect(() => {
     }
   }, [user, players]);
 
-  // --- CARGA DE DATOS DEL JUEGO (CORREGIDO) ---
   useEffect(() => {
     if (!user) return;
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
-    
     const unsubGame = onSnapshot(gameRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
-        if (data.code) setCode(data.code);
-        // Sincronizar estados locales con la DB
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
-        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode);
         if (data.roundLevel && data.roundLevel !== selectedLevel) setSelectedLevel(data.roundLevel);
         if (data.nextType && data.nextType !== selectedType) setSelectedType(data.nextType);
-      
       } else {
-        // SI NO EXISTE EL JUEGO, LO CREAMOS Y ESTABLECEMOS EL ESTADO INICIAL
-        const initialGame: GameState = { 
-            mode: 'lobby', 
-            currentTurnIndex: 0, 
-            answers: {}, 
-            votes: {}, 
-            points: {}, 
-            code: '', 
-            matchHistory: [],
-            isDrinkMode: false 
-        };
-        
-        // 1. Crear en Firebase
-        setDoc(gameRef, { ...initialGame, timestamp: serverTimestamp() });
-        
-        // 2. IMPORTANTE: Guardar en memoria local para evitar el crash
-        setGameState(initialGame);
+        setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
       }
       setLoading(false);
     });
-
-    // ... (el resto de listeners de players/challenges sigue igual) ...
     const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
     const unsubPlayers = onSnapshot(query(playersRef), (snapshot) => {
       const pList = snapshot.docs.map(d => d.data() as Player);
@@ -826,10 +756,8 @@ useEffect(() => {
     const unsubChallenges = onSnapshot(query(challengesRef), (snapshot) => { setChallenges(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge))); });
     const pairChallengesRef = collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges');
     const unsubPairChallenges = onSnapshot(query(pairChallengesRef), (snapshot) => { setPairChallenges(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge))); });
-    
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
-
   useEffect(() => {
     console.log("View changed to:", viewAsPlayer ? "Player" : "Admin");
     if (!viewAsPlayer) {
@@ -887,8 +815,7 @@ useEffect(() => {
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
-  const createGame = async (linkCodeInput?: any) => {
-    // 1. Validaciones básicas
+  const createGame = async (codeOverride?: any) => {
     if (!userName.trim()) {
         alert("⛔ ERROR: Please enter a Nickname.");
         return;
@@ -899,41 +826,22 @@ useEffect(() => {
     }
     if (!user) return;
     
-    // 2. DEFINIR EL CÓDIGO DE LA SALA (PARTY CODE - 5 DÍGITOS)
-    // Usamos el código que ya se ve en pantalla (pre-generado) o creamos uno nuevo.
-    // ESTE ES EL QUE VERÁN TODOS PARA UNIRSE.
-    let finalPartyCode = code;
-    if (!finalPartyCode || finalPartyCode.length < 5) {
-        finalPartyCode = Math.floor(10000 + Math.random() * 90000).toString();
-    }
+    // TRUCO: Si codeOverride es un string (el código manual), úsalo. 
+    // Si no (es un evento de click), usa el estado 'coupleNumber'.
+    const finalCoupleNumber = (typeof codeOverride === 'string' && codeOverride) ? codeOverride : coupleNumber;
 
-    // 3. DEFINIR EL CÓDIGO DE PAREJA (LINK CODE - 3 DÍGITOS)
-    // Si el admin es pareja, usamos el código que le pasó el modal o el que ya tenía.
-    let finalCoupleID = 'ADMIN'; // Por defecto si es soltero
-    
-    if (relationshipStatus === 'couple') {
-        // ¿Viene del modal?
-        if (typeof linkCodeInput === 'string' && linkCodeInput.length === 3) {
-            finalCoupleID = linkCodeInput;
-        } 
-        // ¿Ya lo tenía guardado?
-        else if (coupleNumber) {
-            finalCoupleID = coupleNumber;
-        } 
-        else {
-            alert("⚠️ Error: You are set as Couple but not linked correctly.");
-            return;
-        }
+    // Validación usando el valor final real
+    if (relationshipStatus === 'couple' && !finalCoupleNumber) {
+        alert("Please link with your partner first!");
+        return;
     }
 
     setIsAdmin(true);
     localStorage.setItem('td_username', userName);
 
-    // 4. GUARDAR EN BASE DE DATOS
-    
-    // A) Crear la SALA con el CÓDIGO DE 5 DÍGITOS
+    // 1. Crear Sala
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
-      code: finalPartyCode, 
+      code: code, 
       mode: 'lobby',
       currentTurn: null,
       adminUid: user.uid,
@@ -945,24 +853,21 @@ useEffect(() => {
       loopSequence: [],
       lastAction: 'CREATED'
     });
-
-    // B) Crear al ADMIN con su CÓDIGO DE PAREJA (3 DÍGITOS)
+    
+    // 2. Crear Jugador Admin (USANDO finalCoupleNumber)
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
       uid: user.uid, 
       name: userName, 
       gender: gender, 
       relationshipStatus: relationshipStatus, 
-      coupleNumber: finalCoupleID, // <--- Aquí va el de 3 dígitos
+      // AQUÍ ESTÁ LA SOLUCIÓN: Usamos la variable local, no el estado lento
+      coupleNumber: relationshipStatus === 'couple' ? finalCoupleNumber : 'ADMIN', 
       joinedAt: serverTimestamp(), 
       isActive: true, 
       isBot: false,
       matches: 0, 
       mismatches: 0
     });
-    
-    // 5. Actualizar estado visual para entrar al Lobby
-    setCode(finalPartyCode); // La UI mostrará el código de 5 dígitos
-    setIsJoined(true);
   };
 
   // --- FUNCIÓN CORREGIDA ---
@@ -1039,77 +944,42 @@ useEffect(() => {
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
   const toggleAutoMode = async () => { 
-    const newMode = !gameState?.isAutoMode;
+    const newMode = !gameState?.isAutoMode; 
     let updates: any = { isAutoMode: newMode };
     
+    // CORRECCIÓN: Si activamos el modo (newMode es true), SIEMPRE regeneramos la secuencia
+    // con los valores actuales de los inputs (qtyTruth, etc.), eliminando la condición vieja.
     if (newMode) { 
-        let sequence: string[] = [];
+        let sequence: string[] = []; 
         for(let i=0; i<qtyTruth; i++) sequence.push('question');
         for(let i=0; i<qtyDare; i++) sequence.push('dare'); 
-        for(let i=0; i<qtyMM; i++) sequence.push('yn');
+        for(let i=0; i<qtyMM; i++) sequence.push('yn'); 
         
+        // Solo actualizamos si hay algo en la secuencia
         if (sequence.length > 0) {
-            updates.sequence = sequence;
-            updates.sequenceIndex = 0;
+            updates.sequence = sequence; 
+            updates.sequenceIndex = 0; // Reiniciamos el ciclo al principio
         }
     } 
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
-  }; // <--- AQUÍ FALTABA CERRAR ESTA LLAVE
-
-  const toggleDrinkMode = async () => {
-    const newMode = !gameState?.isDrinkMode;
-    playSound('click');
-    setIsDrinkMode(newMode);
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isDrinkMode: newMode });
-  }; 
-
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); 
+};
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
-
-    // 1. Validaciones
-    if (realPlayers.length < 3) { 
-        showError("You need at least 3 players to start!");
-        return;
-    }
+    if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
     const { total } = checkPendingSettings();
-    if (total > 0) { 
-        showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`);
-        return;
-    }
+    if (total > 0) { showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`); return; }
     const { valid, incompleteIds } = checkCouplesCompleteness();
-    if (!valid) { 
-        showError(`Cannot start! Missing partner for IDs: ${incompleteIds.join(', ')}`); 
-        return;
-    }
-
-    // 2. Agregar Bots si es impar
+    if (!valid) { showError(`Cannot start! Missing partner for IDs: ${incompleteIds.join(', ')}`); return; }
     if (realPlayers.length % 2 !== 0) {
         const males = realPlayers.filter(p => p.gender === 'male').length;
         const females = realPlayers.filter(p => p.gender === 'female').length;
-        let botName = "Brad Pitt"; 
-        let botGender = "male";
-        if (males > females) { 
-            botName = "Scarlett Johansson";
-            botGender = "female"; 
-        }
+        let botName = "Brad Pitt"; let botGender = "male"; if (males > females) { botName = "Scarlett Johansson"; botGender = "female"; }
         const botUid = 'bot_' + Date.now();
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), { 
-            uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0 
-        });
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), { uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0 });
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
-
-    // 3. LA CORRECCIÓN DEFINITIVA
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
-        mode: 'admin_setup', 
-        matchHistory: [], 
-        isEnding: false,
-        currentChallengeId: null, 
-        answers: {}, 
-        votes: {}
-    });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { mode: 'admin_setup', matchHistory: [], isEnding: false });
   };
-
   
 // --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
 const resetGame = async () => {
@@ -1208,141 +1078,11 @@ const resetGame = async () => {
     const coll = initialMode === 'yn' ? 'pairChallenges' : 'challenges';
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallengeToUse.id!), { answered: true });
   };
+  const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
+  const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
-  const nextTurn = async () => {
-    if (!gameState) return;
-    
-    const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+  const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); if (gameState.mode === 'question') { const currentUid = players[gameState.currentTurnIndex]?.uid; const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; } else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid; const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes; } else if (gameState.mode === 'yn') { const processed = new Set(); const currentHistory = [...(gameState.matchHistory || [])]; Object.keys(gameState.pairs || {}).forEach(uid1 => { if (processed.has(uid1)) return; const uid2 = gameState.pairs![uid1]; processed.add(uid1); processed.add(uid2); const ans1 = gameState.answers[uid1]; const ans2 = gameState.answers[uid2]; const p1 = players.find(p=>p.uid===uid1); const p2 = players.find(p=>p.uid===uid2); if (ans1 && ans2) { const isMatch = ans1 === ans2; if (isMatch) { points[uid1] = (points[uid1] || 0) + 1; points[uid2] = (points[uid2] || 0) + 1; } if (p1 && p2) { currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); } batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); } }); updates.matchHistory = currentHistory; await batch.commit(); } updates.points = points; let roundFinished = false; if (gameState.mode === 'yn') { roundFinished = true; } else { let nextIdx = gameState.currentTurnIndex + 1; while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } if (nextIdx < players.length) { updates.currentTurnIndex = nextIdx; updates.answers = {}; updates.votes = {}; const typeChar = gameState.mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players[nextIdx].gender; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.currentChallengeId = nextChallenge.id; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); } else { roundFinished = true; } } else { roundFinished = true; } } if (roundFinished) { if (gameState.isAutoMode && gameState.sequence) { let nextSeqIdx = (gameState.sequenceIndex || 0) + 1; if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } const nextModeKey = gameState.sequence[nextSeqIdx]; let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; if(mode === 'truth') mode = 'question'; let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; const nextPlayerGender = players.length > 0 ? players[0].gender : 'male'; const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); if (nextChallenge) { updates.mode = mode; updates.currentTurnIndex = 0; updates.sequenceIndex = nextSeqIdx; updates.answers = {}; updates.votes = {}; updates.currentChallengeId = nextChallenge.id; if (mode === 'yn') { updates.pairs = computePairs(); players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; }); } const coll = mode === 'yn' ? 'pairChallenges' : 'challenges'; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); } else { updates.mode = 'admin_setup'; } } else { updates.mode = 'admin_setup'; updates.currentTurnIndex = 0; updates.answers = {}; updates.votes = {}; } } await updateDoc(gameRef, updates); };
 
-    // 1. Si el juego se marcó para terminar
-    if (gameState.isEnding) {
-        await updateDoc(gameRef, { mode: 'ended' });
-        return;
-    }
-
-    let updates: any = {};
-    const points = { ...(gameState.points || {}) };
-    const batch = writeBatch(db);
-
-    // 2. Lógica de Puntos y Votos
-    if (gameState.mode === 'question') {
-        const currentUid = players[gameState.currentTurnIndex]?.uid;
-        const likeVotes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
-        if (currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes;
-    } else if (gameState.mode === 'dare') {
-        const currentUid = players[gameState.currentTurnIndex]?.uid;
-        const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length;
-        if (currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
-    } else if (gameState.mode === 'yn') {
-        const processed = new Set();
-        const currentHistory = [...(gameState.matchHistory || [])];
-        Object.keys(gameState.pairs || {}).forEach(uid1 => {
-            if (processed.has(uid1)) return;
-            const uid2 = gameState.pairs![uid1];
-            processed.add(uid1);
-            processed.add(uid2);
-            const ans1 = gameState.answers[uid1];
-            const ans2 = gameState.answers[uid2];
-            const p1 = players.find(p => p.uid === uid1);
-            const p2 = players.find(p => p.uid === uid2);
-            if (ans1 && ans2) {
-                const isMatch = ans1 === ans2;
-                if (isMatch) {
-                    points[uid1] = (points[uid1] || 0) + 1;
-                    points[uid2] = (points[uid2] || 0) + 1;
-                }
-                if (p1 && p2) {
-                    currentHistory.push({
-                        u1: uid1,
-                        u2: uid2,
-                        name1: p1.name,
-                        name2: p2.name,
-                        result: isMatch ? 'match' : 'mismatch',
-                        timestamp: Date.now()
-                    });
-                }
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) });
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) });
-            }
-        });
-        updates.matchHistory = currentHistory;
-        await batch.commit();
-    }
-    updates.points = points;
-
-    // 3. Determinar si la ronda terminó
-    let roundFinished = false;
-    if (gameState.mode === 'yn') {
-        roundFinished = true;
-    } else {
-        let nextIdx = gameState.currentTurnIndex + 1;
-        while (nextIdx < players.length && players[nextIdx].isBot) {
-            nextIdx++;
-        }
-        if (nextIdx < players.length) {
-            updates.currentTurnIndex = nextIdx;
-            updates.answers = {};
-            updates.votes = {};
-            const typeChar = gameState.mode === 'question' ? 'T' : 'D';
-            const nextPlayerGender = players[nextIdx].gender;
-            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
-            if (nextChallenge) {
-                updates.currentChallengeId = nextChallenge.id;
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true });
-            } else {
-                roundFinished = true;
-            }
-        } else {
-            roundFinished = true;
-        }
-    }
-
-    // 4. Lógica FINAL (AQUÍ ESTÁ LA CORRECCIÓN)
-    if (roundFinished) {
-        if (gameState.isAutoMode && gameState.sequence) {
-            let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
-            if (nextSeqIdx >= gameState.sequence.length) {
-                nextSeqIdx = 0;
-            }
-            const nextModeKey = gameState.sequence[nextSeqIdx];
-            let mode = nextModeKey === 'truth' ? 'question' : nextModeKey;
-            if (mode === 'truth') mode = 'question';
-            let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D';
-            const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
-            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender);
-            
-            if (nextChallenge) {
-                updates.mode = mode;
-                updates.currentTurnIndex = 0;
-                updates.sequenceIndex = nextSeqIdx;
-                updates.answers = {};
-                updates.votes = {};
-                updates.currentChallengeId = nextChallenge.id;
-                if (mode === 'yn') {
-                    updates.pairs = computePairs();
-                    players.filter(p => p.isBot).forEach(b => {
-                        updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no';
-                    });
-                }
-                const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true });
-            } else {
-                // CORRECCIÓN 1: Si falla el modo auto
-                updates.mode = 'admin_setup';
-                updates.currentChallengeId = null; // <--- AGREGADO
-            }
-        } else {
-            // CORRECCIÓN 2: Fin de ronda manual (Lo más importante)
-            updates.mode = 'admin_setup';
-            updates.currentTurnIndex = 0;
-            updates.answers = {};
-            updates.votes = {};
-            updates.currentChallengeId = null; // <--- AGREGADO
-        }
-    }
-
-    await updateDoc(gameRef, updates);
-};
   // ... (Manager Logic)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => { setIsDragging(true); const newSet = new Set(selectedIds); if (newSet.has(id)) { newSet.delete(id); selectionMode.current = 'remove'; } else { newSet.add(id); selectionMode.current = 'add'; } setSelectedIds(newSet); };
@@ -1450,42 +1190,19 @@ const resetGame = async () => {
                     </div>
                 </div>
                 
-                {/* 3. CÓDIGO DEL ADMIN (MANUAL) */}
+                {/* 3. CÓDIGO (AQUÍ ESTÁ EL ARREGLO VISUAL) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
+                   /* ---> SI SOY ADMIN: VEO MI CÓDIGO GIGANTE (NO INPUT) <--- */
                    <div className="mb-8 w-full relative group animate-in zoom-in">
-                      {code ? (
-                          /* SI YA HAY CÓDIGO -> LO MOSTRAMOS */
-                          <>
-                            <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                            <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
-                                <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
-                                <span className="text-4xl font-black font-mono tracking-[0.2em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                                    {code}
-                                </span> 
-                            </div>
-                            <button 
-                                onClick={() => setCode(Math.floor(10000 + Math.random() * 90000).toString())}
-                                className="mt-2 text-[10px] text-white/30 hover:text-white uppercase tracking-widest underline decoration-white/20 hover:decoration-white transition-all w-full text-center"
-                            >
-                                Generate Different Code
-                            </button>
-                          </>
-                      ) : (
-                          /* SI NO HAY CÓDIGO -> BOTÓN PARA GENERAR */
-                          <button 
-                            onClick={() => {
-                                const newCode = Math.floor(10000 + Math.random() * 90000).toString();
-                                setCode(newCode);
-                            }}
-                            className="w-full py-6 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-white/50 hover:text-white hover:border-pink-500 hover:bg-pink-500/10 transition-all group"
-                          >
-                              <RefreshCcw className="mb-2 group-hover:animate-spin" size={24}/>
-                              <span className="font-bold tracking-widest text-sm">GENERATE PARTY CODE</span>
-                          </button>
-                      )}
+                      <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                      <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
+                          <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
+                          <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                            {code || '...'}
+                          </span> 
+                      </div>
                    </div>
                 ) : (
-
                    /* ---> SI SOY JUGADOR: VEO EL INPUT DE CÓDIGO <--- */
                    <div className="relative mb-8 w-full">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
@@ -1499,60 +1216,58 @@ const resetGame = async () => {
                 
                     )}
                 
-                    {/* 4. BOTONES (CORREGIDO) */}
+                    {/* 4. BOTONES */}
                     <div className="w-full">
-                        {relationshipStatus === 'couple' && !coupleNumber ? (
-                            /* CASO 1: PAREJA SIN LINK (Botón de Escanear) */
-                            <>
-                                <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
-                                <button onClick={() => {
-                                    if (!code.trim()) {
-                                        alert("Enter Game Code (ask the Admin)");
-                                        return;
-                                    }
-                                    setShowScanner(true);
-                                }} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
-                                    <HeartHandshake size={24} />
-                                </button>
-                                <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
-                            </>
-                        ) : (
-                            /* CASO 2: LOGIN NORMAL (Admin o Jugador) */
-                            userName.toLowerCase().trim() === 'admin' ? (
-                                /* BOTÓN ADMIN: CREAR PARTIDA */
+                    {relationshipStatus === 'couple' && !coupleNumber ? (
+                    <>
+                        <span className="block text-xs text-white/50 uppercase mb-1 tracking-widest font-bold text-center">ENTER GAME CODE</span>
+                        <button onClick={() => {
+                        if (!code.trim()) {
+                            alert("Enter Game Code (ask the Admin)");
+                            return;
+                        }
+                        setShowScanner(true);
+                        }} className="w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white shadow-lg hover:shadow-purple-500/50">
+                        <HeartHandshake size={24} />
+                        </button>
+                        <span className="block text-xs text-white/50 mt-1 text-center">(Ask to the Admin)</span>
+                    </>
+                    ) : (
+                    // el resto no cambia, but ensure this is followed by valid JSX
+                    userName.toLowerCase().trim() === 'admin' ? (
                                 <button 
-                                    onClick={() => {
-                                        if (!gender || !relationshipStatus) {
-                                            alert("Please, fill Gender and Status");
-                                            return;
-                                        }
-                                        // Generar código nuevo si no existe
-                                        const newCode = coupleNumber || code || Math.floor(1000 + Math.random() * 9000).toString();
-                                        // Llamar a createGame con el código
-                                        createGame(newCode);
-                                    }} 
-                                    className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                                onClick={() => {
+                                    if (!gender || !relationshipStatus) {
+                                    alert("Please, fill Gender and Status");
+                                    return;
+                                    }
+                                    if (!code.trim()) {
+                                    alert("Enter Game Code (ask the Admin)");
+                                    return;
+                                    }
+                                    joinGame();
+                                }} 
+                                className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
                                 >
-                                    {coupleNumber ? 'CREATE (LINKED)' : 'CREATE PARTY'}
+                                {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
                                 </button>
                             ) : (
-                                /* BOTÓN JUGADOR: UNIRSE */
                                 <button 
-                                    onClick={() => {
-                                        if (!gender || !relationshipStatus) {
-                                            alert("Please, fill Gender and Status");
-                                            return;
-                                        }
-                                        if (!code.trim()) {
-                                            alert("Enter the Game Code (ask the Admin)");
-                                            return;
-                                        }
-                                        joinGame();
-                                    }} 
-                                    className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
-                                >
-                                    {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
-                                </button>
+                                onClick={() => {
+                                if (!gender || !relationshipStatus) {
+                                alert("Please, fill Gender and Status");
+                                return;
+                                }
+                                if (!code.trim()) {
+                                alert("Enter the Game Code (ask the Admin)");
+                                return;
+                                }
+                                joinGame();
+                            }} 
+                            className={`w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-pink-500/50 ${gradientBtn}`}
+                            >
+                            {coupleNumber ? 'ENTER (LINKED)' : 'JOIN PARTY'}
+                            </button>
                             )
                         )}
                     </div>
@@ -1585,7 +1300,32 @@ const resetGame = async () => {
     ); 
   
 
-
+  // --- GAME ENDED SCREEN ---
+  if (gameState?.mode === 'ended') {
+      return (
+        <div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 to-black pointer-events-none"></div>
+            <Trophy className="w-24 h-24 text-yellow-400 mb-6 drop-shadow-glow" />
+            <h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2>
+            <div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>
+                {players.map((p, i) => (
+                    <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0">
+                        <div className="flex items-center gap-3">
+                            <span className="font-mono text-white/50 text-sm">#{i+1}</span>
+                            <span className="font-bold text-lg">{p.name}</span>
+                        </div>
+                        <span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span>
+                    </div>
+                ))}
+            </div>
+            {isAdmin && (
+                <button onClick={handleReturnToSetup} className="bg-cyan-600 px-8 py-4 rounded-xl font-bold shadow-lg shadow-cyan-900/30 hover:bg-cyan-500 transition-all active:scale-95 w-full max-w-sm">
+                    New Game (Setup)
+                </button>
+            )}
+        </div>
+      );
+  }
 
   // --- MANAGER RENDER ---
   if (isAdmin && isManaging) {
@@ -1799,22 +1539,17 @@ const resetGame = async () => {
                 })}
               </div>
 
-             {/* BLOQUE DE CÓDIGO DEL ADMIN (PERSISTENTE) */}
+             {/* BLOQUE DE CÓDIGO DEL ADMIN (NUEVO: SOLO LECTURA) */}
              <div className="mb-6 w-full max-w-sm relative group animate-in zoom-in">
                   <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                   <div className="relative w-full py-6 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
                       <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Party Code</span>
                       <span className="text-4xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] select-all">
-                        {gameState?.code || code || '...'}
+                        {code || '...'}
                       </span>
                   </div>
-                  {/* Botón de emergencia para regenerar código si se reseteó mal */}
-                  {(!gameState?.code || gameState?.code === '') && (
-                      <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { code: Math.floor(10000 + Math.random() * 90000).toString() })} className="mt-2 text-xs text-red-400 underline w-full text-center">
-                          Force Generate Code
-                      </button>
-                  )}
                   
+                  {/* Tooltip del Tutorial (Mantenemos esto para que no se rompa el tutorial) */}
                   {tutorialStep === 15 && <TutorialTooltip text="Tell this code to the players" onClick={() => { setCodeTipShown(true); setTutorialStep(18); }} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
               </div>
               
@@ -1870,16 +1605,6 @@ const resetGame = async () => {
                         </div>     
                         </div>
 
-                        {/* --- INICIO PEGAR AQUÍ (Interruptor Drink Mode) --- */}
-                        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 mt-2">
-                            <div className="flex items-center gap-2 justify-center w-full">
-                                    <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Penalty Mode</div>
-                                    <div className={`font-black text-xl ml-2 ${isDrinkMode ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>{isDrinkMode ? 'DRINK ON 🍺' : 'DRINK OFF'}</div>
-                            </div>
-                            <button onClick={toggleDrinkMode} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isDrinkMode ? 'bg-red-600' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
-                        </div>
-                        {/* --- FIN PEGAR AQUÍ --- */}
-
                     {isAutoSetup ? (
                         <div className="flex gap-3 animate-in fade-in">
                             <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
@@ -1934,278 +1659,413 @@ const resetGame = async () => {
          );
     }
 
+    const card = currentCard();
+    const finalCard = card || fetchedCard;
+    const cardStyle = getLevelStyle(finalCard?.level);
 
-
-}
-
-// --- GAME ENDED SCREEN ---
-if (gameState.mode === 'ended') {
-    return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
-}
-
-// -----------------------------------------------------------
-// BLOQUE DE CÁLCULOS DEL JUEGO (CORREGIDO Y SIN DUPLICADOS)
-// -----------------------------------------------------------
-
-// 1. Obtener la carta actual
-const card = currentCard();
-const finalCard = card || fetchedCard; 
-
-
-
-// 3. Calcular estilos y estados básicos
-const cardStyle = getLevelStyle(finalCard?.level);
-const playerAnswered = gameState?.answers?.[user?.uid || ''];
-const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
-const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
-
-// 4. Lógica específica para MATCH/MISMATCH (YN)
-let ynMatch = null;
-let myPartnerName = "???";
-
-if (gameState.mode === 'yn' && allYNAnswered) {
-    const myPartnerUid = gameState.pairs?.[user?.uid || ''];
-    const myAns = gameState.answers[user?.uid || ''];
-    const partnerAns = gameState.answers[myPartnerUid || ''];
-    const pObj = players.find(p => p.uid === myPartnerUid);
-    if(pObj) myPartnerName = pObj.name;
-    if(myAns && partnerAns) { 
-        ynMatch = myAns === partnerAns;
+    if (!finalCard && gameState?.currentChallengeId) {
+        return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div><div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div></div>;
     }
-}
 
-// --- INICIO LÓGICA DRINK & CONFETI ---
-let showDrinkAlert = false;
-let showConfetti = false;
+    const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+        if(gameState.mode === 'question' || gameState.mode === 'dare') { if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; return !gameState.votes?.[p.uid]; }
+        if(gameState.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+        return false;
+    });
 
-// Calculamos si ya todos votaron en Truth/Dare
-const isRoundFinishedTOrD = (gameState.mode === 'question' || gameState.mode === 'dare') && allVoted;
+    return (
+      <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
+        {tutorialStep === 7 && <TutorialTooltip text="Switch between admin and player!" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
+        <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
+        {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
+        <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
+        
+        <div className="mt-8 w-full max-w-md mx-auto mb-2"><ScoreBoard /></div>
+        
+        <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+            <div className="flex gap-2 font-bold text-xl items-center"><Zap className="text-yellow-400 fill-yellow-400"/> <span className="tracking-widest">{gameState?.mode === 'yn' ? 'MATCH' : gameState?.mode?.toUpperCase()}</span></div>
+            <div className="text-xs text-white/50 uppercase tracking-widest font-bold">Turn: <span className="text-white">{currentPlayerName()}</span></div>
+        </div>
+        
+        <div className={`w-full max-w-md p-4 mb-4 flex flex-col gap-4 ${glassPanel}`}>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 relative">
+                 <div className="flex items-center gap-2 justify-center w-full">
+                    <div className="text-[10px] text-white/50 uppercase font-bold">Current Mode</div>
+                    <div className={`font-black text-lg ${gameState?.isAutoMode ? 'text-green-400' : 'text-cyan-400'}`}>{gameState?.isAutoMode ? 'AUTO' : 'MANUAL'}</div>
+                 </div>
+                 <button onClick={toggleAutoMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isAutoMode ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isAutoMode ? 'translate-x-7' : 'translate-x-1'}`} /></button>
+            </div>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/50 font-bold uppercase">Risk Level</span>
+                    <InfoIcon text="You can change the risk level any time." />
+                </div>
+                <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
+            </div>
+            {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Game Type</span><div className="flex items-center gap-2"><InfoIcon text="You can change the game type any time." /><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div></div>)}
+        </div>
 
-// 1. Lógica TRUTH (Drink si gana 'dislike')
-if (gameState.mode === 'question' && allVoted) {
-    const likes = Object.values(gameState.votes || {}).filter(v => v === 'like').length;
-    const noLikes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length; // En tu código es 'dislike'
-    if (gameState.isDrinkMode && noLikes > likes) showDrinkAlert = true;
-    if (likes >= noLikes) showConfetti = true;
-}
-
-// 2. Lógica DARE (Drink si gana 'no' / Failed)
-if (gameState.mode === 'dare' && allVoted) {
-    const done = Object.values(gameState.votes || {}).filter(v => v === 'yes').length;
-    const fail = Object.values(gameState.votes || {}).filter(v => v === 'no').length;
-    if (gameState.isDrinkMode && fail > done) showDrinkAlert = true;
-    if (done >= fail) showConfetti = true;
-}
-
-// 3. Lógica MATCH (Drink si NO hay match)
-if (gameState.mode === 'yn' && allYNAnswered) {
-     if (ynMatch === false && gameState.isDrinkMode) showDrinkAlert = true;
-     if (ynMatch === true) showConfetti = true;
-}
-
-// Efectos de Sonido y Confeti
-useEffect(() => {
-    if (showDrinkAlert) playSound('drink');
-    if (showConfetti) {
-        playSound('success');
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    }
-}, [showDrinkAlert, showConfetti, gameState.currentTurnIndex]);
-// --- FIN LÓGICA DRINK & CONFETI ---
-
-// 5. Calcular jugadores pendientes
-const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-     if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
-         if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-         return !gameState.votes?.[p.uid]; 
-     }
-     if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-     return false;
- });
-
-// --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
-return (
-  <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
-      {showDrinkAlert && <DrinkAlert />}
-      
-      {/* Fondo Animado */}
-      <div className="absolute inset-0 z-0">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
-          <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50"></div>
-      </div>
-
-      {/* --- HEADER --- */}
-      <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
-          <div className="flex items-center gap-3">
-              {isAdmin && (
-                   <button onClick={() => { setLoading(false); setViewAsPlayer(false); }} className="p-2 rounded-full bg-white/10 text-cyan-400 hover:text-white border border-cyan-500/50 hover:bg-white/20 transition-all shadow-[0_0_10px_rgba(34,211,238,0.2)]" title="Back to Admin Panel">
-                      <Settings size={20} />
-                  </button>
-              )}
-              <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
-                  <p className="text-white/50 uppercase tracking-widest">Party Code</p>
-                  <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">{gameState?.code || code}</p>
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
+          <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
+              <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                  {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
               </div>
+              <div className="mb-4 opacity-80 drop-shadow-glow">{gameState.mode === 'question' ? <MessageCircle size={40} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={40} className="text-emerald-200"/> : <Flame size={40} className="text-pink-200"/>}</div>
+              <h3 className="text-2xl font-bold leading-relaxed drop-shadow-md">{getCardText(finalCard)}</h3>
           </div>
-          
-          <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-5">
-               <span className="text-right hidden sm:block">
-                  <p className="font-bold text-sm text-white tracking-wide">{userName}</p>
-                  <p className="text-[10px] text-white/50 uppercase tracking-wider">{gender} • {relationshipStatus === 'couple' ? 'Couple' : 'Single'}</p>
-              </span>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-2 ${gender === 'male' ? 'bg-cyan-600 border-cyan-400 shadow-cyan-500/20' : (gender === 'female' ? 'bg-pink-600 border-pink-400 shadow-pink-500/20' : 'bg-purple-600 border-purple-400 shadow-purple-500/20')}`}>
-                  {userName.charAt(0).toUpperCase()}
-              </div>
+
+          <div className={`w-full p-4 mb-4 ${glassPanel}`}>
+              <h4 className={`font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-widest ${pendingPlayers.length > 0 ? "text-cyan-400 animate-pulse" : "text-white/50"}`}><RefreshCw size={12} className={pendingPlayers.length > 0 ? "animate-spin" : ""}/> Waiting for answers:</h4>
+              {pendingPlayers.length === 0 ? (<div className="text-emerald-400 font-bold text-center">Ready for next!</div>) : (<div className="text-sm text-white/70 font-bold text-center">{pendingPlayers.map(p => p.name).join(', ')}</div>)}
           </div>
-      </div>
 
-      {/* --- ÁREA PRINCIPAL DE CONTENIDO --- */}
-      <div className="flex-1 w-full relative z-10 flex flex-col p-4 overflow-y-auto lg:max-w-5xl lg:mx-auto">
-          
-          {isAdmin && showAdminPanel ? (
-              <AdminPanel players={players} gameState={gameState} onStartGame={startGame} onNextTurn={nextTurn} onReset={resetGame} onKick={handleKickPlayer} />
-          ) : (
-              gameState?.mode === 'lobby' ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
-                  <div className="mb-12 relative group cursor-default">
-                      <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
-                      <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
-                         <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
-                          <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">{gameState?.code || code}</div>
-                      </div>
-                  </div>
-
-                  <div className="mb-6 relative">
-                      <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
-                      <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
-                  </div>
-                  
-                  <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg animate-pulse">Waiting for the game to start...</h2>
-                  <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">Get ready!</p>
-                  
-                  {isAdmin && (
-                      <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30">( Switch to Admin Panel to start the game )</p>
-                  )}
-              </div>
-              ) : (
-              /* B.2) INTERFAZ DEL JUEGO ACTIVO */
-              <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
-                  
-                  {/* --- 1. TARJETA DEL DESAFÍO --- */}
-                  <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
-                      <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
-                          {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-                      </div>
-                      <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
-                              {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
-                      </div>
-                      <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">{getCardText(finalCard)}</h3>
-                      <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">LVL {finalCard?.level || '?'}</div>
-                  </div>
-
-                  {/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
-                  <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
-                      
-                      {/* A) TURNO DE OTRO JUGADOR */}
-                      {!isMyTurn() && gameState.mode !== 'yn' && (
-                          <div className="text-center">
-                              <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">JUDGE THE PLAYER: {currentPlayerName()}</p>
-                              <div className="flex gap-3">
-                                  {gameState.mode === 'question' ? (
-                                      <>
-                                      <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
-                                      <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Nah.. 😴</button>
-                                      </>
-                                  ) : (
-                                      <>
-                                      <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
-                                      <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
-                                      </>
-                                  )}
-                              </div>
-                              {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
-                          </div>
-                      )}
-
-                      {/* B) MI TURNO */}
-                      {isMyTurn() && gameState.mode !== 'yn' && (
-                          <div className="text-center py-4">
-                              <div className="animate-bounce mb-2 text-4xl">👇</div>
-                              <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
-                              <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
-                          </div>
-                      )}
-
-                      {/* C) MODO MATCH */}
-                      {gameState.mode === 'yn' && (
-                          <div className="text-center">
-                              {gameState.answers?.[user?.uid || ''] && !allYNAnswered ? (
-                                  <div className="py-4">
-                                      <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
-                                      <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
-                                  </div>
-                              ) : !allYNAnswered ? (
-                                  <>
-                                      <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
-                                      <div className="flex gap-3">
-                                          <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
-                                          <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
-                                      </div>
-                                  </>
-                              ) : null}
-
-                              {/* RESULTADO MATCH */}
-                              {allYNAnswered && (
-                                  <div className={`flex flex-col p-4 rounded-2xl w-full animate-in zoom-in duration-500 shadow-xl border-2 ${ynMatch ? 'bg-green-900/60 border-green-500 shadow-green-500/10' : 'bg-red-900/60 border-red-500 shadow-red-500/10'}`}>
-                                      <div className="flex items-center justify-center gap-4 mb-2">
-                                          {ynMatch === true ? (
-                                              <>
-                                                  <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-glow" strokeWidth={2} />
-                                                  <div className="text-left">
-                                                      <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-600 italic tracking-tighter">MATCH!</h3>
-                                                      <div className="text-green-200 text-[10px] font-bold uppercase tracking-widest">Perfect Sync</div>
-                                                  </div>
-                                              </>
-                                          ) : (
-                                              <>
-                                                  <AlertTriangle className="w-12 h-12 text-red-500 animate-pulse drop-shadow-glow" strokeWidth={2} />
-                                                  <div className="text-left">
-                                                      <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600 italic tracking-tighter">UNMATCH</h3>
-                                                      <div className="text-red-300 text-[10px] font-bold uppercase tracking-widest">Different Vibes</div>
-                                                  </div>
-                                              </>
-                                          )}
-                                      </div>
-                                      <div className="mt-1 text-center w-full bg-black/40 p-2 rounded-lg border border-white/5">
-                                          <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner</div>
-                                          <div className="font-black text-xl text-white drop-shadow-md">{myPartnerName}</div>
-                                      </div>
-                                      <div className="text-white/20 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">Next round in 4s...</div>
-                                  </div>
-                              )}
-                          </div>
-                      )}
-                  </div>
-
-                  {/* --- 3. ESTADO DE ESPERA --- */}
-                  <div className="mt-6 text-center">
-                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
-                          <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
-                          <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-                              {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
-                          </span>
-                      </div>
-                      {pendingPlayers.length > 0 && (
-                          <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
-                              Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
-                          </div>
-                      )}
-                  </div>
-              </div>  
-              )
+          {gameState?.isAutoMode ? (<div className="text-center text-emerald-400 font-bold animate-pulse mb-4 flex items-center gap-2 justify-center text-sm uppercase tracking-widest"><RefreshCw className="animate-spin" size={14}/> Auto-Advancing...</div>) : (
+            <div className="w-full flex items-center gap-2">
+                <button onClick={nextTurn} className="flex-1 bg-indigo-600 hover:bg-indigo-500 p-4 rounded-xl font-bold shadow-lg shadow-indigo-900/50 transition-all">FORCE NEXT TURN</button>
+                <InfoIcon text="Use this to skip waiting if a player is stuck!" />
+            </div>
           )}
+          <div className="flex gap-4 w-full mt-4">
+             <button onClick={handleEndGame} className="flex-1 bg-red-900/30 border border-red-500/30 p-3 rounded-xl font-bold text-red-400 hover:bg-red-900/50 text-xs">END GAME</button>
+             <button onClick={handleRestart} className="flex-1 bg-white/5 border border-white/10 p-3 rounded-xl font-bold text-white/50 hover:bg-white/10 text-xs">RESET ALL</button>
+          </div>
+        </div>
       </div>
-      <CustomAlert/>
-  </div>
+    );
+  }
+
+  // --- VISTA JUGADOR ---
+  if (!gameState || !gameState.mode || gameState.mode === 'lobby' || gameState.mode === 'admin_setup') {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white relative overflow-hidden">
+            <CustomAlert/>
+            {tutorialStep === 8 && <TutorialTooltip text="Switch between player and admin" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
+            {isAdmin && (
+                <button onClick={() => { console.log("Switching to admin"); setLoading(false); setViewAsPlayer(false); }} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-cyan-500 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Back to Admin View"><Settings size={24} /></button>
+            )}
+            {showPlayerHelp && <HelpModal onClose={() => setShowPlayerHelp(false)} type="player" />}
+            <button onClick={() => setShowPlayerHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md"><HelpCircle size={24} /></button>
+            
+            <div className="text-center py-2 border-b border-white/10 mb-4 w-full flex items-center justify-center gap-2 relative flex-col mt-8">
+                {gameState?.mode === 'admin_setup' && isAdmin && viewAsPlayer ? (
+                   <div className="mb-4 bg-cyan-900/40 border border-cyan-500/50 p-4 rounded-xl animate-pulse">
+                      <h3 className="text-xl font-black text-cyan-400 mb-1">HOST IS SETTING UP ROUND...</h3>
+                      <p className="text-xs text-cyan-200">Wait for the host to start the game.</p>
+                   </div>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        {isEditingName ? (<div className="flex gap-2"><input className="bg-black/30 border border-white/20 p-2 rounded text-center text-2xl font-black text-yellow-400 w-48 outline-none" autoFocus placeholder={userName} value={newName} onChange={(e) => setNewName(e.target.value)} /><button onClick={handleUpdateName} className="bg-green-600 px-3 rounded font-bold">✔</button><button onClick={() => setIsEditingName(false)} className="bg-red-600 px-3 rounded">✖</button></div>) : (<><h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 drop-shadow-sm">{userName.toUpperCase()}</h1><button onClick={() => { setIsEditingName(true); setNewName(userName); }} className="text-white/30 hover:text-white transition-colors"><Edit2 size={18}/></button></>)}
+                    </div>
+                )}
+                {relationshipStatus === 'couple' && (<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-300 text-xs font-mono mt-2"><Users size={12}/> COUPLE ID: {coupleNumber}</div>)}
+            </div>
+            
+            <div className="w-full max-w-md"><ScoreBoard /></div>
+            <div className="w-full max-w-md"><MyMatchHistory /></div>
+            
+            <div className="text-center mt-8 mb-4">
+                {gameState?.mode === 'lobby' ? (
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR THE PLAYERS TO JOIN</div>
+                ) : (
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
+                )}
+            </div>
+            
+            <div className="mt-auto w-full flex justify-center pb-8"><button onClick={handleSelfLeave} className="text-red-500/50 hover:text-red-500 flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><LogOut size={14}/> Reset Player</button></div>
+        </div>
+      );
+  }
+
+  // ... (Keep existing game ended logic and card logic)
+  if (gameState.mode === 'ended') {
+      return (<div className="min-h-screen text-white p-6 flex flex-col items-center justify-center relative"><Trophy className="w-24 h-24 text-yellow-500 mb-6 drop-shadow-glow" /><h2 className="text-4xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600">GAME OVER</h2><div className={`w-full max-w-sm max-h-[60vh] overflow-y-auto mb-8 p-4 ${glassPanel}`}>{players.map((p, i) => <div key={p.uid} className="py-3 border-b border-white/5 flex justify-between items-center last:border-0"><span className="font-bold">{p.name}</span><span className="font-black text-xl text-yellow-400">{gameState?.points[p.uid] || 0} pts</span></div>)}</div></div>);
+  }
+
+  // -----------------------------------------------------------
+  // BLOQUE DE CÁLCULOS DEL JUEGO (PEGAR ESTO ANTES DEL RETURN)
+  // -----------------------------------------------------------
+
+  // 1. Obtener la carta actual
+  const card = currentCard();
+  const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
+
+  // 2. Pantalla de carga si hay ID de reto pero no tenemos los datos
+  if (!finalCard && gameState.currentChallengeId) { 
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+            <div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div>
+        </div>
+      ); 
+  }
+
+  // 3. Calcular estilos y estados básicos
+  const cardStyle = getLevelStyle(finalCard?.level);
+  const playerAnswered = gameState?.answers?.[user?.uid || ''];
+  const allVoted = Object.keys(gameState?.votes || {}).length >= (players.length - 1);
+  const allYNAnswered = Object.keys(gameState.answers).length >= players.length;
+
+  // 4. Lógica específica para MATCH/MISMATCH (YN)
+  let ynMatch = null;
+  let myPartnerName = "???";
+  
+  if (gameState.mode === 'yn' && allYNAnswered) {
+      const myPartnerUid = gameState.pairs?.[user?.uid || ''];
+      const myAns = gameState.answers[user?.uid || ''];
+      const partnerAns = gameState.answers[myPartnerUid || ''];
+      
+      const pObj = players.find(p => p.uid === myPartnerUid);
+      if(pObj) myPartnerName = pObj.name;
+      
+      if(myAns && partnerAns) { 
+          ynMatch = myAns === partnerAns; 
+      }
+  }
+
+  // 5. Calcular jugadores pendientes (Para mostrar en la UI)
+  const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+       if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
+           // Si es turno de alguien, esa persona no cuenta como pendiente de votar (ella responde)
+           if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
+           // Los demás deben votar
+           return !gameState.votes?.[p.uid]; 
+       }
+       if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       return false;
+   });
+   
+   // Variable auxiliar para saber si soy Admin
+   // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
+
+  // -----------------------------------------------------------
+  // FIN DEL BLOQUE DE CÁLCULOS
+  // -----------------------------------------------------------
+   
+
+  // --- RENDERIZADO PRINCIPAL DEL JUEGO (ESTO VA AL FINAL) ---
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center relative overflow-hidden font-sans">
+        
+        {/* Fondo Animado */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-black to-black"></div>
+            <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50"></div>
+        </div>
+
+        {/* --- HEADER --- */}
+        <div className="w-full p-4 flex justify-between items-center relative z-20 glass-header backdrop-blur-md border-b border-white/10">
+            <div className="flex items-center gap-3">
+                {/* Botón para alternar Admin Panel */}
+                {/* Botón CORREGIDO: Volver a Admin View */}
+                {isAdmin && (
+                    <button 
+                        onClick={() => {
+                            setLoading(false); 
+                            setViewAsPlayer(false); // <--- ESTO ES LA CLAVE
+                        }}
+                        className="p-2 rounded-full bg-white/10 text-cyan-400 hover:text-white border border-cyan-500/50 hover:bg-white/20 transition-all shadow-[0_0_10px_rgba(34,211,238,0.2)]"
+                        title="Back to Admin Panel"
+                    >
+                        <Settings size={20} />
+                    </button>
+                )}
+                {/* Código Pequeño en Header */}
+                 <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
+                    <p className="text-white/50 uppercase tracking-widest">Party Code</p>
+                    <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
+                        {gameState?.code || code}
+                    </p>
+                </div>
+            </div>
+            
+            {/* Info del Usuario */}
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-5">
+                <span className="text-right hidden sm:block">
+                    <p className="font-bold text-sm text-white tracking-wide">{userName}</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider">{gender} • {relationshipStatus === 'couple' ? 'Couple' : 'Single'}</p>
+                </span>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-lg border-2 ${gender === 'male' ? 'bg-cyan-600 border-cyan-400 shadow-cyan-500/20' : (gender === 'female' ? 'bg-pink-600 border-pink-400 shadow-pink-500/20' : 'bg-purple-600 border-purple-400 shadow-purple-500/20')}`}>
+                    {userName.charAt(0).toUpperCase()}
+                </div>
+            </div>
+        </div>
+
+        {/* --- ÁREA PRINCIPAL DE CONTENIDO --- */}
+        <div className="flex-1 w-full relative z-10 flex flex-col p-4 overflow-y-auto lg:max-w-5xl lg:mx-auto">
+            
+            {/* A) PANEL DE ADMIN (Si soy admin y está activo) */}
+            {isAdmin && showAdminPanel ? (
+                <AdminPanel 
+                    players={players} 
+                    gameState={gameState}
+                    onStartGame={startGame}
+                    onNextTurn={nextTurn}
+                    onReset={resetGame}
+                    onKick={kickPlayer}
+                />
+            ) : (
+                /* B) VISTA DE JUGADOR (Para todos, incluido Admin en modo juego) */
+                gameState?.mode === 'lobby' ? (
+                    /* B.1) LOBBY DE ESPERA */
+<div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in w-full max-w-2xl mx-auto">
+    
+    {/* ---> CÓDIGO GIGANTE EN EL LOBBY <--- */}
+    <div className="mb-12 relative group cursor-default">
+        <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-[2rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 animate-pulse-slow"></div>
+        <div className="relative bg-black/60 backdrop-blur-xl border-2 border-white/10 p-8 rounded-[2rem] shadow-2xl">
+            <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 text-sm font-bold uppercase tracking-[0.5em] mb-2">Party Code</h3>
+            <div className="text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-[0.15em] font-mono drop-shadow-[0_0_25px_rgba(255,255,255,0.4)] select-all transition-all">
+                {gameState?.code || code}
+            </div>
+        </div>
+    </div>
+
+    {/* ---> AQUÍ ESTÁ EL CAMBIO DE TEXTO QUE PEDISTE <--- */}
+    <div className="mb-6 relative">
+        <div className="absolute inset-0 bg-pink-500 blur-3xl opacity-20 animate-pulse"></div>
+        <Trophy className="w-20 h-20 text-yellow-400 relative z-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] animate-bounce-slow" />
+    </div>
+    
+    {/* TEXTO ACTUALIZADO */}
+    <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 uppercase tracking-widest drop-shadow-lg animate-pulse">
+        Waiting for the game to start...
+    </h2>
+    <p className="text-white/60 text-lg font-medium tracking-wide max-w-md mx-auto">
+        Get ready!
+    </p>
+    
+    {isAdmin && (
+        <p className="mt-8 text-pink-400 text-sm font-bold bg-pink-500/10 p-4 rounded-xl border border-pink-500/30">
+            ( Switch to Admin Panel to start the game )
+        </p>
+    )}
+</div>
+                ) : (
+/* B.2) INTERFAZ DEL JUEGO ACTIVO */
+<div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
+                    
+{/* --- 1. TARJETA DEL DESAFÍO --- */}
+<div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
+    <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
+        {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+    </div>
+    <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
+            {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
+    </div>
+    <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
+        {getCardText(finalCard)}
+    </h3>
+    <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
+        LVL {finalCard?.level || '?'}
+    </div>
+</div>
+
+{/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
+<div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
+    
+    {/* A) TURNO DE OTRO JUGADOR */}
+    {!isMyTurn() && gameState.mode !== 'yn' && (
+        <div className="text-center">
+            <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">
+                JUDGE THE PLAYER: {currentPlayerName()}
+            </p>
+            <div className="flex gap-3">
+                {gameState.mode === 'question' ? (
+                    <>
+                    <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
+                    <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                    </>
+                ) : (
+                    <>
+                    <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
+                    <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
+                    </>
+                )}
+            </div>
+            {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
+        </div>
+    )}
+
+    {/* B) MI TURNO */}
+    {isMyTurn() && gameState.mode !== 'yn' && (
+        <div className="text-center py-4">
+            <div className="animate-bounce mb-2 text-4xl">👇</div>
+            <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
+            <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
+        </div>
+    )}
+
+    {/* C) MODO MATCH */}
+    {gameState.mode === 'yn' && (
+        <div className="text-center">
+            {gameState.answers?.[user?.uid || ''] && !allYNAnswered ? (
+                <div className="py-4">
+                    <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
+                    <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                </div>
+            ) : !allYNAnswered ? (
+                <>
+                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
+                    <div className="flex gap-3">
+                        <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
+                        <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
+                    </div>
+                </>
+            ) : null}
+
+            {/* RESULTADO COMPACTO DE MATCH/UNMATCH */}
+            {allYNAnswered && (
+                <div className={`flex flex-col p-4 rounded-2xl w-full animate-in zoom-in duration-500 shadow-xl border-2 ${ynMatch ? 'bg-green-900/60 border-green-500 shadow-green-500/10' : 'bg-red-900/60 border-red-500 shadow-red-500/10'}`}>
+                    <div className="flex items-center justify-center gap-4 mb-2">
+                        {ynMatch === true ? (
+                            <>
+                                <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-glow" strokeWidth={2} />
+                                <div className="text-left">
+                                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-600 italic tracking-tighter">MATCH!</h3>
+                                    <div className="text-green-200 text-[10px] font-bold uppercase tracking-widest">Perfect Sync</div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Usamos AlertTriangle o Frown si está importado */}
+                                <AlertTriangle className="w-12 h-12 text-red-500 animate-pulse drop-shadow-glow" strokeWidth={2} />
+                                <div className="text-left">
+                                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600 italic tracking-tighter">UNMATCH</h3>
+                                    <div className="text-red-300 text-[10px] font-bold uppercase tracking-widest">Different Vibes</div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div className="mt-1 text-center w-full bg-black/40 p-2 rounded-lg border border-white/5">
+                        <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner</div>
+                        <div className="font-black text-xl text-white drop-shadow-md">{myPartnerName}</div>
+                    </div>
+                    <div className="text-white/20 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">Next round in 4s...</div>
+                </div>
+            )}
+        </div>
+    )}
+</div>
+
+{/* --- 3. ESTADO DE ESPERA --- */}
+<div className="mt-6 text-center">
+    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+        <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+        <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+            {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+        </span>
+    </div>
+    {pendingPlayers.length > 0 && (
+        <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
+            Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
+        </div>
+    )}
+</div>
+</div>  
+)
+)}
+</div>
+<CustomAlert/>
+</div>
 );
 }
