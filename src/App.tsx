@@ -1041,55 +1041,77 @@ useEffect(() => {
   const updateGlobalLevel = async (newLvl: string) => { setSelectedLevel(newLvl); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { roundLevel: newLvl }); };
   const updateGlobalType = async (newType: string) => { setSelectedType(newType); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { nextType: newType }); };
   const toggleAutoMode = async () => { 
-    const newMode = !gameState?.isAutoMode; 
+    const newMode = !gameState?.isAutoMode;
     let updates: any = { isAutoMode: newMode };
     
-    // CORRECCIÓN: Si activamos el modo (newMode es true), SIEMPRE regeneramos la secuencia
-    // con los valores actuales de los inputs (qtyTruth, etc.), eliminando la condición vieja.
     if (newMode) { 
-        let sequence: string[] = []; 
+        let sequence: string[] = [];
         for(let i=0; i<qtyTruth; i++) sequence.push('question');
         for(let i=0; i<qtyDare; i++) sequence.push('dare'); 
-        for(let i=0; i<qtyMM; i++) sequence.push('yn'); 
+        for(let i=0; i<qtyMM; i++) sequence.push('yn');
         
-        // Solo actualizamos si hay algo en la secuencia
         if (sequence.length > 0) {
-            updates.sequence = sequence; 
-            updates.sequenceIndex = 0; // Reiniciamos el ciclo al principio
+            updates.sequence = sequence;
+            updates.sequenceIndex = 0;
         }
     } 
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates);
-    const toggleDrinkMode = async () => {
-        const newMode = !gameState?.isDrinkMode;
-        playSound('click');
-        setIsDrinkMode(newMode);
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isDrinkMode: newMode });
-      }; 
+  }; // <--- AQUÍ FALTABA CERRAR ESTA LLAVE
 
-};
+  const toggleDrinkMode = async () => {
+    const newMode = !gameState?.isDrinkMode;
+    playSound('click');
+    setIsDrinkMode(newMode);
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { isDrinkMode: newMode });
+  }; 
+
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
-    if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
+
+    // 1. Validaciones
+    if (realPlayers.length < 3) { 
+        showError("You need at least 3 players to start!");
+        return;
+    }
     const { total } = checkPendingSettings();
-    if (total > 0) { showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`); return; }
+    if (total > 0) { 
+        showError(`Cannot start! There are ${total} questions without Level/Type/Gender set.`);
+        return;
+    }
     const { valid, incompleteIds } = checkCouplesCompleteness();
-    if (!valid) { showError(`Cannot start! Missing partner for IDs: ${incompleteIds.join(', ')}`); return; }
+    if (!valid) { 
+        showError(`Cannot start! Missing partner for IDs: ${incompleteIds.join(', ')}`); 
+        return;
+    }
+
+    // 2. Agregar Bots si es impar
     if (realPlayers.length % 2 !== 0) {
         const males = realPlayers.filter(p => p.gender === 'male').length;
         const females = realPlayers.filter(p => p.gender === 'female').length;
-        let botName = "Brad Pitt"; let botGender = "male"; if (males > females) { botName = "Scarlett Johansson"; botGender = "female"; }
+        let botName = "Brad Pitt"; 
+        let botGender = "male";
+        if (males > females) { 
+            botName = "Scarlett Johansson";
+            botGender = "female"; 
+        }
         const botUid = 'bot_' + Date.now();
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), { uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0 });
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', botUid), { 
+            uid: botUid, name: botName, gender: botGender, coupleNumber: '999', relationshipStatus: 'single', joinedAt: serverTimestamp(), isActive: true, isBot: true, matches: 0, mismatches: 0 
+        });
         showError(`Odd number of players. Added bot: ${botName}!`);
     }
-    // Busca esta parte al final de la función startGame:
+
+    // 3. LA CORRECCIÓN DEFINITIVA
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
         mode: 'admin_setup', 
         matchHistory: [], 
         isEnding: false,
-        currentChallengeId: null // <--- ESTO EVITA LA PANTALLA AZUL
+        currentChallengeId: null, 
+        answers: {}, 
+        votes: {}
     });
-};
+  };
+
   
 // --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
 const resetGame = async () => {
