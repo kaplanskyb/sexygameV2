@@ -1765,7 +1765,22 @@ const resetGame = async () => {
             </div>
             {!gameState?.isAutoMode && (<div className="flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300"><span className="text-xs text-white/50 font-bold uppercase">Next Game Type</span><div className="flex items-center gap-2"><InfoIcon text="You can change the game type any time." /><select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-black/30 border border-white/20 rounded p-1 text-white text-xs w-32"><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match</option></select></div></div>)}
         </div>
-
+        {gameState?.isAutoMode && (
+    <div className="flex gap-3 animate-in fade-in mb-6 mt-6">
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
+            <div className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl">{qtyTruth}</div>
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
+            <div className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl">{qtyDare}</div>
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
+            <div className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl">{qtyMM}</div>
+        </div>
+    </div>
+)}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
           <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
               <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
