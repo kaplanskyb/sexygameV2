@@ -2046,14 +2046,15 @@ const resetGame = async () => {
         )}
     </div>
 
-{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON CONFETI */}
+{/* RESULTADO COMPACTO DE MATCH/MISMATCH CON CONFETI CORREGIDO */}
 {gameState?.mode === 'yn' && allYNAnswered && (
     <>
-        {/* 1. ESTILOS DE ANIMACIÓN (Inyectados) */}
+        {/* 1. ESTILOS DE ANIMACIÓN (CORREGIDOS) */}
         <style>{`
             @keyframes floatUp {
-                0% { transform: translateY(120vh) scale(0.5) rotate(0deg); opacity: 1; }
-                100% { transform: translateY(-20vh) scale(1) rotate(360deg); opacity: 0; }
+                /* CORRECCIÓN: Empezamos en 0 (abajo) y vamos a -150vh (arriba) */
+                0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(-150vh) scale(1.2) rotate(360deg); opacity: 0; }
             }
             @keyframes fallDown {
                 0% { transform: translateY(-20vh) translateX(0px); opacity: 0; }
@@ -2062,20 +2063,19 @@ const resetGame = async () => {
             }
         `}</style>
 
-        {/* 2. CAPA DE EFECTOS (SOLUCIÓN FIX: ABSOLUTE GIGANTE CENTRADO) */}
-        {/* Usamos w-[120vw] y h-[120vh] con centrado absoluto para romper el contenedor padre */}
+        {/* 2. CAPA DE EFECTOS (ABSOLUTE GIGANTE) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vh] z-0 pointer-events-none overflow-hidden">
             {ynMatch ? (
-                // --- MATCH: CONFETI SUBIENDO ---
+                // --- MATCH: CONFETI SUBIENDO (AHORA SÍ VISIBLE) ---
                 [...Array(50)].map((_, i) => (
-                    <div key={i} className="absolute text-3xl" style={{
+                    <div key={i} className="absolute text-4xl" style={{
                         left: `${Math.random() * 100}%`,
-                        bottom: '-10%', // Empieza bien abajo
-                        animation: `floatUp ${Math.random() * 3 + 3}s linear infinite`,
+                        bottom: '-5%', // Posición inicial: justo debajo del borde inferior
+                        animation: `floatUp ${Math.random() * 2 + 3}s linear infinite`, // Duración entre 3 y 5s
                         animationDelay: `${Math.random() * 2}s`,
-                        textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                        textShadow: '0 0 20px rgba(255,255,255,0.8)' // Brillo extra
                     }}>
-                        {['🎉', '✨', '🔥', '❤️', '🍾', '💎'][Math.floor(Math.random() * 6)]}
+                        {['🎉', '✨', '🔥', '❤️', '🍾', '💎', '🟢'][Math.floor(Math.random() * 7)]}
                     </div>
                 ))
             ) : (
@@ -2093,7 +2093,7 @@ const resetGame = async () => {
             )}
         </div>
 
-        {/* 3. TARJETA DE RESULTADO (Z-INDEX SUPERIOR) */}
+        {/* 3. TARJETA DE RESULTADO (Z-INDEX 10 - Encima del efecto) */}
         <div className={`relative z-10 flex flex-col items-center justify-center p-3 rounded-2xl w-full animate-in zoom-in duration-300 shadow-2xl border-2 overflow-hidden ${ynMatch ?
             'bg-green-900/95 border-green-500 shadow-green-500/50' : 'bg-slate-900/95 border-red-500 shadow-red-500/50'}`}>
             
