@@ -1963,6 +1963,16 @@ const resetGame = async () => {
 
     const card = currentCard();
     const finalCard = card || fetchedCard;
+    // --- PEGAR ESTO TAMBIÉN AQUÍ ---
+if (gameState?.currentChallengeId && !finalCard) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 h-64">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-cyan-500 mb-4"></div>
+          <div className="text-cyan-400 font-mono animate-pulse">SYNCING ADMIN...</div>
+      </div>
+    );
+}
+// -----------------------------
     const cardStyle = getLevelStyle(finalCard?.level);
 
     
