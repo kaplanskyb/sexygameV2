@@ -1631,7 +1631,7 @@ const resetGame = async () => {
         </div>
         <div className="relative">
         <button 
-    onClick={() => setIsAutoSetup(!isAutoSetup)}
+    onClick={toggleDrinkMode}
     className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}
 >
     <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} />
@@ -2232,14 +2232,14 @@ const showDrinkAlert = calculateDrinkPenalty();
         )}
 
             {/* Partner Centrado */}
-            <div className="w-full bg-black/60 py-1.5 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg">
-                <span className="text-[8px] uppercase tracking-widest text-white/50 font-bold mb-0.5">
-                    Your Partner
-                </span>
-                <span className="font-black text-lg text-white drop-shadow-md leading-none text-center">
-                    {myPartnerName}
-                </span>
-            </div>
+            <div className="w-full bg-black/60 py-3 px-4 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg mt-4">
+    <span className="text-sm uppercase tracking-widest text-white/60 font-bold mb-1">
+        Your Partner
+    </span>
+    <span className="font-black text-4xl text-white drop-shadow-2xl leading-none text-center">
+        {myPartnerName}
+    </span>
+</div>
 
             <div className="text-white/30 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">
                 Next in 4s...
