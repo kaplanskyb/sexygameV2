@@ -1870,9 +1870,40 @@ const resetGame = async () => {
       }
   }
 
-// 5. Calcular jugadores pendient
-       return false;
-   };
+// 5. Calcular jugadores pendientes (CORREGIDO) [cite: 1031]
+const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
+    if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
+        if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
+        return !gameState.votes?.[p.uid]; 
+    }
+    if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+    return false;
+});
+
+// 6. Lógica de Drink Mode (CORREGIDO) 
+const calculateDrinkPenalty = () => {
+   if (!gameState || !gameState.isDrinkMode) return false;
+
+   const activePlayersCount = players.filter(p => !p.isBot).length;
+   const votesCount = Object.keys(gameState.votes || {}).length;
+   
+   // En modo Match (yn) no usamos votos, esperamos a que todos respondan 
+   if (gameState.mode !== 'yn' && votesCount < activePlayersCount - 1) return false;
+
+   const needed = Math.floor((activePlayersCount - 1) / 2) + 1; // Mayoría simple 
+
+   if (gameState.mode === 'question') {
+       const nahVotes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length;
+       return nahVotes >= needed;
+   }
+   if (gameState.mode === 'dare') {
+       const failVotes = Object.values(gameState.votes || {}).filter(v => v === 'no').length;
+       return failVotes >= needed;
+   }
+   return false;
+};
+
+const showDrinkAlert = calculateDrinkPenalty(); [cite: 1032]
    
    // Variable auxiliar para saber si soy Admin
    // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
