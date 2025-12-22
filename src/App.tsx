@@ -1653,37 +1653,71 @@ const resetGame = async () => {
     </div>
 </div>
 
-                    {isAutoSetup ? (
-                        <div className="flex gap-3 animate-in fade-in">
-                            <div className="flex-1 text-center bg-black/20 rounded-lg p-2 relative">
-                            <div className="text-xs text-cyan-400 font-bold mb-1">Truth</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyTruth} onChange={e=>setQtyTruth(parseInt(e.target.value))}/></div>
-                            <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-pink-400 font-bold mb-1">Dare</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyDare} onChange={e=>setQtyDare(parseInt(e.target.value))}/></div>
-                            <div className="flex-1 text-center bg-black/20 rounded-lg p-2"><div className="text-xs text-emerald-400 font-bold mb-1">Match</div><input type="number" className="w-full bg-transparent text-center border border-white/20 rounded p-1 text-white font-mono" value={qtyMM} onChange={e=>setQtyMM(parseInt(e.target.value))}/></div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-sm text-white/70">Risk Level</span>
-                                    <InfoIcon text="You can change the risk level any time." />
-                                </div>
-                                <div className="relative">
-                                    {tutorialStep === 52 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(53)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                                    <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
-                                </div>
-                            </div>
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-sm text-white/70">Next Game Type</span>
-                                    <InfoIcon text="You can change the game type any time." />
-                                </div>
-                                <div className="relative">
-                                    {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                                    <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option><option value="truth">Truth</option><option value="dare">Dare</option><option value="yn">Match/Mismatch</option></select>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Mostramos los casilleros de cantidad SIEMPRE cuando estamos en modo automático */}
+{isAutoSetup && (
+    <div className="flex gap-3 animate-in fade-in mb-6">
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-cyan-400 font-bold mb-1 uppercase tracking-wide">Truth</div>
+            <input 
+                type="number" 
+                min="0"
+                className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl focus:border-cyan-400" 
+                value={qtyTruth} 
+                onChange={e => setQtyTruth(Math.max(0, parseInt(e.target.value) || 0))}
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-pink-400 font-bold mb-1 uppercase tracking-wide">Dare</div>
+            <input 
+                type="number" 
+                min="0"
+                className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl focus:border-pink-400" 
+                value={qtyDare} 
+                onChange={e => setQtyDare(Math.max(0, parseInt(e.target.value) || 0))}
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-emerald-400 font-bold mb-1 uppercase tracking-wide">Match</div>
+            <input 
+                type="number" 
+                min="0"
+                className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl focus:border-emerald-400" 
+                value={qtyMM} 
+                onChange={e => setQtyMM(Math.max(0, parseInt(e.target.value) || 0))}
+            />
+        </div>
+    </div>
+)}
+
+{/* Selección de nivel de riesgo (siempre visible en ambos modos) */}
+<div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+    <div className="flex items-center gap-2">
+        <span className="font-bold text-sm text-white/70">Risk Level</span>
+        <InfoIcon text="You can change the risk level any time." />
+    </div>
+    {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+    <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36">
+        <option value="">Select</option>
+        {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
+    </select>
+</div>
+
+{/* Selección de tipo solo en modo manual */}
+{!isAutoSetup && (
+    <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
+        <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-white/70">Next Game Type</span>
+            <InfoIcon text="You can change the game type any time." />
+        </div>
+        {tutorialStep === 53 && <TutorialTooltip text="Select Type" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
+        <select value={selectedType} onChange={e=>updateGlobalType(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36">
+            <option value="">Select</option>
+            <option value="truth">Truth</option>
+            <option value="dare">Dare</option>
+            <option value="yn">Match/Mismatch</option>
+        </select>
+    </div>
+)}
                     
                     {isAutoSetup && (
                         <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
