@@ -1870,43 +1870,7 @@ const resetGame = async () => {
       }
   }
 
-// 5. Calcular jugadores pendientes (CORREGIDO) [cite: 1031]
-const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
-    if(gameState?.mode === 'question' || gameState?.mode === 'dare') { 
-        // El jugador del turno actual no vota [cite: 1031]
-        if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; 
-        return !gameState.votes?.[p.uid]; 
-    }
-    if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
-    return false;
-});
-
-// 6. Lógica de Drink Mode (CORREGIDO) [cite: 1032]
-const calculateDrinkPenalty = () => {
-   if (!gameState || !gameState.isDrinkMode) return false; [cite: 1032]
-
-   const activePlayersCount = players.filter(p => !p.isBot).length; [cite: 1032]
-   const votesCount = Object.keys(gameState.votes || {}).length; [cite: 1032]
-   
-   // En modo Match (yn) no usamos votos, esperamos a que todos respondan [cite: 1033]
-   if (gameState.mode !== 'yn' && votesCount < activePlayersCount - 1) return false; [cite: 1033]
-
-   const needed = Math.floor((activePlayersCount - 1) / 2) + 1; // Mayoría simple [cite: 1034, 1035]
-
-   if (gameState.mode === 'question') {
-       // Truth: contamos los votos "dislike" [cite: 1035]
-       const nahVotes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length; [cite: 1035]
-       return nahVotes >= needed; [cite: 1036]
-   }
-   if (gameState.mode === 'dare') {
-       // Dare: contamos los votos "no" [cite: 1036]
-       const failVotes = Object.values(gameState.votes || {}).filter(v => v === 'no').length; [cite: 1036]
-       return failVotes >= needed; [cite: 1037]
-   }
-   return false; [cite: 1037]
-};
-
-const showDrinkAlert = calculateDrinkPenalty(); [cite: 1037]
+// 5. Calcular jugadores pendient
        return false;
    });
    
@@ -2069,30 +2033,27 @@ const showDrinkAlert = calculateDrinkPenalty(); [cite: 1037]
                     )}
                 </div>
                 {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
-            </div>
-        )}
+    </div>
+)}
 
-
-
-        {/* --- PENALTY SIGN (TRUTH / DARE) --- */}
-        {showDrinkAlert && (
-            <div className="w-full mt-6 mb-2 animate-in zoom-in duration-300 relative z-50">
-                <div className="bg-gradient-to-r from-orange-600 to-red-600 p-1 rounded-2xl shadow-[0_0_40px_rgba(234,88,12,0.6)] animate-pulse">
-                    <div className="bg-black/90 rounded-xl p-6 text-center border border-orange-500/50 backdrop-blur-xl">
-                        <Flame className="w-12 h-12 text-orange-500 mx-auto mb-2 animate-bounce" />
-                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter italic transform -rotate-2 drop-shadow-lg">
-                            PENALTY!
-                        </h2>
-                        <div className="text-3xl font-black text-yellow-400 mt-2 tracking-widest border-t border-white/10 pt-2">
-                            🍺 DRINK! 🍺
-                        </div>
-                        <p className="text-xs text-white/60 mt-2 uppercase font-mono font-bold">
-                            {gameState.mode === 'question' ? 'The group hated your answer' : 'Challenge Failed'}
-                        </p>
-                    </div>
+{showDrinkAlert && (
+    <div className="w-full mt-6 mb-2 animate-in zoom-in duration-300 relative z-50">
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 p-1 rounded-2xl shadow-[0_0_40px_rgba(234,88,12,0.6)] animate-pulse">
+            <div className="bg-black/90 rounded-xl p-6 text-center border border-orange-500/50 backdrop-blur-xl">
+                <Flame className="w-12 h-12 text-orange-500 mx-auto mb-2 animate-bounce" />
+                <h2 className="text-4xl font-black text-white uppercase tracking-tighter italic transform -rotate-2 drop-shadow-lg">
+                    PENALTY!
+                </h2>
+                <div className="text-3xl font-black text-yellow-400 mt-2 tracking-widest border-t border-white/10 pt-2">
+                    🍺 DRINK! 🍺
                 </div>
+                <p className="text-xs text-white/60 mt-2 uppercase font-mono font-bold">
+                    {gameState.mode === 'question' ? 'The group hated your answer' : 'Challenge Failed'}
+                </p>
             </div>
-        )}
+        </div>
+    </div>
+)}
 
         {/* B) MI TURNO (TRUTH / DARE) */}
         {isMyTurn() && gameState.mode !== 'yn' && (
@@ -2186,31 +2147,27 @@ const showDrinkAlert = calculateDrinkPenalty(); [cite: 1037]
                     </div>
                 </div>
          
-) : (
-    /* --- MISMATCH BLOCK (ELSE) --- */
-    <div className="flex flex-col items-center justify-center w-full">
-        
-        {/* VISUAL DESIGN FOR MISMATCH */}
-        <div className="flex items-center gap-4 relative mb-2 justify-center">
-            <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
-            <div className="text-left">
-                <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
-                    NOPE...
-                </h3>
-                <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
-            </div>
-        </div>
-
-        {/* ---> HERE WE ADD THE DRINK SIGN <--- */}
-        {gameState.isDrinkMode && (
-            <div className="mt-4 animate-bounce">
-                <div className="bg-orange-600 text-white text-xl font-black uppercase tracking-widest py-2 px-6 rounded-xl border-4 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.6)] rotate-2">
-                    🍺 DRINK! (BOTH) 🍺
+         ) : (
+            <div className="flex flex-col items-center justify-center w-full">
+                <div className="flex items-center gap-4 relative mb-2 justify-center">
+                     <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                     <div className="text-left">
+                        <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
+                            NOPE...
+                        </h3>
+                        <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
+                    </div>
                 </div>
+        
+                {gameState.isDrinkMode && (
+                    <div className="mt-4 animate-bounce">
+                        <div className="bg-orange-600 text-white text-xl font-black uppercase tracking-widest py-2 px-6 rounded-xl border-4 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.6)] rotate-2">
+                            🍺 DRINK! (BOTH) 🍺
+                        </div>
+                    </div>
+                )}
             </div>
         )}
-    </div>
-)}
 
             {/* Partner Centrado */}
             <div className="w-full bg-black/60 py-1.5 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg">
