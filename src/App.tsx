@@ -1659,8 +1659,7 @@ const resetGame = async () => {
     </div>
 </div>
 
-                    {/* Mostramos los casilleros de cantidad SIEMPRE cuando estamos en modo automático */}
-{isAutoSetup && (
+
     {/* Cuadrados siempre visibles en modo Auto, incluso después de Start */}
 {isAutoSetup && (
     <div className="flex gap-3 animate-in fade-in mb-6">
