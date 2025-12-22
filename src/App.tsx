@@ -88,6 +88,7 @@ interface HistoryEntry {
 }
 interface GameState {
   mode: string;
+  isDrinkMode?: boolean;    
   currentTurnIndex: number;
   answers: Record<string, string>;
   votes: Record<string, string>;
@@ -983,6 +984,12 @@ useEffect(() => {
     } 
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); 
 };
+const toggleDrinkMode = async () => {
+    const newStatus = !gameState?.isDrinkMode;
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
+        isDrinkMode: newStatus 
+    });
+};
   const startGame = async () => {
     const realPlayers = players.filter(p => !p.isBot);
     if (realPlayers.length < 3) { showError("You need at least 3 players to start!"); return; }
@@ -1613,17 +1620,38 @@ const resetGame = async () => {
                 <h2 className="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mt-8">SETUP ROUND</h2>
                 
                 <div className={`w-full max-w-md p-6 mb-4 ${glassPanel}`}>
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 relative">
-                        <div className="flex items-center gap-2 justify-center w-full">
-                             <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Mode</div>
-                             <InfoIcon text="Auto: loops through Truth/Dare/Match. Manual: lets you pick every turn." />
-                             <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
-                        </div>
-                        <div className="relative">
-                        <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} /></button>
-                        {tutorialStep === 5 && <TutorialTooltip text="Switch Manual/Auto Mode Anytime!" onClick={() => setTutorialStep(6)} className="right-full mr-3 top-1/2 -translate-y-1/2" arrowPos="right" />}
-                        </div>     
-                        </div>
+                    {/* --- BLOQUE DE SWITCHES --- */}
+<div className="flex flex-col gap-3 border-b border-white/10 pb-4 mb-4">
+    
+    {/* SWITCH 1: MANUAL / AUTO */}
+    <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+                <div className="text-[10px] text-white/50 uppercase font-bold tracking-widest">Game Loop</div>
+                <div className={`font-black text-xl ml-2 ${isAutoSetup ? 'text-green-400' : 'text-cyan-400'}`}>{isAutoSetup ? 'AUTOMATIC' : 'MANUAL'}</div>
+        </div>
+        <div className="relative">
+            <button onClick={()=>setIsAutoSetup(!isAutoSetup)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+            {/* Tooltip Tutorial */}
+            {tutorialStep === 5 && <TutorialTooltip text="Switch Manual/Auto Mode Anytime!" onClick={() => setTutorialStep(6)} className="right-full mr-3 top-1/2 -translate-y-1/2" arrowPos="right" />}
+        </div>
+    </div>
+
+    {/* SWITCH 2: DRINK MODE (NUEVO) */}
+    <div className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${gameState?.isDrinkMode ? 'bg-orange-900/20 border-orange-500/50' : 'bg-transparent border-transparent'}`}>
+        <div className="flex items-center gap-2">
+                <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
+                <div className="flex flex-col">
+                <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
+                {gameState?.isDrinkMode && <span className="text-[9px] text-orange-200 animate-pulse">Losers drink! 🍺</span>}
+                </div>
+        </div>
+        <button onClick={toggleDrinkMode} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${gameState?.isDrinkMode ? 'bg-orange-500' : 'bg-slate-700'}`}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gameState?.isDrinkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+        </button>
+    </div>
+</div>
 
                     {isAutoSetup ? (
                         <div className="flex gap-3 animate-in fade-in">
@@ -1851,6 +1879,31 @@ const resetGame = async () => {
            return !gameState.votes?.[p.uid]; 
        }
        if(gameState?.mode === 'yn') { return !gameState.answers?.[p.uid]; }
+       // --- LÓGICA DE DRINK MODE ---
+const calculateDrinkPenalty = () => {
+    if (!gameState || !gameState.isDrinkMode) return false;
+
+    // Solo calcular si todos (menos el que juega) han votado
+    const activePlayersCount = players.filter(p => !p.isBot).length;
+    const votesCount = Object.keys(gameState.votes || {}).length;
+    // En modo Match no usamos votos, usamos respuestas
+    if (gameState.mode !== 'yn' && votesCount < activePlayersCount - 1) return false;
+
+    const needed = Math.floor((activePlayersCount - 1) / 2) + 1; // Mayoría simple
+
+    if (gameState.mode === 'question') {
+        // Truth: contar "dislike"
+        const nahVotes = Object.values(gameState.votes || {}).filter(v => v === 'dislike').length;
+        return nahVotes >= needed;
+    }
+    if (gameState.mode === 'dare') {
+        // Dare: contar "no"
+        const failVotes = Object.values(gameState.votes || {}).filter(v => v === 'no').length;
+        return failVotes >= needed;
+    }
+    return false;
+};
+const showDrinkAlert = calculateDrinkPenalty();
        return false;
    });
    
@@ -2016,6 +2069,28 @@ const resetGame = async () => {
             </div>
         )}
 
+// PASTE THIS RIGHT AFTER:
+
+        {/* --- PENALTY SIGN (TRUTH / DARE) --- */}
+        {showDrinkAlert && (
+            <div className="w-full mt-6 mb-2 animate-in zoom-in duration-300 relative z-50">
+                <div className="bg-gradient-to-r from-orange-600 to-red-600 p-1 rounded-2xl shadow-[0_0_40px_rgba(234,88,12,0.6)] animate-pulse">
+                    <div className="bg-black/90 rounded-xl p-6 text-center border border-orange-500/50 backdrop-blur-xl">
+                        <Flame className="w-12 h-12 text-orange-500 mx-auto mb-2 animate-bounce" />
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter italic transform -rotate-2 drop-shadow-lg">
+                            PENALTY!
+                        </h2>
+                        <div className="text-3xl font-black text-yellow-400 mt-2 tracking-widest border-t border-white/10 pt-2">
+                            🍺 DRINK! 🍺
+                        </div>
+                        <p className="text-xs text-white/60 mt-2 uppercase font-mono font-bold">
+                            {gameState.mode === 'question' ? 'The group hated your answer' : 'Challenge Failed'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* B) MI TURNO (TRUTH / DARE) */}
         {isMyTurn() && gameState.mode !== 'yn' && (
              <div className="text-center py-4">
@@ -2107,17 +2182,32 @@ const resetGame = async () => {
                         <div className="text-green-200 font-bold text-[10px] uppercase tracking-widest animate-pulse">Perfect Sync</div>
                     </div>
                 </div>
-            ) : (
-                <div className="flex items-center gap-4 relative mb-2 justify-center">
-                    <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
-                    <div className="text-left">
-                        <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
-                            NOPE...
-                        </h3>
-                        <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
-                    </div>
+            // REPLACE WITH THIS:
+) : (
+    /* --- MISMATCH BLOCK (ELSE) --- */
+    <div className="flex flex-col items-center justify-center w-full">
+        
+        {/* VISUAL DESIGN FOR MISMATCH */}
+        <div className="flex items-center gap-4 relative mb-2 justify-center">
+            <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+            <div className="text-left">
+                <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter leading-none transform -rotate-2">
+                    NOPE...
+                </h3>
+                <div className="text-red-300 font-bold text-[10px] uppercase tracking-widest">Different</div>
+            </div>
+        </div>
+
+        {/* ---> HERE WE ADD THE DRINK SIGN <--- */}
+        {gameState.isDrinkMode && (
+            <div className="mt-4 animate-bounce">
+                <div className="bg-orange-600 text-white text-xl font-black uppercase tracking-widest py-2 px-6 rounded-xl border-4 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.6)] rotate-2">
+                    🍺 DRINK! (BOTH) 🍺
                 </div>
-            )}
+            </div>
+        )}
+    </div>
+)}
 
             {/* Partner Centrado */}
             <div className="w-full bg-black/60 py-1.5 rounded-lg border border-white/10 backdrop-blur-md flex flex-col items-center justify-center shadow-lg">
