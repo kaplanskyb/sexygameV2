@@ -1872,7 +1872,7 @@ const resetGame = async () => {
 
 // 5. Calcular jugadores pendient
        return false;
-   });
+   };
    
    // Variable auxiliar para saber si soy Admin
    // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
