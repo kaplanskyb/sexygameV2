@@ -386,7 +386,7 @@ const CouplePairing = ({
     appId
 }: any) => {
     
-    // Generar código de 4 dígitos (Solo mujer/Host)
+    // 1. CAMBIO: Generar código de 3 dígitos (100 - 999)
     const [localCode] = useState(() => {
         if (value) return value;
         return Math.floor(100 + Math.random() * 900).toString();
@@ -395,7 +395,7 @@ const CouplePairing = ({
     const [inputCode, setInputCode] = useState('');
     const [isLinked, setIsLinked] = useState(false);
     const isFemale = gender === 'female';
-    const currentAppId = appId || 'sexy_game_v2';
+    const currentAppId = appId || 'truth-dare-v1';
 
     // 1. LÓGICA MUJER: Escuchar la BD
     useEffect(() => {
@@ -420,12 +420,12 @@ const CouplePairing = ({
 
     // 2. LÓGICA HOMBRE: Enviar código y ENTRAR
     const handleManSubmit = () => {
-        if (inputCode.length !== 4) return;
-        
+        // 2. CAMBIO: Validar 3 dígitos
+        if (inputCode.length !== 3) return; 
         onCodeObtained(inputCode);
         setIsLinked(true);
 
-        // CAMBIO CLAVE: Enviamos 'inputCode' como argumento al salir
+        // Enviamos 'inputCode' como argumento al salir
         setTimeout(() => { 
             onAutoJoin(inputCode); 
         }, 1500);
@@ -445,6 +445,7 @@ const CouplePairing = ({
                         <span className="text-white/80 text-sm mt-2 font-bold tracking-widest animate-pulse">STARTING GAME...</span>
                     </div>
                 )}
+                
                 {isFemale ? (
                     <>
                         <div className="bg-white text-slate-900 font-mono font-black text-6xl tracking-widest py-8 px-8 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)] leading-none border-4 border-pink-500/30">{localCode}</div>
@@ -453,8 +454,24 @@ const CouplePairing = ({
                 ) : (
                     <>
                         <p className="text-slate-400 text-center mb-6 text-sm uppercase tracking-wide">Ask your partner for their code</p>
-                        <input type="number" inputMode="numeric" pattern="[0-9]*" maxLength={4} placeholder="0000" className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" value={inputCode} onChange={(e) => setInputCode(e.target.value.slice(0, 4))} />
-                        <button onClick={handleManSubmit} disabled={inputCode.length < 4} className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 4 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>LINK NOW</button>
+                        {/* 3. CAMBIO: Inputs configurados para 3 dígitos */}
+                        <input 
+                            type="number" 
+                            inputMode="numeric" 
+                            pattern="[0-9]*" 
+                            maxLength={3} 
+                            placeholder="000" 
+                            className="w-full bg-slate-900 border-2 border-slate-700 focus:border-purple-500 text-white font-mono font-black text-5xl text-center py-4 rounded-xl outline-none transition-all mb-8 placeholder:text-slate-700" 
+                            value={inputCode} 
+                            onChange={(e) => setInputCode(e.target.value.slice(0, 3))} 
+                        />
+                        <button 
+                            onClick={handleManSubmit} 
+                            disabled={inputCode.length < 3} 
+                            className={`w-full py-4 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg ${inputCode.length === 3 ? 'bg-purple-600 hover:bg-purple-500 text-white hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                        >
+                            LINK NOW
+                        </button>
                     </>
                 )}
             </div>
