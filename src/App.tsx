@@ -821,7 +821,7 @@ useEffect(() => {
     }
     if (shouldAdvance) {
         // CORRECCIÓN: Aumentado a 4000ms (4 segundos) para ver el resultado
-        const timer = setTimeout(() => { nextTurn(); }, 4000); 
+        const timer = setTimeout(() => { nextTurn(); }, 5000); 
         return () => clearTimeout(timer);
     }
     // (Aquí no debe haber nada)
@@ -985,9 +985,9 @@ useEffect(() => {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), updates); 
 };
 const toggleDrinkMode = async () => {
-    const newStatus = !gameState?.isDrinkMode;
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
-        isDrinkMode: newStatus 
+    if (!gameState) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+        isDrinkMode: !gameState.isDrinkMode
     });
 };
   const startGame = async () => {
@@ -1719,16 +1719,7 @@ const resetGame = async () => {
     </div>
 )}
                     
-                    {isAutoSetup && (
-                        <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-white/70">Risk Level</span>
-                                <InfoIcon text="You can change the risk level any time." />
-                            </div>
-                             {tutorialStep === 51 && <TutorialTooltip text="Select Level" onClick={() => setTutorialStep(6)} className="bottom-full mb-2 left-1/2 -translate-x-1/2" arrowPos="bottom" />}
-                            <select value={selectedLevel} onChange={e=>updateGlobalLevel(e.target.value)} className="bg-slate-900 border border-white/20 rounded p-1 text-white text-sm w-36"><option value="">Select</option>{uniqueLevels.map(l=><option key={l} value={l}>{l}</option>)}</select>
-                        </div>
-                    )}
+                    
                 </div>
                 
                 <div className="relative w-full max-w-md">
