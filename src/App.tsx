@@ -786,23 +786,45 @@ useEffect(() => {
     }
   }, [user, players]);
 
+  // --- CARGA DE DATOS DEL JUEGO (CORREGIDO) ---
   useEffect(() => {
     if (!user) return;
     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+    
     const unsubGame = onSnapshot(gameRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
+        
+        // Sincronizar estados locales con la DB
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
-        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode); // <--- NUEVA LÓGICA AQUÍ
+        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode);
         if (data.roundLevel && data.roundLevel !== selectedLevel) setSelectedLevel(data.roundLevel);
         if (data.nextType && data.nextType !== selectedType) setSelectedType(data.nextType);
-        if (data.isDrinkMode !== undefined) setIsDrinkMode(data.isDrinkMode);
+      
       } else {
-        setDoc(gameRef, { mode: 'lobby', currentTurnIndex: 0, answers: {}, votes: {}, points: {}, code: '', timestamp: serverTimestamp(), matchHistory: [] });
+        // SI NO EXISTE EL JUEGO, LO CREAMOS Y ESTABLECEMOS EL ESTADO INICIAL
+        const initialGame: GameState = { 
+            mode: 'lobby', 
+            currentTurnIndex: 0, 
+            answers: {}, 
+            votes: {}, 
+            points: {}, 
+            code: '', 
+            matchHistory: [],
+            isDrinkMode: false 
+        };
+        
+        // 1. Crear en Firebase
+        setDoc(gameRef, { ...initialGame, timestamp: serverTimestamp() });
+        
+        // 2. IMPORTANTE: Guardar en memoria local para evitar el crash
+        setGameState(initialGame);
       }
       setLoading(false);
     });
+
+    // ... (el resto de listeners de players/challenges sigue igual) ...
     const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
     const unsubPlayers = onSnapshot(query(playersRef), (snapshot) => {
       const pList = snapshot.docs.map(d => d.data() as Player);
@@ -813,8 +835,10 @@ useEffect(() => {
     const unsubChallenges = onSnapshot(query(challengesRef), (snapshot) => { setChallenges(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge))); });
     const pairChallengesRef = collection(db, 'artifacts', appId, 'public', 'data', 'pairChallenges');
     const unsubPairChallenges = onSnapshot(query(pairChallengesRef), (snapshot) => { setPairChallenges(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Challenge))); });
+    
     return () => { unsubGame(); unsubPlayers(); unsubChallenges(); unsubPairChallenges(); };
   }, [user]);
+  
   useEffect(() => {
     console.log("View changed to:", viewAsPlayer ? "Player" : "Admin");
     if (!viewAsPlayer) {
