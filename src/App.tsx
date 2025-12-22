@@ -2077,10 +2077,13 @@ const resetGame = async () => {
             </div>
         )}
 
-        {/* --- MOSTRAR PARTNER (Compacto) --- */}
-        <div className="mt-3 flex items-center justify-between w-full bg-black/40 px-3 py-2 rounded-lg border border-white/5 backdrop-blur-sm">
-            <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner:</span>
-            <span className="font-black text-lg text-white drop-shadow-md leading-none">
+        {/* --- MOSTRAR PARTNER (CENTRADO Y COMPACTO) --- */}
+        {/* Aquí está el cambio clave: flex-col y items-center */}
+        <div className="w-full bg-black/40 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm flex flex-col items-center justify-center">
+            <span className="text-[8px] uppercase tracking-widest text-white/40 font-bold mb-0.5">
+                Your Partner
+            </span>
+            <span className="font-black text-lg text-white drop-shadow-md leading-none text-center">
                 {myPartnerName}
             </span>
         </div>
@@ -2090,6 +2093,10 @@ const resetGame = async () => {
         </div>
     </div>
 )}
+{/* NUEVO: INTERACTIONS ON SCREEN (Se muestra solo si hay historial) */}
+<div className="w-full mt-4 px-2 animate-in slide-in-from-bottom-4 duration-500">
+        <MyMatchHistory />
+    </div>
 
     {/* --- 3. ESTADO DE ESPERA --- */}
     <div className="mt-6 text-center">
