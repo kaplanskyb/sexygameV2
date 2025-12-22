@@ -2089,7 +2089,24 @@ const resetGame = async () => {
   const card = currentCard();
   const finalCard = card || fetchedCard; // Usamos fetchedCard si la local no ha cargado
 
-  
+  // --- 🔥 INICIO DEL FIX (PEGAR ESTO AQUÍ) 🔥 ---
+  // PROTECCIÓN CRÍTICA: Si el juego pide una carta (currentChallengeId) 
+  // pero el teléfono aún no ha descargado los datos de esa carta (!finalCard),
+  // detenemos el renderizado y mostramos "Syncing".
+  // Esto evita la Pantalla Azul.
+  if (gameState?.currentChallengeId && !finalCard) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white relative overflow-hidden">
+          {/* Fondo seguro por si acaso */}
+          <div className="absolute inset-0 bg-black z-0"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-cyan-500 mb-6 relative z-10"></div>
+          <div className="text-2xl font-black font-mono text-cyan-400 tracking-widest animate-pulse relative z-10">
+              SYNCING DATA...
+          </div>
+      </div>
+    );
+}
+// --- FIN DEL FIX ---
 
   // 3. Calcular estilos y estados básicos
   const cardStyle = getLevelStyle(finalCard?.level);
