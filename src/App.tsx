@@ -1936,7 +1936,7 @@ const resetGame = async () => {
 
 
 
-
+}
 
 // --- GAME ENDED SCREEN ---
 if (gameState.mode === 'ended') {
