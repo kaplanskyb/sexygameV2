@@ -1631,7 +1631,7 @@ const resetGame = async () => {
         </div>
         <div className="relative">
         <button 
-    onClick={toggleDrinkMode}
+    onClick={() => setIsAutoSetup(!isAutoSetup)}
     className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isAutoSetup ? 'bg-green-500' : 'bg-slate-700'}`}
 >
     <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoSetup ? 'translate-x-7' : 'translate-x-1'}`} />
@@ -1661,33 +1661,35 @@ const resetGame = async () => {
 
                     {/* Mostramos los casilleros de cantidad SIEMPRE cuando estamos en modo automático */}
 {isAutoSetup && (
+    {/* Cuadrados siempre visibles en modo Auto, incluso después de Start */}
+{isAutoSetup && (
     <div className="flex gap-3 animate-in fade-in mb-6">
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-xs text-cyan-400 font-bold mb-1 uppercase tracking-wide">Truth</div>
+            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
             <input 
                 type="number" 
                 min="0"
-                className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl focus:border-cyan-400" 
+                className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl"
                 value={qtyTruth} 
                 onChange={e => setQtyTruth(Math.max(0, parseInt(e.target.value) || 0))}
             />
         </div>
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-xs text-pink-400 font-bold mb-1 uppercase tracking-wide">Dare</div>
+            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
             <input 
                 type="number" 
                 min="0"
-                className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl focus:border-pink-400" 
+                className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl"
                 value={qtyDare} 
                 onChange={e => setQtyDare(Math.max(0, parseInt(e.target.value) || 0))}
             />
         </div>
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-xs text-emerald-400 font-bold mb-1 uppercase tracking-wide">Match</div>
+            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
             <input 
                 type="number" 
                 min="0"
-                className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl focus:border-emerald-400" 
+                className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl"
                 value={qtyMM} 
                 onChange={e => setQtyMM(Math.max(0, parseInt(e.target.value) || 0))}
             />
