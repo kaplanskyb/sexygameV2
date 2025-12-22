@@ -512,6 +512,23 @@ export default function TruthAndDareApp() {
   const [bulkGender, setBulkGender] = useState('');
   const [isAutoSetup, setIsAutoSetup] = useState(false);
   const [qtyTruth, setQtyTruth] = useState(1);
+  const updateQtyTruth = (value: number) => {
+    if (value < 0) return;
+    setQtyTruth(value);
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyTruth: value });
+};
+
+const updateQtyDare = (value: number) => {
+    if (value < 0) return;
+    setQtyDare(value);
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyDare: value });
+};
+
+const updateQtyMM = (value: number) => {
+    if (value < 0) return;
+    setQtyMM(value);
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyMM: value });
+};
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
@@ -1659,23 +1676,8 @@ const resetGame = async () => {
 </div>
 
 
-    {/* Cuadrados siempre visibles en modo Auto, incluso después de Start */}
-    {gameState?.isAutoMode && (
-    <div className="flex gap-3 animate-in fade-in mb-6 mt-4">
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
-            <div className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl">{qtyTruth}</div>
-        </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
-            <div className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl">{qtyDare}</div>
-        </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
-            <div className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl">{qtyMM}</div>
-        </div>
-    </div>
-)}
+   
+    
 
 {/* Selección de nivel de riesgo (siempre visible en ambos modos) */}
 <div className="mt-4 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 relative">
@@ -1689,6 +1691,41 @@ const resetGame = async () => {
         {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
     </select>
 </div>
+
+{isAutoSetup && (
+    <div className="flex gap-3 animate-in fade-in mb-6 mt-4">
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyTruth} 
+                onChange={(e) => updateQtyTruth(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-cyan-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-cyan-400"
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyDare} 
+                onChange={(e) => updateQtyDare(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-pink-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-pink-400"
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyMM} 
+                onChange={(e) => updateQtyMM(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-emerald-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-emerald-400"
+            />
+        </div>
+    </div>
+)}
 
 {/* Selección de tipo solo en modo manual */}
 {!isAutoSetup && (
@@ -2047,6 +2084,40 @@ const showDrinkAlert = calculateDrinkPenalty();
 <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
     
     {/* --- 1. TARJETA DEL DESAFÍO --- */}
+    {isAdmin && !viewAsPlayer && gameState?.isAutoMode && (
+    <div className="flex gap-3 animate-in fade-in mb-6 mt-4">
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyTruth} 
+                onChange={(e) => updateQtyTruth(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-cyan-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-cyan-400"
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyDare} 
+                onChange={(e) => updateQtyDare(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-pink-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-pink-400"
+            />
+        </div>
+        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
+            <input 
+                type="number" 
+                min="0" 
+                value={qtyMM} 
+                onChange={(e) => updateQtyMM(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-emerald-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-emerald-400"
+            />
+        </div>
+    </div>
+)}
     <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
         {/* Etiqueta Superior */}
         <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
