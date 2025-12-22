@@ -524,16 +524,36 @@ export default function TruthAndDareApp() {
     }
   }, [players, user]);
   // --- PEGA ESTO EN SU LUGAR ---
- // --- DETECCIÓN DE ADMIN (CORREGIDO: NO RESETEA AL REFRESCAR) ---
- useEffect(() => {
+  // --- DETECCIÓN DE ADMIN Y RESETEO DE ESTADO ---
+  useEffect(() => {
     const isNowAdmin = userName.toLowerCase().trim() === 'admin';
     setIsAdmin(isNowAdmin);
 
-    // CORRECCIÓN IMPORTANTE:
-    // Hemos eliminado el bloque "resetGameParams". 
-    // Ahora, si haces refresh, el Admin simplemente se reconecta 
-    // y lee el estado actual de Firebase sin borrar nada.
-    
+    if (isNowAdmin) {
+      const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
+      setCode(autoCode);
+      
+      // RESETEO AUTOMÁTICO DE PARÁMETROS DEL JUEGO
+      const resetGameParams = async () => {
+          try {
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+                  code: autoCode, // Actualizamos el código en la BD
+                  mode: 'lobby',
+                  roundLevel: '1',     // Reset Risk Level
+                  nextType: 'truth',   // Reset Type
+                  isAutoMode: false,   // Reset Auto Mode
+                  answers: {},
+                  votes: {},
+                  currentTurnIndex: 0,
+                  isEnding: false
+              });
+          } catch(e) { console.error("Auto reset failed", e); }
+      };
+      resetGameParams();
+
+    } else {
+      if (code && code.length > 5) setCode(''); 
+    }
   }, [userName]);
 
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
@@ -1941,131 +1961,150 @@ const resetGame = async () => {
     )}
 </div>
                 ) : (
-/* B.2) INTERFAZ DEL JUEGO ACTIVO */
+                    /* B.2) INTERFAZ DEL JUEGO ACTIVO */
+                    /* ========================================================================
+   PEGAR ESTO EN LUGAR DE <GameInterface ... />
+   ======================================================================== */
 <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
-                    
-{/* --- 1. TARJETA DEL DESAFÍO --- */}
-<div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
-    <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
-        {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
-    </div>
-    <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
-            {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
-    </div>
-    <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
-        {getCardText(finalCard)}
-    </h3>
-    <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
-        LVL {finalCard?.level || '?'}
-    </div>
-</div>
-
-{/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
-<div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
     
-    {/* A) TURNO DE OTRO JUGADOR */}
-    {!isMyTurn() && gameState.mode !== 'yn' && (
-        <div className="text-center">
-            <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">
-                JUDGE THE PLAYER: {currentPlayerName()}
-            </p>
-            <div className="flex gap-3">
-                {gameState.mode === 'question' ? (
-                    <>
-                    <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
-                    <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
-                    </>
-                ) : (
-                    <>
-                    <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
-                    <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
-                    </>
-                )}
+    {/* --- 1. TARJETA DEL DESAFÍO --- */}
+    <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
+        {/* Etiqueta Superior */}
+        <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
+            {gameState.mode === 'yn' ? 'MATCH' : gameState.mode === 'question' ? 'TRUTH' : 'DARE'}
+        </div>
+        
+        {/* Icono Central */}
+        <div className="mb-6 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform group-hover:scale-110 transition-transform duration-500">
+                {gameState.mode === 'question' ? <MessageCircle size={48} className="text-cyan-200"/> : gameState.mode === 'yn' ? <Users size={48} className="text-emerald-200"/> : <Flame size={48} className="text-pink-200"/>}
+        </div>
+
+        {/* Texto de la Carta */}
+        <h3 className="text-2xl sm:text-3xl font-bold leading-relaxed drop-shadow-md text-white">
+            {getCardText(finalCard)}
+        </h3>
+        
+        {/* Nivel de Riesgo (Esquina) */}
+        <div className="absolute bottom-4 right-4 opacity-50 font-mono text-xs border border-white/30 px-2 rounded">
+            LVL {finalCard?.level || '?'}
+        </div>
+    </div>
+
+    {/* --- 2. ÁREA DE ACCIÓN (VOTAR / RESPONDER) --- */}
+    <div className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-xl">
+        
+        {/* A) TURNO DE OTRO JUGADOR: MODO JUEZ/ESPECTADOR */}
+        {!isMyTurn() && gameState.mode !== 'yn' && (
+            <div className="text-center">
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">
+                    JUDGE THE PLAYER: {currentPlayerName()}
+                </p>
+                <div className="flex gap-3">
+                    {gameState.mode === 'question' ? (
+                        <>
+                           <button onClick={() => submitVote('like')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Good Answer 👍</button>
+                           <button onClick={() => submitVote('dislike')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-white/10 p-4 rounded-xl font-bold hover:bg-white/20 disabled:opacity-30 transition-all">Boring 😴</button>
+                        </>
+                    ) : (
+                        <>
+                           <button onClick={() => submitVote('yes')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-xl font-bold hover:brightness-110 disabled:opacity-30 disabled:grayscale transition-all shadow-lg">Done! ✅</button>
+                           <button onClick={() => submitVote('no')} disabled={!!gameState.votes?.[user?.uid || '']} className="flex-1 bg-red-900/50 border border-red-500/50 p-4 rounded-xl font-bold hover:bg-red-900/80 disabled:opacity-30 transition-all text-red-200">Failed ❌</button>
+                        </>
+                    )}
+                </div>
+                {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
             </div>
-            {gameState.votes?.[user?.uid || ''] && <div className="mt-2 text-xs text-green-400 font-bold animate-pulse">Vote Submitted!</div>}
-        </div>
-    )}
+        )}
 
-    {/* B) MI TURNO */}
-    {isMyTurn() && gameState.mode !== 'yn' && (
-        <div className="text-center py-4">
-            <div className="animate-bounce mb-2 text-4xl">👇</div>
-            <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
-            <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
-        </div>
-    )}
+        {/* B) MI TURNO (TRUTH / DARE) */}
+        {isMyTurn() && gameState.mode !== 'yn' && (
+             <div className="text-center py-4">
+                 <div className="animate-bounce mb-2 text-4xl">👇</div>
+                 <p className="font-bold text-yellow-400 text-lg uppercase tracking-widest">It's your turn!</p>
+                 <p className="text-sm text-white/70 mt-1">Read aloud and perform the action.</p>
+             </div>
+        )}
 
-    {/* C) MODO MATCH */}
-    {gameState.mode === 'yn' && (
-        <div className="text-center">
-            {gameState.answers?.[user?.uid || ''] && !allYNAnswered ? (
-                <div className="py-4">
-                    <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
-                    <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+        {/* C) MODO MATCH (TODOS JUEGAN) */}
+        {gameState.mode === 'yn' && (
+            <div className="text-center">
+                 {gameState.answers?.[user?.uid || ''] ? (
+                     <div className="py-4">
+                         <div className="text-green-400 font-bold text-xl mb-2">Answered! 🔒</div>
+                         <p className="text-white/50 text-xs uppercase tracking-widest">Waiting for partner...</p>
+                     </div>
+                 ) : (
+                     <>
+                        <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
+                            <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
+                        </div>
+                     </>
+                 )}
+            </div>
+        )}
+    </div>
+
+{/* RESULTADO DIVERTIDO DE MATCH/MISMATCH (NUEVO) */}
+{gameState?.mode==='yn' && allYNAnswered && (
+            <div className={`flex flex-col items-center justify-center p-8 rounded-3xl w-full animate-in zoom-in duration-500 shadow-2xl border-4 ${ynMatch ? 'bg-green-900/40 border-green-500 shadow-green-500/20' : 'bg-red-900/40 border-red-500 shadow-red-500/20'}`}>
+                
+                {ynMatch === true ? (
+                    /* --- ESCENA DE ÉXITO (MATCH) --- */
+                    <div className="text-center relative">
+                        <div className="absolute inset-0 bg-green-400 blur-2xl opacity-20 animate-pulse"></div>
+                        <HeartHandshake className="w-24 h-24 text-green-400 mx-auto mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]" strokeWidth={1.5} />
+                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-emerald-600 tracking-tighter mb-2 transform rotate-2">
+                            IT'S A MATCH!
+                        </h3>
+                        <div className="text-green-200 font-bold text-sm uppercase tracking-[0.5em] animate-pulse">Perfect Sync</div>
+                    </div>
+                ) : (
+                    /* --- ESCENA DE FALLO (MISMATCH) --- */
+                    <div className="text-center relative">
+                        <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse"></div>
+                        <AlertTriangle className="w-24 h-24 text-red-500 mx-auto mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" strokeWidth={1.5} />
+                        <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-red-400 to-red-700 tracking-tighter mb-2 transform -rotate-2">
+                            AWKWARD...
+                        </h3>
+                        <div className="text-red-300 font-bold text-sm uppercase tracking-[0.5em]">Totally Different</div>
+                    </div>
+                )}
+
+                {/* --- MOSTRAR PARTNER --- */}
+                <div className="mt-8 text-center w-full bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                    <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Your Partner Was</div>
+                    <div className="font-black text-3xl text-white drop-shadow-md">
+                        {myPartnerName}
+                    </div>
                 </div>
-            ) : !allYNAnswered ? (
-                <>
-                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">DO YOU AGREE?</p>
-                    <div className="flex gap-3">
-                        <button onClick={() => submitAnswer('yes')} className="flex-1 bg-emerald-600 p-6 rounded-xl font-black text-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95">YES</button>
-                        <button onClick={() => submitAnswer('no')} className="flex-1 bg-red-600 p-6 rounded-xl font-black text-xl hover:bg-red-500 shadow-lg shadow-red-900/30 transition-transform active:scale-95">NO</button>
-                    </div>
-                </>
-            ) : null}
 
-            {/* RESULTADO COMPACTO DE MATCH/UNMATCH */}
-            {allYNAnswered && (
-                <div className={`flex flex-col p-4 rounded-2xl w-full animate-in zoom-in duration-500 shadow-xl border-2 ${ynMatch ? 'bg-green-900/60 border-green-500 shadow-green-500/10' : 'bg-red-900/60 border-red-500 shadow-red-500/10'}`}>
-                    <div className="flex items-center justify-center gap-4 mb-2">
-                        {ynMatch === true ? (
-                            <>
-                                <HeartHandshake className="w-12 h-12 text-green-400 animate-bounce drop-shadow-glow" strokeWidth={2} />
-                                <div className="text-left">
-                                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-600 italic tracking-tighter">MATCH!</h3>
-                                    <div className="text-green-200 text-[10px] font-bold uppercase tracking-widest">Perfect Sync</div>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {/* Usamos AlertTriangle o Frown si está importado */}
-                                <AlertTriangle className="w-12 h-12 text-red-500 animate-pulse drop-shadow-glow" strokeWidth={2} />
-                                <div className="text-left">
-                                    <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600 italic tracking-tighter">UNMATCH</h3>
-                                    <div className="text-red-300 text-[10px] font-bold uppercase tracking-widest">Different Vibes</div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    <div className="mt-1 text-center w-full bg-black/40 p-2 rounded-lg border border-white/5">
-                        <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Partner</div>
-                        <div className="font-black text-xl text-white drop-shadow-md">{myPartnerName}</div>
-                    </div>
-                    <div className="text-white/20 mt-2 text-[9px] font-mono tracking-widest uppercase text-center">Next round in 4s...</div>
+                <div className="text-white/20 mt-4 text-[9px] font-mono tracking-widest uppercase">
+                    Next round in 4s...
                 </div>
+            </div>
+        )}
+
+    {/* --- 3. ESTADO DE ESPERA --- */}
+    <div className="mt-6 text-center">
+         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
+             <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
+             <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                 {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
+             </span>
+         </div>
+         {pendingPlayers.length > 0 && (
+             <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
+                 Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
+             </div>
+         )}
+    </div>
+</div>  
+                )
             )}
         </div>
-    )}
-</div>
-
-{/* --- 3. ESTADO DE ESPERA --- */}
-<div className="mt-6 text-center">
-    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 ${pendingPlayers.length > 0 ? 'animate-pulse' : ''}`}>
-        <RefreshCw size={14} className={pendingPlayers.length > 0 ? "animate-spin text-cyan-400" : "text-emerald-400"}/>
-        <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-            {pendingPlayers.length > 0 ? `${pendingPlayers.length} Waiting...` : "ALL READY"}
-        </span>
+        <CustomAlert/>
     </div>
-    {pendingPlayers.length > 0 && (
-        <div className="text-[10px] text-white/30 mt-2 max-w-xs mx-auto leading-relaxed">
-            Waiting for: {pendingPlayers.map(p => p.name).slice(0, 3).join(', ')}{pendingPlayers.length > 3 && '...'}
-        </div>
-    )}
-</div>
-</div>  
-)
-)}
-</div>
-<CustomAlert/>
-</div>
 );
 }
