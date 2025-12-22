@@ -1903,7 +1903,7 @@ const calculateDrinkPenalty = () => {
    return false;
 };
 
-const showDrinkAlert = calculateDrinkPenalty(); [cite: 1032]
+const showDrinkAlert = calculateDrinkPenalty();
    
    // Variable auxiliar para saber si soy Admin
    // (Asegúrate de haber movido el useState de showAdminPanel arriba como indiqué en el Paso 1)
