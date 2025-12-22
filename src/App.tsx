@@ -1660,37 +1660,19 @@ const resetGame = async () => {
 
 
     {/* Cuadrados siempre visibles en modo Auto, incluso después de Start */}
-{isAutoSetup && (
-    <div className="flex gap-3 animate-in fade-in mb-6">
+    {gameState?.isAutoMode && (
+    <div className="flex gap-3 animate-in fade-in mb-6 mt-4">
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
             <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
-            <input 
-                type="number" 
-                min="0"
-                className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl"
-                value={qtyTruth} 
-                onChange={e => setQtyTruth(Math.max(0, parseInt(e.target.value) || 0))}
-            />
+            <div className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl">{qtyTruth}</div>
         </div>
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
             <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
-            <input 
-                type="number" 
-                min="0"
-                className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl"
-                value={qtyDare} 
-                onChange={e => setQtyDare(Math.max(0, parseInt(e.target.value) || 0))}
-            />
+            <div className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl">{qtyDare}</div>
         </div>
         <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
             <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
-            <input 
-                type="number" 
-                min="0"
-                className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl"
-                value={qtyMM} 
-                onChange={e => setQtyMM(Math.max(0, parseInt(e.target.value) || 0))}
-            />
+            <div className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl">{qtyMM}</div>
         </div>
     </div>
 )}
