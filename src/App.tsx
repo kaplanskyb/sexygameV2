@@ -1621,7 +1621,7 @@ const resetGame = async () => {
                 
                 <div className={`w-full max-w-md p-6 mb-4 ${glassPanel}`}>
                     {/* --- BLOQUE DE SWITCHES --- */}
-<div className="flex flex-col gap-3 border-b border-white/10 pb-4 mb-4">
+                    <div className="flex flex-col gap-6 pt-4 border-b border-white/10 pb-6 mb-6">
     
     {/* SWITCH 1: MANUAL / AUTO */}
     <div className="flex items-center justify-between">
@@ -1642,8 +1642,7 @@ const resetGame = async () => {
     </div>
 
     {/* SWITCH 2: DRINK MODE (NUEVO) */}
-    <div className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${gameState?.isDrinkMode ? 'bg-orange-900/20 border-orange-500/50' : 'bg-transparent border-transparent'}`}>
-        <div className="flex items-center gap-2">
+    <div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${gameState?.isDrinkMode ? 'bg-orange-900/30 border-orange-500/70 shadow-lg shadow-orange-500/20' : 'bg-black/40 border-white/20'}`}>        <div className="flex items-center gap-2">
                 <div className={`p-1 rounded ${gameState?.isDrinkMode ? 'bg-orange-500 text-white' : 'text-white/30'}`}><Flame size={16} /></div>
                 <div className="flex flex-col">
                 <span className={`text-xs font-bold uppercase tracking-widest ${gameState?.isDrinkMode ? 'text-orange-400' : 'text-white/50'}`}>Drink Mode</span>
