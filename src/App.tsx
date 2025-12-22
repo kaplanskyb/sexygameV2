@@ -1965,10 +1965,7 @@ const resetGame = async () => {
     const finalCard = card || fetchedCard;
     const cardStyle = getLevelStyle(finalCard?.level);
 
-    // CORRECCIÓN:
-    if (!finalCard && gameState?.currentChallengeId && gameState?.mode !== 'admin_setup') {
-        return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white bg-black"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500 mb-4"></div><div className="text-xl animate-pulse font-mono text-cyan-400">SYNCING DATA...</div></div>;
-}
+    
 
     const pendingPlayers = players.filter(p => !p.isBot).filter(p => {
         if(gameState.mode === 'question' || gameState.mode === 'dare') { if(p.uid === players[gameState.currentTurnIndex]?.uid) return false; return !gameState.votes?.[p.uid]; }
