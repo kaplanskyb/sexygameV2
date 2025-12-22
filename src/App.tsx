@@ -2322,5 +2322,8 @@ const showDrinkAlert = calculateDrinkPenalty();
         </div>
         <CustomAlert/>
     </div>
-);
+  );
 }
+}
+
+export default TruthAndDareApp;
