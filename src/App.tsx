@@ -481,7 +481,14 @@ export default function TruthAndDareApp() {
   const gradientBtn = "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-900/30 active:scale-95 transition-all hover:brightness-110";
   const [coupleNumber, setCoupleNumber] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState<'single'|'couple'|''>('');
-  const [code, setCode] = useState('');
+  // FIX: Inicializar leyendo del almacenamiento local para no perder el código al refrescar
+  const [code, setCode] = useState(() => localStorage.getItem('td_party_code') || '');
+  
+  // FIX: Guardar en almacenamiento local cada vez que el código cambie
+  useEffect(() => {
+      if (code) localStorage.setItem('td_party_code', code);
+  }, [code]);
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
