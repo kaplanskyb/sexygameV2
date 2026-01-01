@@ -889,6 +889,10 @@ useEffect(() => {
         if (req.ts !== lastRequestTsRef.current) {
             lastRequestTsRef.current = req.ts;
             
+            // FIX: Si fui yo mismo (Admin jugando) quien pidió el riesgo, ignoro la notificación de la nube
+            // porque ya vi la confirmación local "Request sent".
+            if (req.uid === user?.uid) return;
+
             // Leemos el nombre que nos envió el jugador en el Paso 1
             const displayName = req.name || "Someone";
 
@@ -896,8 +900,9 @@ useEffect(() => {
             // Usamos \n para el salto de línea (soportado por el Paso 1)
             showSuccess(`🔥 ${displayName}\nHEAT IT UP!`);
         }
-    }
-}, [gameState?.riskRequest, isAdmin]);
+   
+ }
+}, [gameState?.riskRequest, isAdmin, user?.uid]);
 
   // 3. Función del Jugador: Enviar petición (MEJORADA)
   const handleRequestRisk = async () => {
@@ -1233,9 +1238,9 @@ const resetGame = async () => {
   // --- COMPONENTS ---
   const CustomAlert = () => customError ? ( <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-[150]"> <div className={`p-6 max-w-md text-center ${glassPanel} border-red-500/50`}> <AlertTriangle className="mx-auto text-red-500 mb-2" size={40}/> <p className="text-white mb-4 whitespace-pre-line font-medium">{customError}</p> <button onClick={closeError} className="bg-red-600/80 hover:bg-red-500 px-6 py-2 rounded font-bold transition-colors">OK</button> </div> </div> ) : null;
   const CustomSuccess = () => customSuccess ? ( 
-    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-emerald-900/90 border border-emerald-500/50 text-emerald-100 px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 z-[200] animate-in fade-in slide-in-from-top-2 backdrop-blur-md"> 
-        <CheckCircle size={16} className="text-emerald-400" /> 
-        <span className="font-bold text-xs whitespace-pre-line text-center leading-tight">{customSuccess}</span> 
+    <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 border border-emerald-400 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center gap-3 z-[9999] animate-in fade-in slide-in-from-top-4 backdrop-blur-md min-w-max pointer-events-none"> 
+        <CheckCircle size={20} className="text-white drop-shadow-md" /> 
+        <span className="font-black text-sm whitespace-pre-line text-center leading-tight drop-shadow-md">{customSuccess}</span> 
     </div> 
 ) : null;
   
@@ -2218,13 +2223,14 @@ const showDrinkAlert = calculateDrinkPenalty();
 </div>
                 ) : (
                     /* B.2) INTERFAZ DEL JUEGO ACTIVO */
-                    /* ========================================================================
-   PEGAR ESTO EN LUGAR DE <GameInterface ... />
-   ======================================================================== */
-<div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
-    {/* --- FIX: Componentes de Alerta para el Admin --- */}
-    <CustomSuccess />
-    <CustomAlert />
+                    <>
+                        {/* --- FIX: Sacamos las alertas del contenedor animado para que fixed funcione bien --- */}
+                        <CustomSuccess />
+                        <CustomAlert />
+
+                        <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
+                            
+                            {/* --- 1. TARJETA DEL DESAFÍO --- */}
     
     {/* --- 1. TARJETA DEL DESAFÍO --- */}
     {isAdmin && !viewAsPlayer && gameState?.isAutoMode && (
