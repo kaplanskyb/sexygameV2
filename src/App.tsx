@@ -878,34 +878,40 @@ useEffect(() => {
   // 1. Referencia para evitar notificaciones repetidas al recargar 
   const lastRequestTsRef = useRef(0);
 
-  // 2. Escucha (Solo para Admin): Muestra alerta cuando alguien pide riesgo
+  // 2. Escucha MEJORADA (Solo para Admin): Muestra alerta y vibra
   useEffect(() => {
-      if (isAdmin && gameState?.riskRequest) {
-          const req = gameState.riskRequest;
-          // Si el timestamp es nuevo (mayor al último visto)
-          if (req.ts > lastRequestTsRef.current) {
-              lastRequestTsRef.current = req.ts;
-              // Evitamos notificar si la petición es muy vieja (ej. al recargar página)
-              if (Date.now() - req.ts < 5000) {
-                  showSuccess(`🔥 ${req.name} asks: HIGHER RISK!`);
-              }
-          }
-      }
-  }, [gameState?.riskRequest, isAdmin]);
+    // Verificamos que exista una petición y que tenga un timestamp (ts)
+    if (isAdmin && gameState?.riskRequest?.ts) {
+        const req = gameState.riskRequest;
+        
+        // Si el timestamp es diferente al último que vimos, es una NUEVA petición
+        if (req.ts !== lastRequestTsRef.current) {
+            lastRequestTsRef.current = req.ts;
+            
+            // Feedback físico y visual
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]); // Vibrar doble
+            showSuccess(`🔥 ${req.name} asks: HIGHER RISK!`);
+        }
+    }
+}, [gameState?.riskRequest, isAdmin]);
 
-  // 3. Función del Jugador: Enviar petición
+  // 3. Función del Jugador: Enviar petición (MEJORADA)
   const handleRequestRisk = async () => {
-      if (!user) return;
-      // Guardamos en la BD quién pide y cuándo
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
-          riskRequest: {
-              uid: user.uid,
-              name: userName,
-              ts: Date.now()
-          }
-      });
-      showSuccess("Request sent to Admin! 🔥");
-  };
+    if (!user) return;
+    
+    // Buscamos el nombre real en la lista de jugadores para asegurar que no vaya vacío
+    const myPlayer = players.find(p => p.uid === user.uid);
+    const realName = myPlayer ? myPlayer.name : (userName || 'Anonymous');
+
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+        riskRequest: {
+            uid: user.uid,
+            name: realName, 
+            ts: Date.now()
+        }
+    });
+    showSuccess("Request sent to Admin! 🔥");
+};
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
@@ -1843,6 +1849,9 @@ const resetGame = async () => {
     return (
       <div className="min-h-screen text-white flex flex-col p-4 relative overflow-hidden">
         {tutorialStep === 7 && <TutorialTooltip text="Switch between admin and player!" onClick={() => setTutorialStep(null)} className="top-4 left-16" arrowPos="left" />}
+        {/* --- FIX: Componentes de Alerta para el Admin (Juego Activo) --- */}
+        <CustomSuccess />
+        <CustomAlert />
         <button onClick={() => setViewAsPlayer(true)} className="absolute top-4 left-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-cyan-400 transition-all z-50 backdrop-blur-md" title="Switch to Player View"><Gamepad2 size={24} /></button>
         {showAdminHelp && <HelpModal onClose={() => setShowAdminHelp(false)} type="admin" />}
         <button onClick={() => setShowAdminHelp(true)} className="absolute top-4 right-4 bg-white/10 p-3 rounded-full hover:bg-white/20 border border-white/10 text-yellow-400 transition-all backdrop-blur-md z-50"><HelpCircle size={24} /></button>
@@ -2205,6 +2214,9 @@ const showDrinkAlert = calculateDrinkPenalty();
    PEGAR ESTO EN LUGAR DE <GameInterface ... />
    ======================================================================== */
 <div className="flex-1 w-full max-w-md mx-auto flex flex-col animate-in fade-in duration-500">
+    {/* --- FIX: Componentes de Alerta para el Admin --- */}
+    <CustomSuccess />
+    <CustomAlert />
     
     {/* --- 1. TARJETA DEL DESAFÍO --- */}
     {isAdmin && !viewAsPlayer && gameState?.isAutoMode && (
