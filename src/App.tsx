@@ -2501,6 +2501,7 @@ const showDrinkAlert = calculateDrinkPenalty();
         </div>
     )}
 </div>  
+</>
                 )
             )}
         </div>
