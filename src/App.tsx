@@ -915,6 +915,33 @@ useEffect(() => {
     });
     showSuccess("Request sent🔥");
 };
+
+// --- SISTEMA DE MENSAJERÍA ---
+
+  // 1. Enviar Mensaje (Sender)
+  const handleSendMessage = async (targetUid: string, targetName: string) => {
+    // Pedimos el texto al usuario
+    const msg = window.prompt(`Message for ${targetName}:`);
+    
+    // Si cancela o lo deja vacío, no hacemos nada
+    if (!msg || msg.trim() === "") return;
+
+    // Escribimos en el perfil del DESTINATARIO (targetUid)
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', targetUid), {
+        incomingMessage: msg.trim()
+    });
+    showSuccess(`Message sent to ${targetName} 📨`);
+};
+
+// 2. Borrar Mensaje (Receiver)
+const handleDismissMessage = async () => {
+    if (!user) return;
+    // Borramos el campo del mensaje en MI perfil para que desaparezca el cartel
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
+        incomingMessage: null 
+    });
+};
+
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
@@ -1267,8 +1294,21 @@ const resetGame = async () => {
       <div className={`w-full p-2 mb-2 flex flex-col items-center gap-2 max-h-40 overflow-y-auto ${glassPanel}`}>
           <div className="w-full text-xs text-center text-cyan-300 uppercase font-black tracking-[0.2em] border-b border-white/10 pb-1 mb-1">Scoreboard</div>
           <div className="flex flex-wrap gap-2 justify-center w-full">
-            {players.map(p => (
-                <div key={p.uid} className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border ${p.isBot ? 'bg-purple-900/30 border-purple-500/50' : 'bg-white/10 border-white/10'}`}>
+          {players.map(p => (
+                <div key={p.uid} className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border transition-all ${p.isBot ? 
+                'bg-purple-900/30 border-purple-500/50' : 'bg-white/10 border-white/10'}`}>
+                    
+                    {/* Botón de Mensaje (Solo si no soy yo mismo y no es Bot) */}
+                    {!p.isBot && p.uid !== user?.uid && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); handleSendMessage(p.uid, p.name); }}
+                            className="text-white/50 hover:text-cyan-400 transition-colors"
+                            title={`Message ${p.name}`}
+                        >
+                            <MessageCircle size={14} />
+                        </button>
+                    )}
+
                     <span className="font-bold text-white">{p.name}</span>
                     <span className="text-yellow-400 font-black">{gameState?.points?.[p.uid] || 0}</span>
                     {isAdmin && (<button onClick={(e) => { e.stopPropagation(); handleKickPlayer(p.uid, p.name); }} className="text-red-400 hover:text-red-200 transition-colors" title="Reset Player"><Trash2 size={12}/></button>)}
@@ -2499,6 +2539,40 @@ const showDrinkAlert = calculateDrinkPenalty();
             )}
         </div>
         <CustomAlert/>
+        {/* --- COMPONENTE: VISOR DE MENSAJES (RECEPTOR) --- */}
+        {(() => {
+            const myPlayer = players.find(p => p.uid === user?.uid);
+            // @ts-ignore 
+            const msg = myPlayer?.incomingMessage;
+
+            if (msg) {
+                return (
+                    <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+                        <div className="bg-gradient-to-br from-indigo-900 to-purple-900 border border-white/20 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400"></div>
+                            
+                            <MessageCircle size={48} className="text-white mx-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] animate-bounce" />
+                            
+                            <h3 className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">New Message</h3>
+                            
+                            <div className="text-2xl font-black text-white mb-8 leading-tight font-mono break-words">
+                                "{msg}"
+                            </div>
+
+                            <button 
+                                onClick={handleDismissMessage}
+                                className="w-full bg-white text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-white/20 flex items-center justify-center gap-2"
+                            >
+                                <Check size={20} />
+                                OK, Got it
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+            return null;
+        })()}
+
     </div>
 );
 }
