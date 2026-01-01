@@ -584,36 +584,15 @@ export default function TruthAndDareApp() {
     }
   }, [players, user]);
   // --- PEGA ESTO EN SU LUGAR ---
-  // --- DETECCIÓN DE ADMIN Y RESETEO DE ESTADO ---
+  // --- FIX: DETECCIÓN DE ADMIN SIN RESETEO AUTOMÁTICO ---
   useEffect(() => {
     const isNowAdmin = userName.toLowerCase().trim() === 'admin';
     setIsAdmin(isNowAdmin);
-
-    if (isNowAdmin) {
-      const autoCode = Math.floor(10000 + Math.random() * 90000).toString();
-      setCode(autoCode);
-      
-      // RESETEO AUTOMÁTICO DE PARÁMETROS DEL JUEGO
-      const resetGameParams = async () => {
-          try {
-              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
-                  code: autoCode, // Actualizamos el código en la BD
-                  mode: 'lobby',
-                  roundLevel: '1',     // Reset Risk Level
-                  nextType: 'truth',   // Reset Type
-                  isAutoMode: false,   // Reset Auto Mode
-                  answers: {},
-                  votes: {},
-                  currentTurnIndex: 0,
-                  isEnding: false
-              });
-          } catch(e) { console.error("Auto reset failed", e); }
-      };
-      resetGameParams();
-
-    } else {
-      if (code && code.length > 5) setCode(''); 
-    }
+    
+    // Si soy admin y refresco la página, NO reseteamos nada automáticamente.
+    // El 'gameState' vendrá de Firebase y recuperaremos la sesión tal cual estaba.
+    // Si quieres reiniciar, usarás el botón manual de "RESET ALL".
+    
   }, [userName]);
 
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
@@ -818,6 +797,8 @@ useEffect(() => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
+        // --- FIX: Si ya existe un código en la nube, úsalo en mi local ---
+        if (data.code) setCode(data.code);
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
         if (data.roundLevel && data.roundLevel !== selectedLevel) setSelectedLevel(data.roundLevel);
         if (data.nextType && data.nextType !== selectedType) setSelectedType(data.nextType);
@@ -1069,16 +1050,21 @@ const toggleDrinkMode = async () => {
   
 // --- FUNCIÓN DE RESETEO (PEGAR ANTES DEL RETURN) ---
 const resetGame = async () => {
-    if (!window.confirm("⚠️ ¿RESET TOTAL? Esto expulsará a TODOS los jugadores (incluido tú) y reiniciará el código.")) return;
-
+    // Si estoy dentro del juego (isJoined), pido confirmación. Si estoy fuera (solo generando código), no hace falta ser tan dramático.
+    if (isJoined && !window.confirm("⚠️ ¿RESET TOTAL? Esto expulsará a todos los jugadores.")) return;
+    
     try {
-      // 1. Borrar jugadores uno por uno
+      setLoading(true); // Feedback visual
+      
+      // 1. Borrar jugadores de la BD (Limpieza)
       const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
       const snapshot = await getDocs(playersRef);
+      // Borramos todos MENOS al admin si queremos que se quede (opcional), 
+      // pero para un reset limpio, mejor borrar todo y que el Admin se vuelva a unir.
       const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
       await Promise.all(deletePromises);
 
-      // 2. Generar nuevo código y reiniciar juego
+      // 2. Generar nuevo código
       const newCode = Math.floor(10000 + Math.random() * 90000).toString();
       
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data'), {
@@ -1086,16 +1072,26 @@ const resetGame = async () => {
         mode: 'lobby',
         currentTurn: null,
         loopSequence: [],
-        lastAction: 'RESET_ALL' // Esto avisará a los clientes que se reinicien
+        lastAction: 'RESET_ALL',
+        // Aseguramos que el adminUid siga siendo el tuyo si estás logueado
+        adminUid: user?.uid 
       });
 
-      // 3. Forzar salida local del Admin (para que vea la pantalla de inicio)
-      setIsJoined(false);
-      setUserName('');
-      // Opcional: window.location.reload(); para asegurar limpieza total
+      // 3. Actualizar estado local SIN borrar tu identidad
+      setCode(newCode); // Actualizamos tu vista local inmediatamente
+      
+      // Si estabas DENTRO del juego, te sacamos al Lobby para que te vuelvas a unir limpiamente,
+      // PERO NO BORRAMOS TU NOMBRE 'admin'.
+      if (isJoined) {
+          setIsJoined(false); 
+          // setUserName(''); <--- ELIMINADO: Ya no te borra el nombre
+      }
+      
+      setLoading(false);
 
     } catch (error) {
       console.error("Error reset:", error);
+      setLoading(false);
     }
   };
 
@@ -1278,14 +1274,26 @@ const resetGame = async () => {
                 
                 {/* 3. CÓDIGO (AQUÍ ESTÁ EL ARREGLO VISUAL) */}
                 {userName.toLowerCase().trim() === 'admin' ? (
-                   /* ---> SI SOY ADMIN: VEO MI CÓDIGO GIGANTE (NO INPUT) <--- */
+                   /* ---> SI SOY ADMIN: VEO MI CÓDIGO GIGANTE Y BOTÓN RESET <--- */
                    <div className="mb-8 w-full relative group animate-in zoom-in">
                       <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+          
                       <div className="relative w-full py-4 bg-black/80 border border-white/10 rounded-xl flex flex-col items-center justify-center">
                           <span className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Your Party Code</span>
                           <span className="text-3xl font-black font-mono tracking-[0.3em] text-white shadow-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                            {code || '...'}
-                          </span> 
+                             {code || '...'}
+                          </span>
+                          
+                          {/* --- NUEVO BOTÓN: GENERAR / RESETEAR CÓDIGO --- */}
+                          <button 
+                              onClick={(e) => {
+                                  e.stopPropagation();
+                                  resetGame(); // Usamos la función de reset que ya tienes
+                              }}
+                              className="mt-2 text-[10px] bg-red-900/30 hover:bg-red-600 text-red-200 hover:text-white px-3 py-1 rounded border border-red-500/30 transition-all uppercase tracking-widest font-bold z-20"
+                          >
+                              {code ? '↻ Reset Code' : '⚡ Generate Code'}
+                          </button>
                       </div>
                    </div>
                 ) : (
