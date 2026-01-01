@@ -878,42 +878,35 @@ useEffect(() => {
   // 1. Referencia para evitar notificaciones repetidas al recargar 
   const lastRequestTsRef = useRef(0);
 
-  // 2. Escucha MEJORADA (Solo para Admin): Busca el nombre real en la lista local
+  // 2. Escucha FIX FINAL: Leemos directamente el nombre que llegó
   useEffect(() => {
-    // Verificamos que exista una petición y que tenga un timestamp (ts)
     if (isAdmin && gameState?.riskRequest?.ts) {
         const req = gameState.riskRequest;
         
-        // Si el timestamp es diferente al último que vimos, es una NUEVA petición
+        // Si el timestamp es nuevo...
         if (req.ts !== lastRequestTsRef.current) {
             lastRequestTsRef.current = req.ts;
             
-            // ESTRATEGIA ROBUSTA:
-            // 1. Intentamos buscar al jugador en mi lista de Admin usando el UID (lo más seguro)
-            // 2. Si no, usamos el nombre que venía en la petición
-            // 3. Si todo falla, ponemos "Someone"
-            const playerObj = players.find(p => p.uid === req.uid);
-            const displayName = playerObj ? playerObj.name : (req.name || 'Someone');
+            // Leemos el nombre que nos envió el jugador en el Paso 1
+            const displayName = req.name || "Someone";
 
-            // Feedback físico y visual
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
             showSuccess(`🔥 ${displayName} asks: HIGHER RISK!`);
         }
     }
-}, [gameState?.riskRequest, isAdmin, players]);
+}, [gameState?.riskRequest, isAdmin]);
 
   // 3. Función del Jugador: Enviar petición (MEJORADA)
   const handleRequestRisk = async () => {
     if (!user) return;
     
-    // Buscamos el nombre real en la lista de jugadores para asegurar que no vaya vacío
-    const myPlayer = players.find(p => p.uid === user.uid);
-    const realName = myPlayer ? myPlayer.name : (userName || 'Anonymous');
+    // FIX: Enviamos directamente el nombre local.
+    const nameToSend = (userName && userName.trim() !== '') ? userName : "Unknown Player";
 
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
         riskRequest: {
             uid: user.uid,
-            name: realName, 
+            name: nameToSend, // <--- Aquí enviamos el nombre explícitamente
             ts: Date.now()
         }
     });
