@@ -875,7 +875,7 @@ useEffect(() => {
   const handleKickPlayer = async (uid: string, name: string) => { if(confirm(`Reset player ${name}?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid)); } };
   // --- NUEVO: Solicitud de Riesgo ---
   
-  // 1. Referencia para evitar notificaciones repetidas al recargar
+  // 1. Referencia para evitar notificaciones repetidas al recargar 
   const lastRequestTsRef = useRef(0);
 
   // 2. Escucha (Solo para Admin): Muestra alerta cuando alguien pide riesgo
