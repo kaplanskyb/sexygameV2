@@ -873,6 +873,39 @@ useEffect(() => {
   const showSuccess = (msg: string) => { setCustomSuccess(msg); setTimeout(() => setCustomSuccess(null), 3000); };
   const handleUpdateName = async () => { if (!newName.trim() || !user) return; try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { name: newName }); setUserName(newName); localStorage.setItem('td_username', newName); setIsEditingName(false); } catch (e) { showError("Could not update name."); } };
   const handleKickPlayer = async (uid: string, name: string) => { if(confirm(`Reset player ${name}?`)) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid)); } };
+  // --- NUEVO: Solicitud de Riesgo ---
+  
+  // 1. Referencia para evitar notificaciones repetidas al recargar
+  const lastRequestTsRef = useRef(0);
+
+  // 2. Escucha (Solo para Admin): Muestra alerta cuando alguien pide riesgo
+  useEffect(() => {
+      if (isAdmin && gameState?.riskRequest) {
+          const req = gameState.riskRequest;
+          // Si el timestamp es nuevo (mayor al último visto)
+          if (req.ts > lastRequestTsRef.current) {
+              lastRequestTsRef.current = req.ts;
+              // Evitamos notificar si la petición es muy vieja (ej. al recargar página)
+              if (Date.now() - req.ts < 5000) {
+                  showSuccess(`🔥 ${req.name} asks: HIGHER RISK!`);
+              }
+          }
+      }
+  }, [gameState?.riskRequest, isAdmin]);
+
+  // 3. Función del Jugador: Enviar petición
+  const handleRequestRisk = async () => {
+      if (!user) return;
+      // Guardamos en la BD quién pide y cuándo
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), {
+          riskRequest: {
+              uid: user.uid,
+              name: userName,
+              ts: Date.now()
+          }
+      });
+      showSuccess("Request sent to Admin! 🔥");
+  };
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
@@ -1957,11 +1990,24 @@ const resetGame = async () => {
                 {gameState?.mode === 'lobby' ? (
                    <div className="text-2xl font-bold animate-pulse mb-2 text-cyan-400">WAITING FOR THE PLAYERS TO JOIN</div>
                 ) : (
-                   <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>
+                   <div className="text-2xl font-bold animate-pulse mb-2 text-yellow-400">GAME IN PROGRESS...</div>  
                 )}
             </div>
             
-            <div className="mt-auto w-full flex justify-center pb-8"><button onClick={handleSelfLeave} className="text-red-500/50 hover:text-red-500 flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><LogOut size={14}/> Reset Player</button></div>
+            {/* --- NUEVO BOTÓN: PEDIR MÁS RIESGO --- */}
+            <div className="mt-auto w-full flex flex-col items-center gap-4 pb-8">
+                <button 
+                    onClick={handleRequestRisk}
+                    className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-full font-black uppercase tracking-widest shadow-[0_0_20px_rgba(234,88,12,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-xs animate-pulse-slow"
+                >
+                    <Flame size={16} className="text-yellow-300" />
+                    RAISE HEAT
+                </button>
+                
+                <button onClick={handleSelfLeave} className="text-red-500/50 hover:text-red-500 flex items-center gap-2 text-xs uppercase tracking-widest transition-colors">
+                    <LogOut size={14}/> Reset Player
+                </button>
+            </div>
         </div>
       );
   }
