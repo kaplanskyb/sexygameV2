@@ -2128,11 +2128,11 @@ const showDrinkAlert = calculateDrinkPenalty();
                         <Settings size={20} />
                     </button>
                 )}
-                {/* Código Pequeño en Header */}
-                 <div className="text-xs hidden sm:block animate-in fade-in slide-in-from-left-5">
-                    <p className="text-white/50 uppercase tracking-widest">Party Code</p>
-                    <p className="text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
-                        {gameState?.code || code}
+                {/* Código Pequeño en Header - VISIBLE SIEMPRE */}
+                <div className="text-xs animate-in fade-in slide-in-from-left-5 text-right sm:text-left">
+                    <p className="text-[8px] sm:text-xs text-white/50 uppercase tracking-widest">Party Code</p>
+                    <p className="text-lg sm:text-xl font-black text-pink-500 font-mono tracking-widest drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]">
+                        {gameState?.code || code || '...'}
                     </p>
                 </div>
             </div>
@@ -2462,6 +2462,18 @@ const showDrinkAlert = calculateDrinkPenalty();
              </div>
          )}
     </div>
+    {/* --- BOTÓN DE RIESGO (VISIBLE SIEMPRE EN EL JUEGO) --- */}
+    {!isAdmin && (
+        <div className="mt-8 w-full flex justify-center pb-8 animate-in slide-in-from-bottom-4">
+             <button 
+                onClick={handleRequestRisk}
+                className="bg-gradient-to-r from-orange-900/80 to-red-900/80 text-orange-200 border border-orange-500/50 px-6 py-2 rounded-full font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-[10px]"
+            >
+                <Flame size={12} className="text-orange-400" />
+                Raise Heat
+            </button>
+        </div>
+    )}
 </div>  
                 )
             )}
