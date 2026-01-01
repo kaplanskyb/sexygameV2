@@ -878,7 +878,7 @@ useEffect(() => {
   // 1. Referencia para evitar notificaciones repetidas al recargar 
   const lastRequestTsRef = useRef(0);
 
-  // 2. Escucha MEJORADA (Solo para Admin): Muestra alerta y vibra
+  // 2. Escucha MEJORADA (Solo para Admin): Busca el nombre real en la lista local
   useEffect(() => {
     // Verificamos que exista una petición y que tenga un timestamp (ts)
     if (isAdmin && gameState?.riskRequest?.ts) {
@@ -888,12 +888,19 @@ useEffect(() => {
         if (req.ts !== lastRequestTsRef.current) {
             lastRequestTsRef.current = req.ts;
             
+            // ESTRATEGIA ROBUSTA:
+            // 1. Intentamos buscar al jugador en mi lista de Admin usando el UID (lo más seguro)
+            // 2. Si no, usamos el nombre que venía en la petición
+            // 3. Si todo falla, ponemos "Someone"
+            const playerObj = players.find(p => p.uid === req.uid);
+            const displayName = playerObj ? playerObj.name : (req.name || 'Someone');
+
             // Feedback físico y visual
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]); // Vibrar doble
-            showSuccess(`🔥 ${req.name} asks: HIGHER RISK!`);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
+            showSuccess(`🔥 ${displayName} asks: HIGHER RISK!`);
         }
     }
-}, [gameState?.riskRequest, isAdmin]);
+}, [gameState?.riskRequest, isAdmin, players]);
 
   // 3. Función del Jugador: Enviar petición (MEJORADA)
   const handleRequestRisk = async () => {
