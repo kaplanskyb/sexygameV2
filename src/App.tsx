@@ -797,6 +797,8 @@ useEffect(() => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameState;
         setGameState(data);
+        // --- FIX: Restaurar código al refrescar ---
+        if (data.code) setCode(data.code);
         // --- FIX: Si ya existe un código en la nube, úsalo en mi local ---
         if (data.code) setCode(data.code);
         if (data.isAutoMode !== undefined) setIsAutoSetup(data.isAutoMode);
@@ -891,7 +893,8 @@ useEffect(() => {
             const displayName = req.name || "Someone";
 
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
-            showSuccess(`🔥 ${displayName} asks: HIGHER RISK!`);
+            // Usamos \n para el salto de línea (soportado por el Paso 1)
+            showSuccess(`🔥 ${displayName}\nHEAT IT UP!`);
         }
     }
 }, [gameState?.riskRequest, isAdmin]);
@@ -910,7 +913,7 @@ useEffect(() => {
             ts: Date.now()
         }
     });
-    showSuccess("Request sent to Admin! 🔥");
+    showSuccess("Request sent🔥");
 };
   const handleSelfLeave = async () => { if (!user) return; if (confirm("Are you sure you want to leave and reset?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); } };
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
@@ -1229,7 +1232,12 @@ const resetGame = async () => {
 
   // --- COMPONENTS ---
   const CustomAlert = () => customError ? ( <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-[150]"> <div className={`p-6 max-w-md text-center ${glassPanel} border-red-500/50`}> <AlertTriangle className="mx-auto text-red-500 mb-2" size={40}/> <p className="text-white mb-4 whitespace-pre-line font-medium">{customError}</p> <button onClick={closeError} className="bg-red-600/80 hover:bg-red-500 px-6 py-2 rounded font-bold transition-colors">OK</button> </div> </div> ) : null;
-  const CustomSuccess = () => customSuccess ? ( <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-2 z-[150] animate-in fade-in slide-in-from-top-4"> <CheckCircle size={20} /> <span className="font-bold">{customSuccess}</span> </div> ) : null;
+  const CustomSuccess = () => customSuccess ? ( 
+    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-emerald-900/90 border border-emerald-500/50 text-emerald-100 px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 z-[200] animate-in fade-in slide-in-from-top-2 backdrop-blur-md"> 
+        <CheckCircle size={16} className="text-emerald-400" /> 
+        <span className="font-bold text-xs whitespace-pre-line text-center leading-tight">{customSuccess}</span> 
+    </div> 
+) : null;
   
   const MyMatchHistory = () => {
       const myUid = user?.uid;
