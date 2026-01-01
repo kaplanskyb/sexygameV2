@@ -512,25 +512,67 @@ export default function TruthAndDareApp() {
   const [bulkGender, setBulkGender] = useState('');
   const [isAutoSetup, setIsAutoSetup] = useState(false);
   const [qtyTruth, setQtyTruth] = useState(1);
-  const updateQtyTruth = (value: number) => {
-    if (value < 0) return;
-    setQtyTruth(value);
-    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyTruth: value });
-};
-
-const updateQtyDare = (value: number) => {
-    if (value < 0) return;
-    setQtyDare(value);
-    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyDare: value });
-};
-
-const updateQtyMM = (value: number) => {
-    if (value < 0) return;
-    setQtyMM(value);
-    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { qtyMM: value });
-};
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
+
+  // --- FIX FINAL: Lógica de Cantidades ---
+
+  // 1. Sincronización INTELIGENTE: Solo carga los datos de la DB si cambia el modo de juego
+  // Esto evita el "parpadeo" o que se borre lo que escribes.
+  useEffect(() => {
+      if (gameState && gameState.mode) {
+          if (typeof gameState.qtyTruth === 'number') setQtyTruth(gameState.qtyTruth);
+          if (typeof gameState.qtyDare === 'number') setQtyDare(gameState.qtyDare);
+          if (typeof gameState.qtyMM === 'number') setQtyMM(gameState.qtyMM);
+      }
+  }, [gameState?.mode]); 
+
+  // 2. Helper para recalcular la secuencia futura
+  const rebuildSequence = (t: number, d: number, m: number) => {
+      const newSeq = [];
+      for(let i=0; i<t; i++) newSeq.push('question');
+      for(let i=0; i<d; i++) newSeq.push('dare');
+      for(let i=0; i<m; i++) newSeq.push('yn');
+      return newSeq;
+  };
+
+  // 3. Funciones de actualización (Prioridad Local)
+  const updateQtyTruth = (value: number) => {
+    const val = value < 0 ? 0 : value;
+    setQtyTruth(val); // 1. Actualiza TU pantalla inmediatamente
+    
+    // 2. Calcula la nueva secuencia
+    const newSeq = rebuildSequence(val, qtyDare, qtyMM);
+    
+    // 3. Envía a la nube forzando el modo auto
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
+        qtyTruth: val,
+        sequence: newSeq,
+        isAutoMode: true 
+    }).catch(e => console.error(e));
+  };
+
+  const updateQtyDare = (value: number) => {
+    const val = value < 0 ? 0 : value;
+    setQtyDare(val);
+    const newSeq = rebuildSequence(qtyTruth, val, qtyMM);
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
+        qtyDare: val,
+        sequence: newSeq,
+        isAutoMode: true 
+    }).catch(e => console.error(e));
+  };
+
+  const updateQtyMM = (value: number) => {
+    const val = value < 0 ? 0 : value;
+    setQtyMM(val);
+    const newSeq = rebuildSequence(qtyTruth, qtyDare, val);
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { 
+        qtyMM: val,
+        sequence: newSeq,
+        isAutoMode: true 
+    }).catch(e => console.error(e));
+  };
   const [fetchedCard, setFetchedCard] = useState<Challenge | null>(null);
   const [showRiskInfo, setShowRiskInfo] = useState(false);
 
@@ -1805,23 +1847,46 @@ const resetGame = async () => {
             </div>
         </div>
         
+        {/* --- FIX: Inputs editables en tiempo real --- */}
         {gameState?.isAutoMode && (
-            
-    <div className="flex gap-3 animate-in fade-in mb-6 mt-6">
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
-            <div className="w-full bg-transparent text-center border border-cyan-500/30 rounded p-2 text-white font-mono text-2xl">{qtyTruth}</div>
-        </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
-            <div className="w-full bg-transparent text-center border border-pink-500/30 rounded p-2 text-white font-mono text-2xl">{qtyDare}</div>
-        </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
-            <div className="w-full bg-transparent text-center border border-emerald-500/30 rounded p-2 text-white font-mono text-2xl">{qtyMM}</div>
-        </div>
-    </div>
-)}
+            <div className="bg-black/40 p-4 rounded-2xl border border-white/10 mb-6 mt-6 animate-in slide-in-from-top-2">
+                <div className="text-[10px] text-cyan-400 font-black uppercase tracking-[0.2em] mb-3 text-center">
+                    Adjust Loop Sequence
+                </div>
+                <div className="flex gap-3">
+                    <div className="flex-1 text-center">
+                        <div className="text-[10px] text-cyan-400 font-bold uppercase mb-1">Truth</div>
+                        <input 
+                            type="number" 
+                            min="0" 
+                            value={qtyTruth} 
+                            onChange={(e) => updateQtyTruth(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                            className="w-full bg-black/60 border border-cyan-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-cyan-400 transition-all"
+                        />
+                    </div>
+                    <div className="flex-1 text-center">
+                        <div className="text-[10px] text-pink-400 font-bold uppercase mb-1">Dare</div>
+                        <input 
+                            type="number" 
+                            min="0" 
+                            value={qtyDare} 
+                            onChange={(e) => updateQtyDare(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                            className="w-full bg-black/60 border border-pink-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-pink-400 transition-all"
+                        />
+                    </div>
+                    <div className="flex-1 text-center">
+                        <div className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Match</div>
+                        <input 
+                            type="number" 
+                            min="0" 
+                            value={qtyMM} 
+                            onChange={(e) => updateQtyMM(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                            className="w-full bg-black/60 border border-emerald-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-emerald-400 transition-all"
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto">
           <div className={`w-full p-6 rounded-3xl text-center mb-4 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[160px] relative border-2`}>
               <div className="absolute top-4 left-4 text-[10px] font-black opacity-80 uppercase tracking-[0.2em] text-white bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
@@ -2089,39 +2154,44 @@ const showDrinkAlert = calculateDrinkPenalty();
     
     {/* --- 1. TARJETA DEL DESAFÍO --- */}
     {isAdmin && !viewAsPlayer && gameState?.isAutoMode && (
-    <div className="flex gap-3 animate-in fade-in mb-6 mt-4">
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-cyan-400 font-bold uppercase tracking-wide mb-1">Truth</div>
-            <input 
-                type="number" 
-                min="0" 
-                value={qtyTruth} 
-                onChange={(e) => updateQtyTruth(parseInt(e.target.value) || 0)}
-                className="w-full bg-black/40 border border-cyan-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-cyan-400"
-            />
+        <div className="bg-black/40 p-4 rounded-2xl border border-white/10 mb-6 animate-in slide-in-from-top-2">
+            <div className="text-[10px] text-cyan-400 font-black uppercase tracking-[0.2em] mb-3 text-center">
+                Adjust Loop Sequence
+            </div>
+            <div className="flex gap-3">
+                <div className="flex-1 text-center">
+                    <div className="text-[10px] text-cyan-400 font-bold uppercase mb-1">Truth</div>
+                    <input 
+                        type="number" 
+                        min="0" 
+                        value={qtyTruth} 
+                        onChange={(e) => updateQtyTruth(parseInt(e.target.value) || 0)}
+                        className="w-full bg-black/60 border border-cyan-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-cyan-400"
+                    />
+                </div>
+                <div className="flex-1 text-center">
+                    <div className="text-[10px] text-pink-400 font-bold uppercase mb-1">Dare</div>
+                    <input 
+                        type="number" 
+                        min="0" 
+                        value={qtyDare} 
+                        onChange={(e) => updateQtyDare(parseInt(e.target.value) || 0)}
+                        className="w-full bg-black/60 border border-pink-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-pink-400"
+                    />
+                </div>
+                <div className="flex-1 text-center">
+                    <div className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Match</div>
+                    <input 
+                        type="number" 
+                        min="0" 
+                        value={qtyMM} 
+                        onChange={(e) => updateQtyMM(parseInt(e.target.value) || 0)}
+                        className="w-full bg-black/60 border border-emerald-500/30 rounded-lg py-2 text-white font-mono text-xl text-center outline-none focus:border-emerald-400"
+                    />
+                </div>
+            </div>
         </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-pink-400 font-bold uppercase tracking-wide mb-1">Dare</div>
-            <input 
-                type="number" 
-                min="0" 
-                value={qtyDare} 
-                onChange={(e) => updateQtyDare(parseInt(e.target.value) || 0)}
-                className="w-full bg-black/40 border border-pink-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-pink-400"
-            />
-        </div>
-        <div className="flex-1 text-center bg-black/20 rounded-lg p-3 border border-white/10">
-            <div className="text-sm text-emerald-400 font-bold uppercase tracking-wide mb-1">Match</div>
-            <input 
-                type="number" 
-                min="0" 
-                value={qtyMM} 
-                onChange={(e) => updateQtyMM(parseInt(e.target.value) || 0)}
-                className="w-full bg-black/40 border border-emerald-500/50 rounded px-2 py-1 text-white font-mono text-2xl text-center outline-none focus:border-emerald-400"
-            />
-        </div>
-    </div>
-)}
+    )}
     <div className={`w-full p-8 rounded-3xl text-center mb-6 transition-all duration-700 ${cardStyle} flex flex-col items-center justify-center min-h-[240px] relative border-2 shadow-2xl group`}>
         {/* Etiqueta Superior */}
         <div className="absolute -top-3 bg-black/80 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1 rounded-full border border-white/20 backdrop-blur-md shadow-xl">
