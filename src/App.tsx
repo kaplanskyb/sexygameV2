@@ -591,15 +591,19 @@ export default function TruthAndDareApp() {
     }
   }, [players, user]);
   // --- PEGA ESTO EN SU LUGAR ---
-  // --- FIX: DETECCIÓN DE ADMIN SIN RESETEO AUTOMÁTICO ---
+  // --- FIX: DETECCIÓN DE ADMIN MEJORADA (PERMITE CAMBIO DE NOMBRE) ---
   useEffect(() => {
-    const isNowAdmin = userName.toLowerCase().trim() === 'admin';
-    setIsAdmin(isNowAdmin);
-    
-    // Si soy admin y refresco la página, NO reseteamos nada automáticamente.
-    // El 'gameState' vendrá de Firebase y recuperaremos la sesión tal cual estaba.
-    // Si quieres reiniciar, usarás el botón manual de "RESET ALL".
-    
+    // 1. Si escribes "admin", te conviertes en admin y lo guardamos
+    if (userName.toLowerCase().trim() === 'admin') {
+        setIsAdmin(true);
+        localStorage.setItem('td_is_admin_role', 'true');
+    }
+
+    // 2. Si ya eras admin (por localStorage), recuperamos el poder
+    // Esto permite que te cambies el nombre a "Pepito" y sigas siendo Admin
+    if (localStorage.getItem('td_is_admin_role') === 'true') {
+        setIsAdmin(true);
+    }
   }, [userName]);
 
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
@@ -655,6 +659,7 @@ useEffect(() => {
   const [viewSwitchTipShown, setViewSwitchTipShown] = useState(false);
   const [backToAdminTipShown, setBackToAdminTipShown] = useState(false);
   const [startRoundTipShown, setStartRoundTipShown] = useState(false);
+  const [adminNickname, setAdminNickname] = useState(''); // <--- NUEVO
   // Status to track sequence "Tell Code" -> "Wait Players"
   const [lobbySequence, setLobbySequence] = useState<'none' | 'tellingCode' | 'waitingPlayers'>('none');
 
@@ -931,10 +936,18 @@ useEffect(() => {
   const checkCouplesCompleteness = () => { const couples = players.filter(p => p.relationshipStatus === 'couple'); const counts: Record<string, number> = {}; couples.forEach(p => counts[p.coupleNumber] = (counts[p.coupleNumber] || 0) + 1); const incompleteIds = Object.keys(counts).filter(id => counts[id] !== 2); return { valid: incompleteIds.length === 0, incompleteIds }; };
 
   const createGame = async (codeOverride?: any) => {
-    if (!userName.trim()) {
+    // --- LÓGICA DE NOMBRE DE ADMIN ---
+    // Si escribí "admin" Y puse un apodo, usamos el apodo. Si no, usamos lo que haya.
+    const finalName = (userName.toLowerCase().trim() === 'admin' && adminNickname.trim()) 
+        ? adminNickname.trim() 
+        : userName;
+
+    if (!finalName) {
         alert("⛔ ERROR: Please enter a Nickname.");
         return;
     }
+    // Actualizamos el estado visual localmente para que veas tu nuevo nombre
+    if (finalName !== userName) setUserName(finalName);
     if (!gender || !relationshipStatus) {
         alert("⛔ ERROR: Please select Gender and Status.");
         return;
@@ -972,7 +985,7 @@ useEffect(() => {
     // 2. Crear Jugador Admin (USANDO finalCoupleNumber)
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
       uid: user.uid, 
-      name: userName, 
+      name: finalName, 
       gender: gender, 
       relationshipStatus: relationshipStatus, 
       // AQUÍ ESTÁ LA SOLUCIÓN: Usamos la variable local, no el estado lento
@@ -1316,8 +1329,23 @@ const resetGame = async () => {
                 {/* 1. INPUT NOMBRE */}
                 <div className="relative mb-4 w-full">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20}/>
-                    <input type="text" placeholder="" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) alert("Nickname cannot be empty!"); }} maxLength={12}/>
-                </div>
+                    <input type="text" placeholder="" className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-yellow-400 placeholder:text-white/20 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-pink-500 transition-all" value={userName} onChange={e=>setUserName(e.target.value)} maxLength={12}/>
+</div>
+
+{/* --- NUEVO: CAMPO PARA EL NOMBRE REAL DEL ADMIN --- */}
+{userName.toLowerCase().trim() === 'admin' && (
+    <div className="relative mb-4 w-full animate-in fade-in slide-in-from-top-2">
+        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400" size={20}/>
+        <input 
+            type="text" 
+            placeholder="Your Real Display Name" 
+            className="w-full pl-12 py-4 font-bold tracking-wider text-center text-xl text-cyan-400 placeholder:text-white/30 bg-cyan-900/20 border border-cyan-500/50 rounded-xl focus:outline-none focus:border-cyan-400 transition-all" 
+            value={adminNickname} 
+            onChange={e=>setAdminNickname(e.target.value)} 
+            maxLength={12}
+        />
+    </div>
+)}
                 
                 {/* 2. SELECTORES */}
                 <div className="grid grid-cols-2 gap-4 mb-6 w-full">
