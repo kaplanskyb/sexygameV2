@@ -1291,32 +1291,35 @@ const resetGame = async () => {
   };
   
   const ScoreBoard = () => (
-      <div className={`w-full p-2 mb-2 flex flex-col items-center gap-2 max-h-40 overflow-y-auto ${glassPanel}`}>
-          <div className="w-full text-xs text-center text-cyan-300 uppercase font-black tracking-[0.2em] border-b border-white/10 pb-1 mb-1">Scoreboard</div>
-          <div className="flex flex-wrap gap-2 justify-center w-full">
+    <div className={`w-full p-2 mb-2 flex flex-col items-center gap-2 max-h-40 overflow-y-auto ${glassPanel}`}>
+        <div className="w-full text-xs text-center text-cyan-300 uppercase font-black tracking-[0.2em] border-b border-white/10 pb-1 mb-1">Scoreboard</div>
+        <div className="flex flex-wrap gap-2 justify-center w-full">
           {players.map(p => (
-                <div key={p.uid} className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border transition-all ${p.isBot ? 
-                'bg-purple-900/30 border-purple-500/50' : 'bg-white/10 border-white/10'}`}>
-                    
-                    {/* Botón de Mensaje (Solo si no soy yo mismo y no es Bot) */}
-                    {!p.isBot && p.uid !== user?.uid && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleSendMessage(p.uid, p.name); }}
-                            className="text-white/50 hover:text-cyan-400 transition-colors"
-                            title={`Message ${p.name}`}
-                        >
-                            <MessageCircle size={14} />
-                        </button>
-                    )}
+              <div key={p.uid} className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border transition-all ${p.isBot ? 
+              'bg-purple-900/30 border-purple-500/50' : 'bg-white/10 border-white/10'}`}>
+                  
+                  {/* --- NUEVO: Botón de Mensaje (Izquierda del nombre) --- */}
+                  {/* No aparece si es un Bot o si soy yo mismo */}
+                  {!p.isBot && p.uid !== user?.uid && (
+                      <button 
+                          onClick={(e) => { e.stopPropagation(); handleSendMessage(p.uid, p.name); }}
+                          className="text-white/50 hover:text-cyan-400 transition-colors p-1"
+                          title={`Message ${p.name}`}
+                      >
+                          <MessageCircle size={14} />
+                      </button>
+                  )}
 
-                    <span className="font-bold text-white">{p.name}</span>
-                    <span className="text-yellow-400 font-black">{gameState?.points?.[p.uid] || 0}</span>
-                    {isAdmin && (<button onClick={(e) => { e.stopPropagation(); handleKickPlayer(p.uid, p.name); }} className="text-red-400 hover:text-red-200 transition-colors" title="Reset Player"><Trash2 size={12}/></button>)}
-                </div>
-            ))}
-          </div>
-      </div>
-  );
+                  <span className="font-bold text-white">{p.name}</span>
+                  <span className="text-yellow-400 font-black">{gameState?.points?.[p.uid] || 0}</span>
+                  
+                  {/* Botón Kick (Solo Admin) */}
+                  {isAdmin && (<button onClick={(e) => { e.stopPropagation(); handleKickPlayer(p.uid, p.name); }} className="text-red-400 hover:text-red-200 transition-colors ml-1" title="Reset Player"><Trash2 size={12}/></button>)}
+              </div>
+          ))}
+        </div>
+    </div>
+);
 
   // --- RENDER ---
   if (loading) return <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mb-4"></div><span className="animate-pulse">Loading System...</span></div>;
