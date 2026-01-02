@@ -615,20 +615,7 @@ export default function TruthAndDareApp() {
     }
   }, [userName, isJoined, adminNickname]); // <--- Agregamos adminNickname a las dependencias
 
-  // --- DETECTOR DE PENALIZACIÓN (DRAMA MODE) ---
-  useEffect(() => {
-    // Si el juego dice que es penalización y es MI turno
-    if (gameState?.isPenalty && isMyTurn()) {
-        setShowPenaltyOverlay(true);
-        if (navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibrar fuerte
-        
-        // Ocultar a los 4 segundos
-        const timer = setTimeout(() => setShowPenaltyOverlay(false), 4000);
-        return () => clearTimeout(timer);
-    } else {
-        setShowPenaltyOverlay(false);
-    }
-}, [gameState?.isPenalty, gameState?.currentTurnIndex, user?.uid]);
+  
 
   // --- DETECTOR DE PENALIZACIÓN (NUEVO EFFECT PARA LA PANTALLA ROJA) ---
   useEffect(() => {
@@ -1286,11 +1273,11 @@ const resetGame = async () => {
         const likeVotes = votes.filter(v => v === 'like').length;
         const dislikeVotes = votes.filter(v => v === 'dislike').length;
 
-        // Sumar puntos si corresponde
+        // Sumar puntos si ganó
         if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; 
 
-        // === NUEVA LÓGICA DE PENALIZACIÓN (SOBRIETY PUNISHMENT) ===
-        // Si no les gustó la respuesta (Dislike > Like) Y NO estamos en modo beber...
+        // === NUEVA LÓGICA DE PENALIZACIÓN (DRAMA MODE) ===
+        // Si hay más Dislikes que Likes Y el DrinkMode está APAGADO
         if (dislikeVotes > likeVotes && !gameState.isDrinkMode) {
              const currentPlayer = players[gameState.currentTurnIndex];
              // Buscamos inmediatamente un reto (DARE) del mismo nivel
@@ -1303,6 +1290,7 @@ const resetGame = async () => {
                  updates.answers = {}; // Limpiamos respuestas
                  updates.votes = {};   // Limpiamos votos
                  updates.points = points; // Guardamos los puntos calculados hasta ahora
+                 updates.isPenalty = true; // <--- ACTIVAMOS LA PANTALLA ROJA
                  
                  // IMPORTANTE: NO tocamos 'currentTurnIndex', así que sigue siendo turno del mismo jugador.
                  
@@ -1351,6 +1339,9 @@ const resetGame = async () => {
     updates.points = points; 
     
     // --- 2. CALCULAR SIGUIENTE JUGADOR (Si no hubo penalización) ---
+    // Importante: Si llegamos aquí, NO es penalización, así que apagamos la marca
+    updates.isPenalty = false;
+
     let roundFinished = false;
     if (gameState.mode === 'yn') { 
         roundFinished = true; 
