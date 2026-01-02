@@ -504,6 +504,7 @@ export default function TruthAndDareApp() {
   const [customSuccess, setCustomSuccess] = useState<string | null>(null);
   const [viewAsPlayer, setViewAsPlayer] = useState(false);
   const [showAdminHelp, setShowAdminHelp] = useState(false);
+  const [adminNickname, setAdminNickname] = useState(''); // <--- NUEVO
   const [showPlayerHelp, setShowPlayerHelp] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -682,7 +683,7 @@ useEffect(() => {
   const [viewSwitchTipShown, setViewSwitchTipShown] = useState(false);
   const [backToAdminTipShown, setBackToAdminTipShown] = useState(false);
   const [startRoundTipShown, setStartRoundTipShown] = useState(false);
-  const [adminNickname, setAdminNickname] = useState(''); // <--- NUEVO
+  
   // Status to track sequence "Tell Code" -> "Wait Players"
   const [lobbySequence, setLobbySequence] = useState<'none' | 'tellingCode' | 'waitingPlayers'>('none');
 
