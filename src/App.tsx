@@ -595,16 +595,23 @@ export default function TruthAndDareApp() {
   // --- PEGA ESTO EN SU LUGAR ---
   // --- FIX: DETECCIÓN DE ADMIN SEGURA (EVITA ADMIN FANTASMA) ---
   useEffect(() => {
+    // Solo gestionamos permisos dinámicos si estamos en el Lobby (antes de entrar)
     if (!isJoined) {
         if (userName.toLowerCase().trim() === 'admin') {
+            // Caso 1: Escribió la clave maestra
             setIsAdmin(true);
             localStorage.setItem('td_is_admin_role', 'true');
         } else {
-            setIsAdmin(false);
-            localStorage.removeItem('td_is_admin_role');
+            // Caso 2: Escribió otro nombre.
+            // FIX: Solo revocar si NO hay un "Admin Nickname" activo.
+            // Si adminNickname tiene texto, significa que soy el Admin cambiándome el nombre para jugar.
+            if (!adminNickname || adminNickname.trim() === '') {
+                setIsAdmin(false);
+                localStorage.removeItem('td_is_admin_role');
+            }
         }
     }
-  }, [userName, isJoined]);
+  }, [userName, isJoined, adminNickname]); // <--- Agregamos adminNickname a las dependencias
 
   // --- DETECTOR DE PENALIZACIÓN (NUEVO EFFECT PARA LA PANTALLA ROJA) ---
   useEffect(() => {
