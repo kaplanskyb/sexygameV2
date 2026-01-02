@@ -505,6 +505,7 @@ export default function TruthAndDareApp() {
   const [viewAsPlayer, setViewAsPlayer] = useState(false);
   const [showAdminHelp, setShowAdminHelp] = useState(false);
   const [adminNickname, setAdminNickname] = useState(''); // <--- NUEVO
+  const [showPenaltyOverlay, setShowPenaltyOverlay] = useState(false); // <--- ESTADO DEL CARTEL ROJO
   const [showPlayerHelp, setShowPlayerHelp] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -523,7 +524,7 @@ export default function TruthAndDareApp() {
   const [qtyTruth, setQtyTruth] = useState(1);
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
-  const [showPenaltyOverlay, setShowPenaltyOverlay] = useState(false); // <--- NUEVO ESTADO PARA LA PANTALLA ROJA
+
 
   // --- FIX FINAL: Lógica de Cantidades ---
 
@@ -613,6 +614,21 @@ export default function TruthAndDareApp() {
         }
     }
   }, [userName, isJoined, adminNickname]); // <--- Agregamos adminNickname a las dependencias
+
+  // --- DETECTOR DE PENALIZACIÓN (DRAMA MODE) ---
+  useEffect(() => {
+    // Si el juego dice que es penalización y es MI turno
+    if (gameState?.isPenalty && isMyTurn()) {
+        setShowPenaltyOverlay(true);
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibrar fuerte
+        
+        // Ocultar a los 4 segundos
+        const timer = setTimeout(() => setShowPenaltyOverlay(false), 4000);
+        return () => clearTimeout(timer);
+    } else {
+        setShowPenaltyOverlay(false);
+    }
+}, [gameState?.isPenalty, gameState?.currentTurnIndex, user?.uid]);
 
   // --- DETECTOR DE PENALIZACIÓN (NUEVO EFFECT PARA LA PANTALLA ROJA) ---
   useEffect(() => {
@@ -2705,6 +2721,29 @@ const showDrinkAlert = calculateDrinkPenalty();
                 )
             )}
         </div>
+        {/* --- PANTALLA DE PENALIZACIÓN (OVERLAY) --- */}
+{showPenaltyOverlay && (
+    <div className="fixed inset-0 z-[200] bg-red-950/95 flex flex-col items-center justify-center animate-in zoom-in duration-300 p-6 text-center">
+        <div className="animate-bounce mb-6">
+            <AlertTriangle size={80} className="text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]" />
+        </div>
+        
+        <h2 className="text-5xl font-black text-white uppercase tracking-tighter mb-2 drop-shadow-2xl">
+            YOU LOST!
+        </h2>
+        
+        <div className="w-full h-1 bg-red-500/50 rounded-full my-4"></div>
+        
+        <p className="text-xl text-red-200 font-bold uppercase tracking-widest mb-8">
+            The crowd wasn't convinced...
+        </p>
+        
+        <div className="bg-black/40 p-6 rounded-2xl border-2 border-red-500 animate-pulse w-full max-w-sm">
+            <p className="text-white text-sm font-mono uppercase mb-2">PUNISHMENT</p>
+            <p className="text-3xl font-black text-red-500">NOW YOU HAVE A DARE</p>
+        </div>
+    </div>
+)}
         <CustomAlert/>
     </div>
 );
