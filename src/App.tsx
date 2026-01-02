@@ -87,24 +87,25 @@ interface HistoryEntry {
     timestamp: number;
 }
 interface GameState {
-  mode: string;
-  isDrinkMode?: boolean;    
-  currentTurnIndex: number;
-  answers: Record<string, string>;
-  votes: Record<string, string>;
-  points: Record<string, number>;
-  code: string;
-  adminUid?: string | null;
-  currentChallengeId?: string;
-  pairs?: Record<string, string>;
-  roundLevel?: string;
-  isAutoMode?: boolean;
-  sequence?: string[];
-  sequenceIndex?: number;
-  matchHistory?: HistoryEntry[];
-  nextType?: string;
-  isEnding?: boolean;
-}
+    mode: string;
+    isDrinkMode?: boolean;    
+    currentTurnIndex: number;
+    answers: Record<string, string>;
+    votes: Record<string, string>;
+    points: Record<string, number>;
+    code: string;
+    adminUid?: string | null;
+    currentChallengeId?: string;
+    pairs?: Record<string, string>;
+    roundLevel?: string;
+    isAutoMode?: boolean;
+    sequence?: string[];
+    sequenceIndex?: number;
+    matchHistory?: HistoryEntry[];
+    nextType?: string;
+    isEnding?: boolean;
+    isPenalty?: boolean; // <--- AGREGADO: Para activar la pantalla roja
+  }
 
 // --- HELPER CSV PARSER ---
 const parseCSVLine = (text: string) => {
@@ -521,6 +522,7 @@ export default function TruthAndDareApp() {
   const [qtyTruth, setQtyTruth] = useState(1);
   const [qtyDare, setQtyDare] = useState(1);
   const [qtyMM, setQtyMM] = useState(1);
+  const [showPenaltyOverlay, setShowPenaltyOverlay] = useState(false); // <--- NUEVO ESTADO PARA LA PANTALLA ROJA
 
   // --- FIX FINAL: Lógica de Cantidades ---
 
@@ -593,22 +595,32 @@ export default function TruthAndDareApp() {
   // --- PEGA ESTO EN SU LUGAR ---
   // --- FIX: DETECCIÓN DE ADMIN SEGURA (EVITA ADMIN FANTASMA) ---
   useEffect(() => {
-    // Solo gestionamos permisos dinámicos si estamos en el Lobby (antes de entrar)
     if (!isJoined) {
         if (userName.toLowerCase().trim() === 'admin') {
-            // Caso 1: Escribió la clave maestra
             setIsAdmin(true);
             localStorage.setItem('td_is_admin_role', 'true');
         } else {
-            // Caso 2: Escribió cualquier otro nombre (ej: "Pepe")
-            // ACCIÓN: Revocar permisos inmediatamente para evitar que un ex-admin entre con privilegios
             setIsAdmin(false);
             localStorage.removeItem('td_is_admin_role');
         }
     }
-    // Nota: Si isJoined es true (ya estamos jugando), no tocamos nada. 
-    // Esto permite que el Admin se cambie el nombre a "Capitán" AL CREAR la partida sin perder rango.
   }, [userName, isJoined]);
+
+  // --- DETECTOR DE PENALIZACIÓN (NUEVO EFFECT PARA LA PANTALLA ROJA) ---
+  useEffect(() => {
+      // Si el juego dice que es penalización y es MI turno...
+      if (gameState?.isPenalty && isMyTurn()) {
+          setShowPenaltyOverlay(true);
+          if (navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibración dramática
+          
+          // La pantalla roja desaparece sola a los 4 segundos
+          const timer = setTimeout(() => setShowPenaltyOverlay(false), 4000);
+          return () => clearTimeout(timer);
+      } else {
+          // Aseguramos que se apague si no es penalización
+          setShowPenaltyOverlay(false);
+      }
+  }, [gameState?.isPenalty, gameState?.currentTurnIndex, user?.uid]);
 
   // --- PEGAR AQUÍ EL NUEVO EFECTO ---
 useEffect(() => {
