@@ -1234,185 +1234,149 @@ const resetGame = async () => {
   const submitAnswer = async (val: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`answers.${user.uid}`]: val }); };
   const submitVote = async (vote: string) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'), { [`votes.${user.uid}`]: vote }); };
   const findNextAvailableChallenge = async (type: string, startLevel: string, playerGender: string) => { let currentLvl = parseInt(startLevel); let found = null; let collectionName = type === 'YN' ? 'pairChallenges' : 'challenges'; for(let i = 0; i < 10; i++) { let lvlString = (currentLvl + i).toString(); let ref = collection(db, 'artifacts', appId, 'public', 'data', collectionName); let q = query(ref, where('level', '==', lvlString), where('answered', '==', false)); if(type !== 'YN') { q = query(ref, where('type', '==', type), where('level', '==', lvlString), where('answered', '==', false)); } const snapshot = await getDocs(q); let validDocs = snapshot.docs.filter(d => !d.data().paused); if (type !== 'YN') { validDocs = validDocs.filter(d => { const data = d.data(); const qSex = (data.gender || data.sexo || 'B').toUpperCase(); if (qSex === 'B') return true; if (playerGender === 'male') { return qSex !== 'F'; } else { return qSex !== 'M'; } }); } if (validDocs.length > 0) { found = validDocs[Math.floor(Math.random() * validDocs.length)]; break; } } if(found) return { id: found.id, ...found.data() } as Challenge; return null; };
-  const nextTurn = async () => { if (!gameState) return; const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main'); if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } let updates: any = {}; const points = { ...(gameState.points || {}) }; const batch = writeBatch(db); 
-  if (gameState.mode === 'question') { 
-    const currentUid = players[gameState.currentTurnIndex]?.uid; 
-    const votes = Object.values(gameState.votes || {});
-    const likeVotes = votes.filter(v => v === 'like').length;
-    const dislikeVotes = votes.filter(v => v === 'dislike').length;
+  const nextTurn = async () => { 
+    if (!gameState) return; 
+    const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
+    if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } 
+    
+    let updates: any = {};
+    const points = { ...(gameState.points || {}) }; 
+    const batch = writeBatch(db);
 
-    // Sumar puntos si ganó
-    if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; 
+    // --- 1. PROCESAR VOTOS Y PUNTOS ACTUALES ---
+    if (gameState.mode === 'question') { 
+        const currentUid = players[gameState.currentTurnIndex]?.uid; 
+        const votes = Object.values(gameState.votes || {});
+        const likeVotes = votes.filter(v => v === 'like').length;
+        const dislikeVotes = votes.filter(v => v === 'dislike').length;
 
-    // --- LÓGICA DE PENALIZACIÓN (NUEVO) ---
-    // Si hay más Dislikes que Likes Y el DrinkMode está APAGADO
-    if (dislikeVotes > likeVotes && !gameState.isDrinkMode) {
-         const currentPlayer = players[gameState.currentTurnIndex];
-         // Buscamos un DARE del mismo nivel
-         const penaltyDare = await findNextAvailableChallenge('D', gameState.roundLevel || '1', currentPlayer.gender);
-         
-         if (penaltyDare) {
-             // Actualizamos el juego para mantener al jugador pero cambiar a DARE
-             updates.mode = 'dare'; // Cambiamos modo a Reto
-             updates.currentChallengeId = penaltyDare.id;
-             updates.answers = {};
-             updates.votes = {};
-             updates.points = points; // Guardamos los puntos actuales (aunque no ganó en esta)
+        // Sumar puntos si corresponde
+        if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; 
+
+        // === NUEVA LÓGICA DE PENALIZACIÓN (SOBRIETY PUNISHMENT) ===
+        // Si no les gustó la respuesta (Dislike > Like) Y NO estamos en modo beber...
+        if (dislikeVotes > likeVotes && !gameState.isDrinkMode) {
+             const currentPlayer = players[gameState.currentTurnIndex];
+             // Buscamos inmediatamente un reto (DARE) del mismo nivel
+             const penaltyDare = await findNextAvailableChallenge('D', gameState.roundLevel || '1', currentPlayer.gender);
              
-             // Marcar el reto como usado
-             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', penaltyDare.id!), { answered: true });
-             
-             // ENVIAMOS ACTUALIZACIÓN Y PARAMOS LA FUNCIÓN AQUÍ (No avanza de turno)
-             await updateDoc(gameRef, updates);
-             return; 
-         }
-    }
-    // ---------------------------------------
-
-} else if (gameState.mode === 'dare') { const currentUid = players[gameState.currentTurnIndex]?.uid;
-    const nextTurn = async () => { 
-        if (!gameState) return; 
-        const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'main');
-        if (gameState.isEnding) { await updateDoc(gameRef, { mode: 'ended' }); return; } 
-        
-        let updates: any = {};
-        const points = { ...(gameState.points || {}) }; 
-        const batch = writeBatch(db);
-    
-        // --- 1. PROCESAR VOTOS Y PUNTOS ACTUALES ---
-        if (gameState.mode === 'question') { 
-            const currentUid = players[gameState.currentTurnIndex]?.uid; 
-            const votes = Object.values(gameState.votes || {});
-            const likeVotes = votes.filter(v => v === 'like').length;
-            const dislikeVotes = votes.filter(v => v === 'dislike').length;
-    
-            // Sumar puntos si corresponde
-            if(currentUid) points[currentUid] = (points[currentUid] || 0) + likeVotes; 
-    
-            // === NUEVA LÓGICA DE PENALIZACIÓN (SOBRIETY PUNISHMENT) ===
-            // Si no les gustó la respuesta (Dislike > Like) Y NO estamos en modo beber...
-            if (dislikeVotes > likeVotes && !gameState.isDrinkMode) {
-                 const currentPlayer = players[gameState.currentTurnIndex];
-                 // Buscamos inmediatamente un reto (DARE) del mismo nivel
-                 const penaltyDare = await findNextAvailableChallenge('D', gameState.roundLevel || '1', currentPlayer.gender);
+             if (penaltyDare) {
+                 // CONFIGURAMOS EL CASTIGO
+                 updates.mode = 'dare'; // Cambiamos el modo a Reto
+                 updates.currentChallengeId = penaltyDare.id;
+                 updates.answers = {}; // Limpiamos respuestas
+                 updates.votes = {};   // Limpiamos votos
+                 updates.points = points; // Guardamos los puntos calculados hasta ahora
                  
-                 if (penaltyDare) {
-                     // CONFIGURAMOS EL CASTIGO
-                     updates.mode = 'dare'; // Cambiamos el modo a Reto
-                     updates.currentChallengeId = penaltyDare.id;
-                     updates.answers = {}; // Limpiamos respuestas
-                     updates.votes = {};   // Limpiamos votos
-                     updates.points = points; // Guardamos los puntos calculados hasta ahora
-                     
-                     // IMPORTANTE: NO tocamos 'currentTurnIndex', así que sigue siendo turno del mismo jugador.
-                     
-                     // Marcar el reto como usado en la BD
-                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', penaltyDare.id!), { answered: true });
-                     
-                     // Guardar y SALIR (return) para que no ejecute el código de "Siguiente Jugador"
-                     await updateDoc(gameRef, updates);
-                     return; 
-                 }
-            }
-            // ==========================================================
-    
-        } else if (gameState.mode === 'dare') { 
-            const currentUid = players[gameState.currentTurnIndex]?.uid;
-            const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; 
-            if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
-        } else if (gameState.mode === 'yn') { 
-            const processed = new Set(); 
-            const currentHistory = [...(gameState.matchHistory || [])];
-            Object.keys(gameState.pairs || {}).forEach(uid1 => { 
-                if (processed.has(uid1)) return; 
-                const uid2 = gameState.pairs![uid1]; 
-                processed.add(uid1); processed.add(uid2); 
-                const ans1 = gameState.answers[uid1]; 
-                const ans2 = gameState.answers[uid2]; 
-                const p1 = players.find(p=>p.uid===uid1); 
-                const p2 = players.find(p=>p.uid===uid2); 
-                if (ans1 && ans2) { 
-                    const isMatch = ans1 === ans2; 
-                    if (isMatch) { 
-                        points[uid1] = (points[uid1] || 0) + 1; 
-                        points[uid2] = (points[uid2] || 0) + 1; 
-                    } 
-                    if (p1 && p2) { 
-                        currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); 
-                    } 
-                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); 
-                    batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); 
+                 // IMPORTANTE: NO tocamos 'currentTurnIndex', así que sigue siendo turno del mismo jugador.
+                 
+                 // Marcar el reto como usado en la BD
+                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', penaltyDare.id!), { answered: true });
+                 
+                 // Guardar y SALIR (return) para que no ejecute el código de "Siguiente Jugador"
+                 await updateDoc(gameRef, updates);
+                 return; 
+             }
+        }
+        // ==========================================================
+
+    } else if (gameState.mode === 'dare') { 
+        const currentUid = players[gameState.currentTurnIndex]?.uid;
+        const yesVotes = Object.values(gameState.votes || {}).filter(v => v === 'yes').length; 
+        if(currentUid) points[currentUid] = (points[currentUid] || 0) + yesVotes;
+    } else if (gameState.mode === 'yn') { 
+        const processed = new Set(); 
+        const currentHistory = [...(gameState.matchHistory || [])];
+        Object.keys(gameState.pairs || {}).forEach(uid1 => { 
+            if (processed.has(uid1)) return; 
+            const uid2 = gameState.pairs![uid1]; 
+            processed.add(uid1); processed.add(uid2); 
+            const ans1 = gameState.answers[uid1]; 
+            const ans2 = gameState.answers[uid2]; 
+            const p1 = players.find(p=>p.uid===uid1); 
+            const p2 = players.find(p=>p.uid===uid2); 
+            if (ans1 && ans2) { 
+                const isMatch = ans1 === ans2; 
+                if (isMatch) { 
+                    points[uid1] = (points[uid1] || 0) + 1; 
+                    points[uid2] = (points[uid2] || 0) + 1; 
                 } 
-            });
-            updates.matchHistory = currentHistory; 
-            await batch.commit(); 
-        } 
+                if (p1 && p2) { 
+                    currentHistory.push({ u1: uid1, u2: uid2, name1: p1.name, name2: p2.name, result: isMatch ? 'match' : 'mismatch', timestamp: Date.now() }); 
+                } 
+                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid1), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); 
+                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'players', uid2), { matches: increment(isMatch ? 1 : 0), mismatches: increment(isMatch ? 0 : 1) }); 
+            } 
+        });
+        updates.matchHistory = currentHistory; 
+        await batch.commit(); 
+    } 
+    
+    updates.points = points; 
+    
+    // --- 2. CALCULAR SIGUIENTE JUGADOR (Si no hubo penalización) ---
+    let roundFinished = false;
+    if (gameState.mode === 'yn') { 
+        roundFinished = true; 
+    } else { 
+        let nextIdx = gameState.currentTurnIndex + 1;
+        while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } 
         
-        updates.points = points; 
-        
-        // --- 2. CALCULAR SIGUIENTE JUGADOR (Si no hubo penalización) ---
-        let roundFinished = false;
-        if (gameState.mode === 'yn') { 
-            roundFinished = true; 
+        if (nextIdx < players.length) { 
+            updates.currentTurnIndex = nextIdx; 
+            updates.answers = {};
+            updates.votes = {}; 
+            const typeChar = gameState.mode === 'question' ? 'T' : 'D'; 
+            const nextPlayerGender = players[nextIdx].gender;
+            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); 
+            if (nextChallenge) { 
+                updates.currentChallengeId = nextChallenge.id;
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); 
+            } else { 
+                roundFinished = true;
+            } 
         } else { 
-            let nextIdx = gameState.currentTurnIndex + 1;
-            while(nextIdx < players.length && players[nextIdx].isBot) { nextIdx++; } 
-            
-            if (nextIdx < players.length) { 
-                updates.currentTurnIndex = nextIdx; 
-                updates.answers = {};
-                updates.votes = {}; 
-                const typeChar = gameState.mode === 'question' ? 'T' : 'D'; 
-                const nextPlayerGender = players[nextIdx].gender;
-                const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); 
-                if (nextChallenge) { 
-                    updates.currentChallengeId = nextChallenge.id;
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'challenges', nextChallenge.id!), { answered: true }); 
-                } else { 
-                    roundFinished = true;
-                } 
-            } else { 
-                roundFinished = true; 
-            } 
+            roundFinished = true; 
         } 
-    
-        // --- 3. SI LA RONDA TERMINÓ (TODOS JUGARON O NO HAY CARTAS) ---
-        if (roundFinished) { 
-            if (gameState.isAutoMode && gameState.sequence) { 
-                let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
-                if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } 
-                const nextModeKey = gameState.sequence[nextSeqIdx]; 
-                let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; 
-                if(mode === 'truth') mode = 'question'; 
-                let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; 
-                const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
-                const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); 
-                if (nextChallenge) { 
-                    updates.mode = mode; 
-                    updates.currentTurnIndex = 0;
-                    updates.sequenceIndex = nextSeqIdx; 
-                    updates.answers = {}; 
-                    updates.votes = {}; 
-                    updates.currentChallengeId = nextChallenge.id; 
-                    if (mode === 'yn') { 
-                        updates.pairs = computePairs();
-                        players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; });
-                    } 
-                    const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); 
-                } else { 
-                    updates.mode = 'admin_setup';
-                } 
-            } else { 
-                updates.mode = 'admin_setup'; 
-                updates.currentTurnIndex = 0; 
+    } 
+
+    // --- 3. SI LA RONDA TERMINÓ (TODOS JUGARON O NO HAY CARTAS) ---
+    if (roundFinished) { 
+        if (gameState.isAutoMode && gameState.sequence) { 
+            let nextSeqIdx = (gameState.sequenceIndex || 0) + 1;
+            if (nextSeqIdx >= gameState.sequence.length) { nextSeqIdx = 0; } 
+            const nextModeKey = gameState.sequence[nextSeqIdx]; 
+            let mode = nextModeKey === 'truth' ? 'question' : nextModeKey; 
+            if(mode === 'truth') mode = 'question'; 
+            let typeChar = mode === 'yn' ? 'YN' : mode === 'question' ? 'T' : 'D'; 
+            const nextPlayerGender = players.length > 0 ? players[0].gender : 'male';
+            const nextChallenge = await findNextAvailableChallenge(typeChar, gameState.roundLevel || '1', nextPlayerGender); 
+            if (nextChallenge) { 
+                updates.mode = mode; 
+                updates.currentTurnIndex = 0;
+                updates.sequenceIndex = nextSeqIdx; 
                 updates.answers = {}; 
-                updates.votes = {};
+                updates.votes = {}; 
+                updates.currentChallengeId = nextChallenge.id; 
+                if (mode === 'yn') { 
+                    updates.pairs = computePairs();
+                    players.filter(p => p.isBot).forEach(b => { updates[`answers.${b.uid}`] = Math.random() > 0.5 ? 'yes' : 'no'; });
+                } 
+                const coll = mode === 'yn' ? 'pairChallenges' : 'challenges';
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, nextChallenge.id!), { answered: true }); 
+            } else { 
+                updates.mode = 'admin_setup';
             } 
+        } else { 
+            updates.mode = 'admin_setup'; 
+            updates.currentTurnIndex = 0; 
+            updates.answers = {}; 
+            updates.votes = {};
         } 
-        
-        await updateDoc(gameRef, updates); 
-    };
+    } 
+    
+    await updateDoc(gameRef, updates); 
+  };
   // ... (Manager Logic)
   const handleSort = (key: keyof Challenge) => { let direction: 'asc' | 'desc' = 'asc'; if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'; setSortConfig({ key, direction }); };
   const handleRowMouseDown = (id: string, e: React.MouseEvent) => { setIsDragging(true); const newSet = new Set(selectedIds); if (newSet.has(id)) { newSet.delete(id); selectionMode.current = 'remove'; } else { newSet.add(id); selectionMode.current = 'add'; } setSelectedIds(newSet); };
